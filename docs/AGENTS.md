@@ -222,6 +222,34 @@ and the **game rules**:
 
 ---
 
+## Rule documentation workflow (MANDATORY)
+
+This repository treats game rules as a three-layer system:
+
+1) Canon (human-readable):
+   - Location: /docs/rules/canon/*.md
+   - This is the normative rule text (player-facing).
+   - Every rule that constrains behavior must have a stable Rule ID.
+
+2) Contracts (machine-readable):
+   - Location: /docs/rules/contracts/*.md
+   - Each implemented rule MUST have a contract entry:
+     - rule_id, scope, inputs, outputs, invariants, edge cases
+   - Agents MUST implement from the contract, not from memory or interpretation.
+
+3) Rule ↔ Code Mapping:
+   - Location: /docs/rules/rule-mapping.md
+   - Every rule implementation MUST be mapped to concrete code symbols.
+
+Task requirement:
+- Every task that touches rules MUST:
+  - reference the affected rule IDs
+  - update the relevant contract(s)
+  - update rule-mapping.md
+  - include at least one test referencing the rule ID(s)
+
+---
+
 ## Guiding principle
 
 > This codebase exists to make the rules of  
