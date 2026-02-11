@@ -7,7 +7,7 @@ export type Zone =
   | 'Noise'
   | 'PersonalSupply';
 
-// Resources (CORE-01-02-04A..G) Ã¢â‚¬â€ registry-based; do not hardcode unions in logic (AGENTS Ã‚Â§1.6)
+// Resources (CORE-01-02-04A..G) ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â registry-based; do not hardcode unions in logic (AGENTS ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§1.6)
 export type ResourceId = string; // e.g., 'DOM' | 'FOR' | 'INF' in CORE registry
 export const CoreResorts: readonly ResourceId[] = ['DOM', 'FOR', 'INF'];
 
@@ -76,11 +76,17 @@ export interface TurnScratch { pending?: { tileId: string; legalCoords: AxialCoo
 export interface InfluenceOnBoard { tileId: string; owner: string; count: number }
 
 export interface ExpansionsState {
-  // Placeholders for modular expansions; present only when enabled (AGENTS Ãƒâ€šÃ‚Â§3.4, Ãƒâ€šÃ‚Â§3.8, Ãƒâ€šÃ‚Â§5.5)
-  exp01?: Record<string, never>;
-  exp02?: Record<string, never>;
-  exp03?: Record<string, never>;
+  // Namespaced expansion state; only created when enabled (AGENTS Ã‚Â§3.4, Ã‚Â§3.8, Ã‚Â§5.5)
+  exp01?: Exp01State;
+  exp02?: Exp02State;
+  exp03?: Exp03State;
 }
+
+export type ExpansionId = 'exp01' | 'exp02' | 'exp03';
+
+export interface Exp01State {}
+export interface Exp02State {}
+export interface Exp03State {}
 
 export interface CoreState {
   matchSeed: string;

@@ -31,3 +31,7 @@
 - @bc/rules: CoreState now stores resource amounts as maps keyed by ResourceId (no arrays); bank/noise initialized from registry; no hardcoded DOM/FOR/INF branching in logic.
 - @bc/game: golden hash updated due to deterministic state-shape change.
 - Tests: registry behavior, CORE-only keyset, paying/insufficient checks; updated production tests for map counts.
+## 2026-02-11 — Task 0012: Expansion state namespacing
+- @bc/rules: added ExpansionId and typed expansion slices (Exp01State, Exp02State, Exp03State) under `G.exp`.
+- @bc/game/@bc/rules setup already ensures `G.exp` is omitted unless at least one expansion is enabled; present keys only for enabled expansions.
+- Tests: existing expansion-config tests assert absence/presence; types updated without changing behavior.
