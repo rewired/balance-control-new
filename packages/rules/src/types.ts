@@ -92,6 +92,7 @@ export interface Exp01MeasuresState {
   hands: Record<string, string[]>; // by playerID
   usedThisRound: Record<string, boolean>; // per player
   playCounts: Record<string, number>; // per measure id
+  cycle: number;
 }
 
 export interface Exp01State { sentinel?: boolean; measures?: Exp01MeasuresState }

@@ -22,7 +22,7 @@ export type EffectKind =
 
 export interface BaseEffect {
   kind: EffectKind;
-  contextCoord?: AxialCoord; // ContextTile binding (AGENTS ง3.5 step 1)
+  contextCoord?: AxialCoord; // ContextTile binding (AGENTS ยง3.5 step 1)
 }
 
 export interface AddResourcesEffect extends BaseEffect {
@@ -69,7 +69,7 @@ export interface MoveInfluenceToTileEffect extends BaseEffect {
   count: number; // >=1
 }
 
-export interface MoveObjectEffect extends BaseEffect { // AGENTS ง3.1 Zones
+export interface MoveObjectEffect extends BaseEffect { // AGENTS ยง3.1 Zones
   kind: 'moveObject';
   object: { kind: 'Influence'; owner: string; id?: string };
   from: { zone: Zone };
@@ -128,9 +128,20 @@ function isStartCommitteeContext(G: CoreState, coord?: AxialCoord): boolean {
 
 export interface ResolveResult { ok: boolean; reason?: string }
 
-function getExp01Measures(G: CoreState) {
-  const exp = (G.exp as any) ?? undefined;
-  return exp?.exp01?.measures as import('./types.js').Exp01MeasuresState | undefined;
+function getExp01Measures(G: CoreState): import('./types.js').Exp01MeasuresState | undefined {
+  const exp = (G as CoreState & { exp: NonNullable<CoreState['exp']> }).exp;
+  const s = exp?.exp01?.measures as import('./types.js').Exp01MeasuresState | undefined;
+  return s;
+}
+
+function drawFromDeckExp01(G: CoreState): string | undefined {
+  const m = getExp01Measures(G); if (!m) return undefined;
+  if (m.drawPile.length === 0 && m.recycle.length > 0) {
+    // EXP-01-07: Recycle -> Draw reshuffle (deterministic)
+    m.drawPile = shuffleSeeded(m.recycle.slice(), G.matchSeed + '|exp01:measures:cycle:' + (m.cycle|0));
+    m.recycle.length = 0; m.cycle = (m.cycle|0) + 1;
+  }
+  return m.drawPile.shift();
 }
 
 export function createResolver(modules: ExpansionModule[] = []) {
@@ -139,7 +150,7 @@ export function createResolver(modules: ExpansionModule[] = []) {
 
   function resolveEffect(G: CoreState, effect: EffectDescriptor): ResolveResult {
     // 1) Assign ContextTile (already part of descriptor)
-    const immune = isStartCommitteeContext(G, effect.contextCoord); // AGENTS ง3.7
+    const immune = isStartCommitteeContext(G, effect.contextCoord); // AGENTS ยง3.7
 
     // 2) Prohibitions
     if (!immune) {
@@ -255,7 +266,7 @@ export function createResolver(modules: ExpansionModule[] = []) {
         return { ok: true };
       }
 
-            case 'moveObject': { // AGENTS ง3.1 Zones — generic wrapper
+            case 'moveObject': { // AGENTS ยง3.1 Zones โ€” generic wrapper
         const mo = effect as MoveObjectEffect;
         if (mo.object.kind === 'Influence' && mo.from.zone === 'PersonalSupply' && mo.to.zone === 'Board' && mo.to.tileId) {
           const placement = G.tiles.board.find(p => p.tileId === mo.to.tileId);
@@ -266,30 +277,44 @@ export function createResolver(modules: ExpansionModule[] = []) {
         return { ok: false, reason: 'unsupported-move' };
       }
 
-      case 'initMeasures': {
+            case 'initMeasures': { // EXP-01-02-E zones; EXP-01-07 lifecycle setup
         const { expansion, deck, openCount } = effect as InitMeasuresEffect;
         if (expansion !== 'exp01') return { ok: true };
-        if (!G.exp) (G as any).exp = {};
-        if (!(G.exp as any).exp01) (G.exp as any).exp01 = {};
+        if (!G.exp) (G as CoreState & { exp: NonNullable<CoreState['exp']> }).exp = {};
+        if (!(G.exp as NonNullable<CoreState['exp']>).exp01) (G.exp as NonNullable<CoreState['exp']>).exp01 = {};
         const state: import('./types.js').Exp01MeasuresState = {
-          drawPile: shuffleSeeded(deck, G.matchSeed + '|exp01:measures'),
-          open: [],
-          recycle: [],
-          finalDiscard: [],
+          drawPile: shuffleSeeded(deck, G.matchSeed + '|exp01:measures:init'),
+          open: [], recycle: [], finalDiscard: [],
           hands: Object.fromEntries(Object.keys(G.players).map(pid => [pid, [] as string[]])),
           usedThisRound: Object.fromEntries(Object.keys(G.players).map(pid => [pid, false])),
           playCounts: {},
+          cycle: 0,
         };
-        for (let i=0; i<openCount && state.drawPile.length>0; i++) state.open.push(state.drawPile.shift()!);
-        (G.exp as any).exp01.measures = state;
+        for (let i=0; i<openCount; i++) {
+          const d = state.drawPile.shift(); if (!d) break; state.open.push(d);
+        }
+        (G.exp as NonNullable<CoreState['exp']>).exp01.measures = state;
         return { ok: true };
       }
 
-      case 'takeMeasure': {
+      case 'takeMeasure': { // EXP-01-06-03 hand limit; EXP-01-07 open refill w/ recycle reshuffle
         const { expansion, playerID, measureId } = effect as TakeMeasureEffect;
         if (expansion !== 'exp01') return { ok: true };
         const m = getExp01Measures(G); if (!m) return { ok: true };
-        const hand = m.hands[playerID]; if (!hand) return { ok: false, reason: 'no-player' };
+        const pid = String(playerID); const hand = (m.hands[pid] ?? (m.hands[pid] = []));
+        if (hand.length >= 2) return { ok: false, reason: 'hand-full' };
+        const idx = m.open.indexOf(measureId); if (idx < 0) return { ok: false, reason: 'not-open' };
+        m.open.splice(idx,1); hand.push(measureId);
+        while (m.open.length < 3) {
+          const d = drawFromDeckExp01(G);
+          if (!d) break; m.open.push(d);
+        }
+        return { ok: true };
+      } {
+        const { expansion, playerID, measureId } = effect as TakeMeasureEffect;
+        if (expansion !== 'exp01') return { ok: true };
+        const m = getExp01Measures(G); if (!m) return { ok: true };
+        const pid = String(playerID); const hand = (m.hands[pid] ?? (m.hands[pid] = []));
         if (hand.length >= 2) return { ok: false, reason: 'hand-full' };
         const idx = m.open.indexOf(measureId); if (idx < 0) return { ok: false, reason: 'not-open' };
         m.open.splice(idx,1);
@@ -298,20 +323,21 @@ export function createResolver(modules: ExpansionModule[] = []) {
         return { ok: true };
       }
 
-      case 'playMeasure': {
+            case 'playMeasure': { // EXP-01-06-02 Play limit per round; EXP-01-07 recycle/final discard cycling
         const { expansion, playerID, measureId } = effect as PlayMeasureEffect;
         if (expansion !== 'exp01') return { ok: true };
         const m = getExp01Measures(G); if (!m) return { ok: true };
-        if (m.usedThisRound[playerID]) return { ok: false, reason: 'limit-per-round' };
-        const hand = m.hands[playerID] ?? [];
+        const pid2 = String(playerID);
+        if (m.usedThisRound[pid2]) return { ok: false, reason: 'limit-per-round' };
+        const hand = m.hands[pid2] ?? [];
         const idx = hand.indexOf(measureId); if (idx < 0) return { ok: false, reason: 'not-in-hand' };
         hand.splice(idx,1);
         const c = (m.playCounts[measureId] ?? 0) + 1; m.playCounts[measureId] = c;
         if (c >= 2) m.finalDiscard.push(measureId); else m.recycle.push(measureId);
-        m.usedThisRound[playerID] = true;
-        if (!G.turn) (G as any).turn = {};
-        (G.turn as any).allowExtraPoliticalAction = true;
-        (G.turn as any).bannedMoveType = 'exp01_playMeasure';
+        m.usedThisRound[pid2] = true;
+        if (!G.turn) (G as CoreState & { turn: NonNullable<CoreState['turn']> }) .turn = {} as NonNullable<CoreState['turn']>;
+        (G.turn as NonNullable<CoreState['turn']>).allowExtraPoliticalAction = true;
+        (G.turn as NonNullable<CoreState['turn']>).bannedMoveType = 'exp01_playMeasure';
         return { ok: true };
       }
 

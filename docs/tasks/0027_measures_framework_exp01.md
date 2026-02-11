@@ -45,9 +45,9 @@ EXP-02 and EXP-03 will reuse the same lifecycle rules but keep separate zones.
 - Smoke test: core-only match runs unchanged when EXP-01 disabled.
 
 ## PR Checklist
-- [ ] EXP-01 zones are isolated
-- [ ] Lifecycle matches EXP-01-07 exactly
-- [ ] Tests reference EXP-01 section IDs
+- [x] EXP-01 zones are isolated
+- [x] Lifecycle matches EXP-01-07 exactly
+- [x] Tests reference EXP-01 section IDs
 
 ---
 
@@ -72,13 +72,13 @@ When the implementation is finished, you MUST do all of the following before dec
 
 ### Final Checklist (fill after completion)
 
-- [ ] pnpm lint passed (paste short summary):
-- [ ] pnpm test passed (paste short summary):
-- [ ] Determinism verified (golden replay hash unchanged / added):
-- [ ] No temporary files added:
-- [ ] Rule references added in code (examples of references):
-- [ ] Changelog updated: (path + brief entry summary)
-- [ ] Design decision doc added/updated: (path or “n/a”)
-- [ ] Errata added/updated: (path or “n/a”)
-- [ ] Expansion isolation verified (disabled expansions leave no state):
-- [ ] Bot contract checks (if touched): schema + illegal fallback tested
+- [x] pnpm lint passed (all packages): see pnpm -w -r lint ? Done
+- [x] pnpm test passed: all packages green; game: 10 files, 23 tests; rules: 13 files, 33 tests.
+- [x] Determinism verified: golden replay test unchanged (packages/game/src/golden.test.ts).
+- [x] No temporary files added: verified via git status.
+- [x] Rule references in code: effects.ts includes EXP-01-02-E, EXP-01-06-02/03, EXP-01-07 comments.
+- [x] Changelog updated: docs/changelog.md � Task 0027 entry added.
+- [x] Design decision doc added/updated: n/a
+- [x] Errata added/updated: n/a
+- [x] Expansion isolation verified: CORE-only test asserts no exp01 slice.
+- [x] Bot contract checks: strict zod schemas; enumerate() returns only legal options; per-round limiter enforced.

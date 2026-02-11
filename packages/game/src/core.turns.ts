@@ -86,8 +86,20 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
         const def = catalog.definitions[action?.type as string];
         if (!def) return;
         const validated = def.payloadSchema.parse(action?.payload ?? {});
-        def.execute(G, String((ctx as any)?.currentPlayer ?? (ctx as any)?.playerID ?? '0'), validated as unknown as never);
-        const t = (G as any).turn ?? ((G as any).turn = {}); if (t.bannedMoveType && def.type === t.bannedMoveType) { return; } if (t.allowExtraPoliticalAction) { t.allowExtraPoliticalAction = false; } else { t.bannedMoveType = undefined; events?.endTurn?.(); }
+        const ctxLike = ctx as { currentPlayer?: string; playerID?: string } | undefined;
+        const pid = String(ctxLike?.currentPlayer ?? ctxLike?.playerID ?? '0');
+        def.execute(G, pid, validated as unknown as never);
+        type TurnT = NonNullable<import('@bc/rules').CoreState['turn']>;
+        const turn: TurnT = (G.turn ?? (G.turn = {} as TurnT));
+        if (turn.bannedMoveType && def.type === turn.bannedMoveType) {
+          return;
+        }
+        if (turn.allowExtraPoliticalAction) {
+          turn.allowExtraPoliticalAction = false;
+        } else {
+          turn.bannedMoveType = undefined;
+          events?.endTurn?.();
+        }
       },
     },
     next: Phases.DrawAndPlaceTile,

@@ -92,8 +92,30 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1(@types/node@25.2.3)
 
+  packages/exp-01-economy:
+    dependencies:
+      '@bc/rules':
+        specifier: workspace:*
+        version: link:../rules
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      eslint:
+        specifier: ^8.57.1
+        version: 8.57.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@25.2.3)
+
   packages/game:
     dependencies:
+      '@bc/exp-01-economy':
+        specifier: workspace:*
+        version: link:../exp-01-economy
       '@bc/rules':
         specifier: workspace:*
         version: link:../rules

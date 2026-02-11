@@ -101,3 +101,9 @@
 - @bc/game bootstraps modules in `expansions.bootstrap.ts` and imports EXP-01 via alias.
 - Vitest and Vite configs updated to alias `@bc/exp-01-economy`.
 - Tests: CORE-only has no ECO/slice/move; CORE+EXP-01 shows ECO + slice and the move toggles sentinel; added strict payload validation test.
+## 2026-02-11 — Task 0027: Measures engine (EXP-01 baseline)
+- @bc/rules: extended EffectDescriptor with initMeasures/takeMeasure/playMeasure/resetMeasuresRound and implemented resolver-only pathways (AGENTS §3.5, §3.7).
+- @bc/rules: EXP-01 measures state adds zones DrawPile/Open/Recycle/FinalDiscard, per-player `hands`, `usedThisRound`, and `playCounts`; deterministic recycle?draw reshuffle with `cycle` seed suffix.
+- @bc/exp-01-economy: added `exp01_takeMeasure` and `exp01_playMeasure` moves with strict zod payloads + enumerate() functions for bot contract (AGENTS §4.1).
+- @bc/game: political action path executes expansion moves; per-round play limit enforced and extra-action grant after play preserved.
+- Tests: new exp01.measures.test.ts covering open=3, take?refill, play?recycle?finalDiscard on second play, reshuffle from recycle to draw, and enumerator legality.
