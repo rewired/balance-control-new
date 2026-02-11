@@ -90,3 +90,37 @@ export function resolveRoundSettlement(state: CoreState, modules: ExpansionModul
     .filter(x => x.tile && x.tile.kind === 'ResortTile');
   for (const x of coords) resolveProductionForTile(state, x.coord, modules);
 }
+
+export interface PlannedProduction {
+  resort: ResourceId;
+  winners: string[]; // empty means all to noise
+  share: number;     // per-winner amount
+  remainder: number; // to noise
+}
+
+export function planProductionForTile(state: CoreState, coord: AxialCoord, modules: ExpansionModule[] = []): PlannedProduction | null {
+  const placement = getPlacement(state, coord); if (!placement) return null;
+  const tile = state.allTiles[placement.tileId]; if (!tile || tile.kind !== 'ResortTile') return null;
+  // CORE-01-06-16 order
+  let out = printedValue(tile); // 1. printed value
+  // 2. doubling effects (none in core)
+  // 3. production output modifiers
+  const modifiers = collectProductionModifiers(state, coord, tile, modules);
+  for (const f of modifiers) out = f(out);
+  // 4. floors (ensure non-negative)
+  if (out < 0) out = 0;
+  if (out === 0) return { resort: tile.resort, winners: [], share: 0, remainder: 0 };
+  // 5. Majority check
+  const winner = computeMajority(state, coord);
+  if (winner) {
+    return { resort: tile.resort, winners: [winner], share: out, remainder: 0 };
+  }
+  // tie: split evenly among top players
+  const sc = scores(state, coord);
+  const max = Math.max(...sc.map(([,v]) => v));
+  const tops = sc.filter(([,v]) => v === max).map(([pid]) => pid);
+  if (max <= 0 || tops.length === 0) { return { resort: tile.resort, winners: [], share: 0, remainder: out }; }
+  const share = Math.floor(out / tops.length);
+  const rem = out - share * tops.length;
+  return { resort: tile.resort, winners: tops, share, remainder: rem };
+}

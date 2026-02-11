@@ -2,14 +2,15 @@ import type { AxialCoord, CoreState, ResourceId } from './types.js';
 import { canPay, subResources, addResources as addRes, createCoreResourceRegistry, type ResourceAmounts } from './resources.js';
 import type { ExpansionModule } from './expansion-registry.js';
 import { resolveHotspot } from './hotspot.js';
-import { resolveProductionForTile } from './production.js';
+import { planProductionForTile } from './production.js';
 
 export type EffectKind =
   | 'addResources'
-  | 'offerTile'            // set draw/discard + pending offer for placement (phase onBegin)
-  | 'placeTile'            // push tile to board and clear pending
-  | 'resolveHotspotAt'     // resolve hotspot if fully surrounded
-  | 'applyProductionAt';   // run production for a single tile
+  | 'offerTile'
+  | 'placeTile'
+  | 'resolveHotspotAt'
+  | 'applyProductionAt'
+  | 'addNoise';
 
 export interface BaseEffect {
   kind: EffectKind;
@@ -47,12 +48,19 @@ export interface ApplyProductionAtEffect extends BaseEffect {
   coord: AxialCoord;
 }
 
+export interface AddNoiseEffect extends BaseEffect {
+  kind: 'addNoise';
+  resource: ResourceId;
+  amount: number;
+}
+
 export type EffectDescriptor =
   | AddResourcesEffect
   | OfferTileEffect
   | PlaceTileEffect
   | ResolveHotspotAtEffect
-  | ApplyProductionAtEffect;
+  | ApplyProductionAtEffect
+  | AddNoiseEffect;
 
 function findTileAt(G: CoreState, coord?: AxialCoord) {
   if (!coord) return undefined;
@@ -72,11 +80,11 @@ export function createResolver(modules: ExpansionModule[] = []) {
   const registry = createCoreResourceRegistry();
   const hooks = modules.map((m) => m.hooks).filter(Boolean) as NonNullable<ExpansionModule['hooks']>[];
 
-  return function resolveEffect(G: CoreState, effect: EffectDescriptor): ResolveResult {
+  function resolveEffect(G: CoreState, effect: EffectDescriptor): ResolveResult {
     // 1) Assign ContextTile (already part of descriptor)
     const immune = isStartCommitteeContext(G, effect.contextCoord); // AGENTS §3.7
 
-    // 2) Prohibitions — always evaluated unless Start Committee
+    // 2) Prohibitions
     if (!immune) {
       for (const h of hooks) {
         const blocked = h.prohibitions?.({ G, effect });
@@ -84,13 +92,11 @@ export function createResolver(modules: ExpansionModule[] = []) {
       }
     }
 
-    // Effect-kind specific execution including cost/output/floors when applicable
     switch (effect.kind) {
       case 'addResources': {
-        // Prepare working copies for atomicity on cost payment
+        // Prepare working copy for atomic cost payment
         const workResources: ResourceAmounts = { ...G.players[effect.playerID]?.personal.resources } as ResourceAmounts;
-
-        // 3) Cost increases (apply to effect.cost) — call even if no initial cost
+        // 3) Cost increases
         let cost: Partial<Record<ResourceId, number>> | undefined = effect.cost ? { ...effect.cost } : undefined;
         if (!immune) {
           for (const h of hooks) {
@@ -116,7 +122,7 @@ export function createResolver(modules: ExpansionModule[] = []) {
             if (typeof mod === 'number') amount = mod;
           }
         }
-        // 5) Floors (>= 0)
+        // 5) Floors
         if (amount < 0) amount = 0;
         // 6) Apply atomically
         if (cost) {
@@ -130,7 +136,6 @@ export function createResolver(modules: ExpansionModule[] = []) {
       }
 
       case 'offerTile': {
-        // Atomic assignment of draw/discard and pending offer
         G.tiles.drawPile = effect.drawPile.slice();
         G.tiles.discardFaceUp = effect.discardFaceUp.slice();
         G.turn = { pending: effect.pending ? { tileId: effect.pending.tileId, legalCoords: effect.pending.legalCoords } : undefined } as CoreState['turn'];
@@ -149,12 +154,34 @@ export function createResolver(modules: ExpansionModule[] = []) {
       }
 
       case 'applyProductionAt': {
-        resolveProductionForTile(G, effect.coord, modules);
+        const plan = planProductionForTile(G, effect.coord, modules);
+        if (!plan) return { ok: true };
+        for (const pid of plan.winners) {
+          if (plan.share > 0) {
+            const add: EffectDescriptor = { kind: 'addResources', playerID: pid, resource: plan.resort, amount: plan.share, contextCoord: effect.coord } as AddResourcesEffect;
+            const r = resolveEffect(G, add); if (!r.ok) return r;
+          }
+        }
+        if (plan.remainder > 0) {
+          const addN: EffectDescriptor = { kind: 'addNoise', resource: plan.resort, amount: plan.remainder, contextCoord: effect.coord } as AddNoiseEffect;
+          const r2 = resolveEffect(G, addN); if (!r2.ok) return r2;
+        }
+        return { ok: true };
+      }
+
+      case 'addNoise': {
+        const n = Math.max(0, (effect.amount as number) | 0);
+        if (n > 0) {
+          const noise = G.resources.noise as Record<ResourceId, number>;
+          noise[effect.resource] = (noise[effect.resource] ?? 0) + n;
+        }
         return { ok: true };
       }
 
       default:
         return { ok: false, reason: 'unknown-effect' };
     }
-  };
+  }
+
+  return resolveEffect;
 }
