@@ -146,6 +146,21 @@ CORE-01-05-01 A player controls a Tile if that player has strictly more Influenc
 CORE-01-05-02 If two or more players tie for highest Influence on a Tile, no player controls that Tile.
 CORE-01-05-03 Control updates immediately after any Influence movement onto, off, or between Board Tiles.
 
+CORE-01-05-03A A player controls a Tile if computeMajority(Tile) == that player.
+If computeMajority(Tile) returns None (tie), the Tile is uncontrolled.
+
+computeMajority(Tile):
+
+1. For each player:
+   totalInfluence =
+      Influence markers on the Tile
+      + all applicable modifiers (e.g., Lobbyist adjacency bonus)
+
+2. The player with strictly highest totalInfluence is returned.
+
+3. If two or more players share the highest totalInfluence,
+   return None.
+
 CORE-01-05-04 Each Lobbyist adjacent to a Tile contributes +1 virtual Influence for majority calculation on that adjacent Tile.
 CORE-01-05-05 Lobbyist contribution applies only to majority calculation.
 CORE-01-05-06 Lobbyist contribution does not create or move Influence objects.

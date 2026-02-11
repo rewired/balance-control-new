@@ -208,7 +208,7 @@ EXP-01-08-M03-04 Effect: During this round, ConvertResources may not convert ECO
 ## EXP-01-08-M04 — Subsidy Reduction
 
 EXP-01-08-M04-01 Name: Subsidy Reduction.
-EXP-01-08-M04-02 Cost: ECO + FOR.
+EXP-01-08-M04-02 Cost: ECO + DOM.
 EXP-01-08-M04-03 Target: One opponent-controlled ECO ResortTile in Board.
 EXP-01-08-M04-04 Duration: During this Round Settlement.
 EXP-01-08-M04-05 Effect: During this Round Settlement, reduce that tile’s production by 1 (minimum 0).
