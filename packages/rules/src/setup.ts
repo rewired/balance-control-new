@@ -48,9 +48,9 @@ function buildNonResortTiles(): Tile[] {
   return out;
 }
 
-export function buildInitialCoreState(numPlayers: number, matchSeed: string, opts?: { expansions?: import('./schemas.js').ExpansionFlags }): CoreState {
+export function buildInitialCoreState(numPlayers: number, matchSeed: string, cfg?: import('./schemas.js').MatchConfig): CoreState {
   const registry = createCoreResourceRegistry();
-  const modules = createExpansionRegistry(opts?.expansions);
+  const modules = createExpansionRegistry(cfg?.expansions);
   for (const m of modules) m.registerResources(registry);
 
   // Gather all tiles
@@ -83,6 +83,7 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string, opt
 
   const state: CoreState = {
     matchSeed,
+    cfg: cfg ?? { expansions: { exp01: false, exp02: false, exp03: false } },
     tiles: {
       drawPile,
       discardFaceUp: [],

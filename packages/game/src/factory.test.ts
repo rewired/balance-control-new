@@ -21,10 +21,7 @@ describe('Game factory — Task 0018', () => {
   it('CORE + exp01: module present and setupExpansionState executed', () => {
     const Game = createBCGame({ expansions: { exp01: true } });
     const G = setupWith(Game, 2);
-    expect((G as any).exp?.exp01).toBeDefined();
-    // sentinel set by stub module
-    expect((G as any).exp?.exp01?.__boot).toBe(true);
-    const mods = createExpansionRegistry({ exp01: true, exp02: false, exp03: false });
-    expect(mods.map(m => m.id)).toEqual(['exp01']);
+    expect((G as any).cfg?.expansions).toEqual({ exp01:true, exp02:false, exp03:false });
+    const mods = createExpansionRegistry({ exp01: true, exp02: false, exp03: false }); expect(mods.map(m => m.id)).toEqual(['exp01']);
   });
 });

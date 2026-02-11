@@ -1,6 +1,6 @@
 import type { Game } from 'boardgame.io';
 import type { CoreState, AxialCoord, Tile } from '@bc/rules';
-import { buildMoveCatalog, corePoliticalMoves, createExpansionRegistry } from '@bc/rules';
+import { buildMoveCatalog, corePoliticalMoves, createExpansionRegistry, assertExpansionStateMatchesConfig } from '@bc/rules';
 import { isFullySurrounded, drawUntilPlaceable, adjacent as hexAdjacent } from '@bc/rules';
 import { createResolver } from '@bc/rules';
 
@@ -26,9 +26,9 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
   [Phases.DrawAndPlaceTile]: {
     start: true,
     onBegin: ({ G }) => {
+      assertExpansionStateMatchesConfig(G);
       const res = drawUntilPlaceable(G.tiles.drawPile, G.tiles.discardFaceUp, G.tiles.board, hexAdjacent);
-      const flags = { exp01: !!G.exp?.exp01, exp02: !!G.exp?.exp02, exp03: !!G.exp?.exp03 } as const;
-      const modules = createExpansionRegistry(flags);
+      const modules = createExpansionRegistry(G.cfg.expansions);
       const resolve = createResolver(modules);
       resolve(G, {
         kind: 'offerTile',
@@ -55,8 +55,7 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
           .filter((x) => x.tile && x.tile.kind === 'Hotspot');
 
         // Apply placement via resolver
-        const flags = { exp01: !!G.exp?.exp01, exp02: !!G.exp?.exp02, exp03: !!G.exp?.exp03 } as const;
-        const modules = createExpansionRegistry(flags);
+        const modules = createExpansionRegistry(G.cfg.expansions);
         const resolve = createResolver(modules);
         resolve(G, { kind: 'placeTile', tileId: p.tileId, coord, contextCoord: coord });
 
@@ -82,8 +81,7 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
     moves: {
       // CORE-01-04-09: Exactly one political action (placeholder noop)
       doPoliticalAction: ({ G, events }, action: { type: string; payload: unknown }) => {
-        const flags = { exp01: !!G.exp?.exp01, exp02: !!G.exp?.exp02, exp03: !!G.exp?.exp03 };
-        const modules = createExpansionRegistry(flags);
+        const modules = createExpansionRegistry(G.cfg.expansions);
         const catalog = buildMoveCatalog(corePoliticalMoves(), modules);
         const def = catalog.definitions[action?.type as string];
         if (!def) return;

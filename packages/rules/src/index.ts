@@ -20,3 +20,4 @@ export * from './expansion-registry.js';
 export * from './effects.js';
 
 export * from './moves.js';
+export * from './config.js';

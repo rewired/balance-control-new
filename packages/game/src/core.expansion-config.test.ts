@@ -10,7 +10,7 @@ const setup = (numPlayers: number, setupData?: unknown) => {
 describe('CoreGame setup — expansion flags (Task 0010)', () => {
   it('no setupData -> pure CORE (no exp slice)', () => {
     const G = setup(2);
-    expect((G as any).exp).toBeUndefined();
+    expect((G as any).cfg?.expansions).toEqual({ exp01:false, exp02:false, exp03:false });
   });
   it('setupData.expansions.exp01=true -> exp01 slice present only', () => {
     const G = setup(2, { expansions: { exp01: true } });

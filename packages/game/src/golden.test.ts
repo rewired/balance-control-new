@@ -16,7 +16,7 @@ function neighborsOf(c: AxialCoord): AxialCoord[] {
 
 describe('Golden replay — 0006', () => {
   it('stable final hash for fixed seed + action list', () => {
-    const G: CoreState = buildInitialCoreState(2, 'golden-0006');
+    const G: CoreState = buildInitialCoreState(2, 'golden-0006', { expansions: { exp01:false, exp02:false, exp03:false } });
     let pos = 0; const N = 10; // 10 placements across 5 full rounds
     for (let step = 0; step < N; step++) {
       const res = drawUntilPlaceable(G.tiles.drawPile, G.tiles.discardFaceUp, G.tiles.board, hexAdjacent);
@@ -47,7 +47,7 @@ describe('Golden replay — 0006', () => {
 
     const hash = stableHash(G);
     // Replace EXPECTED with the first observed value to lock determinism
-    const EXPECTED = '0354c350b76c354d8b6403672ae55e0d768c5315eaeb49fdcd4bed4e15c8b534';
+    const EXPECTED = '5f91827548d811032a11fb765161dbfab3562d714f8da3a4d041150b51e6d9dd';
     expect(hash).toBe(EXPECTED);
   });
 });

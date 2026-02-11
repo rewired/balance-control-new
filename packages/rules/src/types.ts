@@ -89,6 +89,7 @@ export interface Exp02State {}
 export interface Exp03State {}
 
 export interface CoreState {
+  cfg: import('./schemas.js').MatchConfig;
   matchSeed: string;
   tiles: TileZonesState;
   allTiles: Record<string, Tile>;
