@@ -1,7 +1,8 @@
 import type { Game } from 'boardgame.io';
 import type { CoreState, AxialCoord, Tile } from '@bc/rules';
 import { buildMoveCatalog, corePoliticalMoves, createExpansionRegistry } from '@bc/rules';
-import { resolveHotspot, isFullySurrounded, drawUntilPlaceable, adjacent as hexAdjacent } from '@bc/rules';
+import { isFullySurrounded, drawUntilPlaceable, adjacent as hexAdjacent } from '@bc/rules';
+import { createResolver } from '@bc/rules';
 
 export const Phases = {
   DrawAndPlaceTile: 'DrawAndPlaceTile',
@@ -26,13 +27,15 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
     start: true,
     onBegin: ({ G }) => {
       const res = drawUntilPlaceable(G.tiles.drawPile, G.tiles.discardFaceUp, G.tiles.board, hexAdjacent);
-      G.tiles.drawPile = res.drawPile;
-      G.tiles.discardFaceUp = res.discardFaceUp;
-      if (res.drawn) {
-        G.turn = { pending: { tileId: res.drawn, legalCoords: res.legalCoords } };
-      } else {
-        G.turn = { pending: undefined };
-      }
+      const flags = { exp01: !!G.exp?.exp01, exp02: !!G.exp?.exp02, exp03: !!G.exp?.exp03 } as const;
+      const modules = createExpansionRegistry(flags);
+      const resolve = createResolver(modules);
+      resolve(G, {
+        kind: 'offerTile',
+        drawPile: res.drawPile,
+        discardFaceUp: res.discardFaceUp,
+        pending: res.drawn ? { tileId: res.drawn, legalCoords: res.legalCoords } : undefined,
+      });
     },
     moves: {
       placeTile: ({ G, events }, coord: AxialCoord) => {
@@ -51,20 +54,22 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
           }))
           .filter((x) => x.tile && x.tile.kind === 'Hotspot');
 
-        // Apply placement
-        G.tiles.board.push({ tileId: p.tileId, coord });
-        G.turn = { pending: undefined };
+        // Apply placement via resolver
+        const flags = { exp01: !!G.exp?.exp01, exp02: !!G.exp?.exp02, exp03: !!G.exp?.exp03 } as const;
+        const modules = createExpansionRegistry(flags);
+        const resolve = createResolver(modules);
+        resolve(G, { kind: 'placeTile', tileId: p.tileId, coord, contextCoord: coord });
 
         // CORE-01-06-02..03: resolve any Hotspot that becomes fully surrounded immediately
         // Check placed tile if it is a Hotspot
         const placedTile = G.allTiles[p.tileId] as Tile;
         if (placedTile && placedTile.kind === 'Hotspot' && isFullySurrounded(G, coord)) {
-          resolveHotspot(G, coord);
+          resolve(G, { kind: 'resolveHotspotAt', coord, contextCoord: coord });
         }
         // Check neighbor Hotspots that changed from not surrounded -> surrounded
         for (const h of candidates) {
           if (!h.was && isFullySurrounded(G, h.coord)) {
-            resolveHotspot(G, h.coord);
+            resolve(G, { kind: 'resolveHotspotAt', coord: h.coord, contextCoord: h.coord });
           }
         }
 
