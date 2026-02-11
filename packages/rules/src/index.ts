@@ -9,12 +9,14 @@ export * from './topology/hex.js';
 export * from './placement.js';
 export * from './draw.js';
 
-
 export * from './majority.js';
 export * from './hotspot.js';
 export * from './production.js';
 
 export * from './resources.js';
 export * from './expansion-registry.js';
+
+// Canonical effect resolver (AGENTS §3.5)
+export * from './effects.js';
 
 export * from './moves.js';

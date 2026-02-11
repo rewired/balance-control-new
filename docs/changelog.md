@@ -77,3 +77,7 @@
 - @bc/rules: added ensureExpansionSlice(G, expId, initial) helper for modules.
 - @bc/game: stub expansion modules now create their slice in setupExpansionState using ensureExpansionSlice and set a sentinel.
 - Tests: updated rules tests to reflect module-owned slices; game factory tests assert setup hook only when enabled.
+## 2026-02-11 — Task 0020: Resolver enforcement (phase 1)
+- @bc/game: added resolver.migration test using a stub expansion move routed through doPoliticalAction; effects go via resolveEffect (AGENTS 3.5).
+- Tests demonstrate cost increases apply on normal tiles and are ignored on Start Committee (AGENTS 3.7).
+- No behavior change to core production/placement yet; migration focuses on political move path.
