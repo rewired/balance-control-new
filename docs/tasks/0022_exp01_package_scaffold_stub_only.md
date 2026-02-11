@@ -18,45 +18,51 @@ Context: Task 0016 is completed. This bundle defines fix tasks 0017-0022 to clos
 
 ---
 
-# Task 0020 — Resolver Enforcement Migration (Phase 1)
+# Task 0022 — EXP-01 Package Scaffold (Stub Module Only)
 
 ## Goal
-Enforce AGENTS 3.5 by migrating the existing core moves to use resolveEffect(...).
+Introduce @bc/exp-01-economy as a new workspace package with a stub ExpansionModule that:
+- registers resource ECO
+- initializes its own state slice when enabled
+- optionally contributes a trivial stub move for wiring test
 
-Keep behavior identical, but route mutations through the canonical resolver.
+No measures, no mechanics yet.
 
 ## Inputs
-- AGENTS 3.5 Canonical Effect Resolver
-- AGENTS 3.2 ContextTile
-- AGENTS 3.7 Start Committee immunity
-- Existing moves currently mutating G directly.
-- resolveEffect implementation from prior tasks.
+- AGENTS 1.6 Resource registry
+- AGENTS 3.4/3.8 Modular expansions
+- AGENTS 5.5 No dead state
+- Tasks 0018-0021 completed.
 
 ## Outputs
 ### Code
-- Refactor all currently implemented core moves to call resolveEffect instead of direct mutations.
-- If needed, extend EffectDescriptor minimally.
-- Keep resolver ordering exactly per AGENTS 3.5.
+- /packages/exp-01-economy:
+  - package.json, tsconfig, src/index.ts
+  - exp01Economy(): ExpansionModule:
+    - id: 'exp01'
+    - registerResources registers ECO
+    - setupExpansionState creates G.exp.exp01 and minimal containers
+    - optional stub move exp01_noop flips a sentinel value
+
+- @bc/game:
+  - Import the module in the factory and enable via config.
 
 ### Tests
-- Regression tests for each migrated move.
-- One test with stub hook:
-  - cost increase applies normally
-  - but is ignored when ContextTile is Start Committee.
+- CORE-only: no ECO, no exp01 slice, no exp01 moves.
+- CORE + exp01: ECO exists, exp01 slice exists, stub move exists and is zod-validated.
 
 ### Docs
 - /docs/changelog.md entry.
 
 ## Constraints
-- No new mechanics.
-- If ContextTile binding ambiguous, write DD doc (AGENTS 0.6).
+- No real EXP-01 rule logic.
 
 ## Invariants
-- Determinism preserved.
+- Disabling exp01 leaves zero footprint.
 
 ## Acceptance Criteria
-- No remaining direct state mutation in core moves (except within resolver apply).
-- Tests demonstrate immunity and stable outcomes.
+- Workspace builds.
+- Integration tests prove module activation end-to-end.
 
 ---
 
