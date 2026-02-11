@@ -21,3 +21,6 @@ export * from './effects.js';
 
 export * from './moves.js';
 export * from './config.js';
+
+export { z } from 'zod';
+export type { ZodTypeAny } from 'zod';

@@ -94,4 +94,10 @@
 - CoreState now includes `cfg` with validated `MatchConfig` (expansion flags).
 - Added `isExpansionEnabled(cfg, id)` and `assertExpansionStateMatchesConfig(G)` in @bc/rules.
 - Game factory stores cfg at setup and runs guard; phases/moves build expansion registries strictly from `G.cfg.expansions` (no state-derived flags).
-- Tests: disabled-config ignores ghost slice; enabled-config requires slice (throws when missing). Golden hash updated due to state shape change.
+- Tests: disabled-config ignores ghost slice; enabled-config requires slice (throws when missing). Golden hash updated due to state shape change.## 2026-02-11 — Task 0022: EXP-01 package scaffold (stub only)
+- Created @bc/exp-01-economy workspace package with stub ExpansionModule `exp01`.
+- Module registers resource ECO and creates its own `G.exp.exp01` slice via `ensureExpansionSlice` when enabled (AGENTS 1.6, 3.4, 3.8, 5.5).
+- Added stub political move `exp01_noop` with strict zod payload schema (AGENTS 4.2).
+- @bc/game bootstraps modules in `expansions.bootstrap.ts` and imports EXP-01 via alias.
+- Vitest and Vite configs updated to alias `@bc/exp-01-economy`.
+- Tests: CORE-only has no ECO/slice/move; CORE+EXP-01 shows ECO + slice and the move toggles sentinel; added strict payload validation test.

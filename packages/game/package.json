@@ -13,9 +13,10 @@
                     "test":  "vitest run"
                 },
     "dependencies":  {
+                         "boardgame.io":  "^0.50.2",
+                         "@bc/exp-01-economy":  "workspace:*",
                          "@bc/rules":  "workspace:*",
-                         "@bc/shared":  "workspace:*",
-                         "boardgame.io":  "^0.50.2"
+                         "@bc/shared":  "workspace:*"
                      },
     "devDependencies":  {
                             "eslint":  "^8.57.1",

@@ -9,12 +9,16 @@
                        },
                        {
                            "path":  "../rules"
+                       },
+                       {
+                           "path":  "../exp-01-economy"
                        }
                    ],
     "include":  [
                     "src"
+                ],
+    "exclude":  [
+                    "src/**/*.test.ts",
+                    "**/*.test.ts"
                 ]
-,
-  "exclude": ["src/**/*.test.ts","**/*.test.ts"]
 }
-

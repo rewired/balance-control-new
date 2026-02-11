@@ -1,3 +1,4 @@
+import { exp01Economy } from '@bc/exp-01-economy';
 import type { ExpansionModule } from '@bc/rules';
 import { registerExpansion, ensureExpansionSlice } from '@bc/rules';
 
@@ -14,7 +15,7 @@ function makeStub(id: 'exp01'|'exp02'|'exp03'): ExpansionModule {
   };
 }
 
-const exp01 = makeStub('exp01');
+const exp01 = exp01Economy();
 const exp02 = makeStub('exp02');
 const exp03 = makeStub('exp03');
 
