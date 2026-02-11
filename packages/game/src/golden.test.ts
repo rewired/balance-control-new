@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildInitialCoreState, drawUntilPlaceable, adjacent as hexAdjacent, isFullySurrounded, resolveHotspot, resolveRoundSettlement } from '@bc/rules';
+import { buildInitialCoreState, drawUntilPlaceable, adjacent as hexAdjacent, isFullySurrounded, resolveRoundSettlement, createResolver } from '@bc/rules';
 import type { CoreState, Tile, AxialCoord } from '@bc/rules';
 import { stableHash } from '@bc/shared';
 
@@ -37,8 +37,8 @@ describe('Golden replay — 0006', () => {
       G.tiles.board.push({ tileId, coord });
 
       const placed = G.allTiles[tileId] as Tile;
-      if (placed && placed.kind === 'Hotspot' && isFullySurrounded(G, coord)) resolveHotspot(G, coord);
-      for (const h of candidates) if (!h.was && isFullySurrounded(G, h.c)) resolveHotspot(G, h.c);
+      if (placed && placed.kind === 'Hotspot' && isFullySurrounded(G, coord)) (createResolver([])(G, { kind: 'resolveHotspotAt', coord, contextCoord: coord }));
+      for (const h of candidates) if (!h.was && isFullySurrounded(G, h.c)) (createResolver([])(G, { kind: 'resolveHotspotAt', coord: h.c, contextCoord: h.c }));
 
       // political noop -> end turn
       if (pos === 1) resolveRoundSettlement(G); // end of round after player 1 in 2-player game

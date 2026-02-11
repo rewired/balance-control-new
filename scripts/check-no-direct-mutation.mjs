@@ -38,8 +38,7 @@ let failed = false;
   const allow = [
     'packages/rules/src/effects.ts',
     'packages/rules/src/production.ts',
-    'packages/rules/src/hotspot.ts',
-  ];
+      ];
   const globs = ['packages/rules/src/**/*.ts'];
   for (const a of allow) globs.push(`!${a}`);
   const args = ['-n', '--no-heading'];
