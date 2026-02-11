@@ -4,14 +4,14 @@
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
 
 **Primary contract:** `AGENTS.md` (repo root)  
-- Determinism: AGENTS Â§0.2  
-- Rules anchoring & no drift: AGENTS Â§0.1, Â§0.5, Â§0.6  
-- Resource generalization: AGENTS Â§1.6  
-- Expansions modular + isolation: AGENTS Â§3.4, Â§3.8, Â§5.4, Â§5.5  
-- Canonical effect resolver: AGENTS Â§3.5  
-- Production order: AGENTS Â§3.6  
-- Start Committee immunity: AGENTS Â§3.7  
-- Tests + golden replays + hashing: AGENTS Â§5.1â€“Â§5.3
+- Determinism: AGENTS §0.2  
+- Rules anchoring & no drift: AGENTS §0.1, §0.5, §0.6  
+- Resource generalization: AGENTS §1.6  
+- Expansions modular + isolation: AGENTS §3.4, §3.8, §5.4, §5.5  
+- Canonical effect resolver: AGENTS §3.5  
+- Production order: AGENTS §3.6  
+- Start Committee immunity: AGENTS §3.7  
+- Tests + golden replays + hashing: AGENTS §5.1â€“§5.3
 
 **Repo:** This task assumes the current codebase is the one where Task 0006 is completed.
 
@@ -23,10 +23,10 @@
 Introduce a canonical namespacing for expansion state so that:
 - Core state remains clean.
 - Expansions attach their own zones/data only when enabled.
-- Disabled expansions leave **zero footprint** (AGENTS Â§5.5).
+- Disabled expansions leave **zero footprint** (AGENTS §5.5).
 
 ## Inputs
-- `AGENTS.md` Â§3.4, Â§3.8, Â§5.5
+- `AGENTS.md` §3.4, §3.8, §5.5
 - Existing canonical state model from tasks up to 0006 (zones/objects).
 
 ## Outputs
@@ -47,7 +47,7 @@ Introduce a canonical namespacing for expansion state so that:
 
 ### Tests
 - CORE-only:
-  - `G` has no `exp` field at all (preferred) or `exp` is empty object, but then must be justified and tests updated. (AGENTS Â§5.5 prefers absence.)
+  - `G` has no `exp` field at all (preferred) or `exp` is empty object, but then must be justified and tests updated. (AGENTS §5.5 prefers absence.)
 - CORE + exp01:
   - `G.exp.exp01` exists; `G.exp.exp02/exp03` do not.
 

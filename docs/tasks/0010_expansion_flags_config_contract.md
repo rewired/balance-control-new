@@ -4,14 +4,14 @@
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
 
 **Primary contract:** `AGENTS.md` (repo root)  
-- Determinism: AGENTS Â§0.2  
-- Rules anchoring & no drift: AGENTS Â§0.1, Â§0.5, Â§0.6  
-- Resource generalization: AGENTS Â§1.6  
-- Expansions modular + isolation: AGENTS Â§3.4, Â§3.8, Â§5.4, Â§5.5  
-- Canonical effect resolver: AGENTS Â§3.5  
-- Production order: AGENTS Â§3.6  
-- Start Committee immunity: AGENTS Â§3.7  
-- Tests + golden replays + hashing: AGENTS Â§5.1â€“Â§5.3
+- Determinism: AGENTS §0.2  
+- Rules anchoring & no drift: AGENTS §0.1, §0.5, §0.6  
+- Resource generalization: AGENTS §1.6  
+- Expansions modular + isolation: AGENTS §3.4, §3.8, §5.4, §5.5  
+- Canonical effect resolver: AGENTS §3.5  
+- Production order: AGENTS §3.6  
+- Start Committee immunity: AGENTS §3.7  
+- Tests + golden replays + hashing: AGENTS §5.1â€“§5.3
 
 **Repo:** This task assumes the current codebase is the one where Task 0006 is completed.
 
@@ -26,11 +26,11 @@ This is prerequisite plumbing for modular expansions and for later resolver + mo
 
 ## Inputs
 - `AGENTS.md`:
-  - Â§1.6 Resource Model Generalization
-  - Â§3.4 Expansions are Modular
-  - Â§3.8 Expansion Isolation Layer
-  - Â§5.4 Cross-Expansion Stack Tests
-  - Â§5.5 No Dead State Policy
+  - §1.6 Resource Model Generalization
+  - §3.4 Expansions are Modular
+  - §3.8 Expansion Isolation Layer
+  - §5.4 Cross-Expansion Stack Tests
+  - §5.5 No Dead State Policy
 - Current codebase after Task 0006.
 
 ## Outputs
@@ -40,7 +40,7 @@ This is prerequisite plumbing for modular expansions and for later resolver + mo
   - `MatchConfig` / `GameConfig` schema that includes:
     - `expansions: { exp01?: boolean; exp02?: boolean; exp03?: boolean }`
     - default: all `false` unless explicitly enabled
-  - Zod schema for runtime validation (AGENTS Â§4.2 requires strict JSON + zod patterns, reuse philosophy).
+  - Zod schema for runtime validation (AGENTS §4.2 requires strict JSON + zod patterns, reuse philosophy).
 
 - In `@bc/game`:
   - Ensure the boardgame.io `setup` reads config and passes it into state builder(s).
@@ -52,7 +52,7 @@ This is prerequisite plumbing for modular expansions and for later resolver + mo
 ## Constraints
 - **Do not change any normative rules**.
 - No expansion mechanics implemented in this task (only flags + validation + plumbing).
-- No â€œempty placeholder arraysâ€ for expansions when disabled (AGENTS Â§5.5).
+- No â€œempty placeholder arraysâ€ for expansions when disabled (AGENTS §5.5).
 
 ## Invariants
 - A match created with no expansion flags must behave as **pure CORE**.

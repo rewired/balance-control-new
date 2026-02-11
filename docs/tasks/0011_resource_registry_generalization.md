@@ -4,14 +4,14 @@
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
 
 **Primary contract:** `AGENTS.md` (repo root)  
-- Determinism: AGENTS Â§0.2  
-- Rules anchoring & no drift: AGENTS Â§0.1, Â§0.5, Â§0.6  
-- Resource generalization: AGENTS Â§1.6  
-- Expansions modular + isolation: AGENTS Â§3.4, Â§3.8, Â§5.4, Â§5.5  
-- Canonical effect resolver: AGENTS Â§3.5  
-- Production order: AGENTS Â§3.6  
-- Start Committee immunity: AGENTS Â§3.7  
-- Tests + golden replays + hashing: AGENTS Â§5.1â€“Â§5.3
+- Determinism: AGENTS §0.2  
+- Rules anchoring & no drift: AGENTS §0.1, §0.5, §0.6  
+- Resource generalization: AGENTS §1.6  
+- Expansions modular + isolation: AGENTS §3.4, §3.8, §5.4, §5.5  
+- Canonical effect resolver: AGENTS §3.5  
+- Production order: AGENTS §3.6  
+- Start Committee immunity: AGENTS §3.7  
+- Tests + golden replays + hashing: AGENTS §5.1â€“§5.3
 
 **Repo:** This task assumes the current codebase is the one where Task 0006 is completed.
 
@@ -20,12 +20,12 @@
 # Task 0011 â€” Resource Registry Generalization (No Hardcoded DOM/FOR/INF)
 
 ## Goal
-Remove hardcoded resource-type branching and introduce a **registry-driven resource model** consistent with AGENTS Â§1.6.
+Remove hardcoded resource-type branching and introduce a **registry-driven resource model** consistent with AGENTS §1.6.
 
 The core must operate on a set of registered resources (DOM/FOR/INF in CORE; ECO/SEC/CLM via expansions later) without switching on string literals.
 
 ## Inputs
-- `AGENTS.md` Â§1.6 Resource Model Generalization
+- `AGENTS.md` §1.6 Resource Model Generalization
 - Current resource/state types in `@bc/rules` and `@bc/game` (post 0006).
 - Normative rules in `/docs/rules/000-core.md` for CORE resources (DOM/FOR/INF).
 
@@ -45,7 +45,7 @@ The core must operate on a set of registered resources (DOM/FOR/INF in CORE; ECO
 
 - `@bc/game`:
   - Setup builds registry from core + enabled expansions (exp registrations added in Task 0013).
-  - When an expansion is disabled, its resource type does not exist anywhere in state (AGENTS Â§1.6).
+  - When an expansion is disabled, its resource type does not exist anywhere in state (AGENTS §1.6).
 
 ### Tests
 - Unit tests verifying:

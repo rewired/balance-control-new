@@ -96,7 +96,7 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string, opt
     },
   };
 
-  // Apply expansion placeholders only when enabled (AGENTS Ã‚Â§3.4, Ã‚Â§3.8, Ã‚Â§5.5)
+  // Apply expansion placeholders only when enabled (AGENTS Ã‚§3.4, Ã‚§3.8, Ã‚§5.5)
   const flags = opts?.expansions;
   if (flags && (flags.exp01 || flags.exp02 || flags.exp03)) {
     (state as CoreState & { exp?: import('./types.js').ExpansionsState }).exp = {} as import('./types.js').ExpansionsState;

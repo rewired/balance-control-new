@@ -4,14 +4,14 @@
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
 
 **Primary contract:** `AGENTS.md` (repo root)  
-- Determinism: AGENTS Â§0.2  
-- Rules anchoring & no drift: AGENTS Â§0.1, Â§0.5, Â§0.6  
-- Resource generalization: AGENTS Â§1.6  
-- Expansions modular + isolation: AGENTS Â§3.4, Â§3.8, Â§5.4, Â§5.5  
-- Canonical effect resolver: AGENTS Â§3.5  
-- Production order: AGENTS Â§3.6  
-- Start Committee immunity: AGENTS Â§3.7  
-- Tests + golden replays + hashing: AGENTS Â§5.1â€“Â§5.3
+- Determinism: AGENTS §0.2  
+- Rules anchoring & no drift: AGENTS §0.1, §0.5, §0.6  
+- Resource generalization: AGENTS §1.6  
+- Expansions modular + isolation: AGENTS §3.4, §3.8, §5.4, §5.5  
+- Canonical effect resolver: AGENTS §3.5  
+- Production order: AGENTS §3.6  
+- Start Committee immunity: AGENTS §3.7  
+- Tests + golden replays + hashing: AGENTS §5.1â€“§5.3
 
 **Repo:** This task assumes the current codebase is the one where Task 0006 is completed.
 
@@ -25,10 +25,10 @@ Create the canonical module interface for expansions and a registry that the eng
 - register expansion-provided zones/state initializers
 - provide hooks for resolver/production and move injection (to be wired in tasks 0014â€“0016)
 
-This formalizes AGENTS Â§3.8.
+This formalizes AGENTS §3.8.
 
 ## Inputs
-- `AGENTS.md` Â§3.4, Â§3.8
+- `AGENTS.md` §3.4, §3.8
 - Tasks 0010â€“0012 completed.
 
 ## Outputs
@@ -61,10 +61,10 @@ This formalizes AGENTS Â§3.8.
 
 ## Constraints
 - No expansion logic beyond minimal scaffolding.
-- No cross-expansion sharing of objects/zones (AGENTS Â§3.4). Modules can *declare* zones but must be isolated.
+- No cross-expansion sharing of objects/zones (AGENTS §3.4). Modules can *declare* zones but must be isolated.
 
 ## Invariants
-- If an expansion is disabled, its module must not be instantiated or executed (AGENTS Â§3.8).
+- If an expansion is disabled, its module must not be instantiated or executed (AGENTS §3.8).
 
 ## Acceptance Criteria
 - Engine can produce:
