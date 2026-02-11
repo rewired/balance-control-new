@@ -119,6 +119,9 @@ importers:
       '@bc/shared':
         specifier: workspace:*
         version: link:../shared
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       eslint:
         specifier: ^8.57.1
@@ -156,7 +159,14 @@ importers:
         version: 1.6.1(@types/node@25.2.3)
 
   packages/shared:
+    dependencies:
+      seedrandom:
+        specifier: ^3.0.5
+        version: 3.0.5
     devDependencies:
+      '@types/seedrandom':
+        specifier: ^3.0.8
+        version: 3.0.8
       eslint:
         specifier: ^8.57.1
         version: 8.57.1
@@ -737,6 +747,9 @@ packages:
 
   '@types/react@18.3.28':
     resolution: {integrity: sha512-z9VXpC7MWrhfWipitjNdgCauoMLRdIILQsAEV+ZesIzBq/oUlxk0m3ApZuMFCXdnS4U7KrI+l3WRUEGQ8K1QKw==}
+
+  '@types/seedrandom@3.0.8':
+    resolution: {integrity: sha512-TY1eezMU2zH2ozQoAFAQFOPpvP15g+ZgSfTZt31AUUH/Rxtnz3H+A/Sv1Snw2/amp//omibc+AEkTaA8KUeOLQ==}
 
   '@types/send@1.2.1':
     resolution: {integrity: sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ==}
@@ -1953,6 +1966,9 @@ packages:
   scheduler@0.23.2:
     resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
 
+  seedrandom@3.0.5:
+    resolution: {integrity: sha512-8OwmbklUNzwezjGInmZ+2clQmExQPvomqjL7LFqOYqtmuxRgQYqOD3mHaU+MvZn5FLUeVxVfQjwLZW/n/JFuqg==}
+
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
@@ -2362,6 +2378,9 @@ packages:
     resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
     engines: {node: '>=12.20'}
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
 snapshots:
 
   '@babel/runtime@7.28.6': {}
@@ -2757,6 +2776,8 @@ snapshots:
     dependencies:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
+
+  '@types/seedrandom@3.0.8': {}
 
   '@types/send@1.2.1':
     dependencies:
@@ -4323,6 +4344,8 @@ snapshots:
     dependencies:
       loose-envify: 1.4.0
 
+  seedrandom@3.0.5: {}
+
   semver@6.3.1: {}
 
   semver@7.7.4: {}
@@ -4778,3 +4801,5 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   yocto-queue@1.2.2: {}
+
+  zod@3.25.76: {}
