@@ -14,3 +14,4 @@ export * from './majority.js';
 export * from './hotspot.js';
 export * from './production.js';
 
+export * from './resources.js';

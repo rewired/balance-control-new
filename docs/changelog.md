@@ -26,3 +26,8 @@
 - @bc/rules: extended CoreState with optional `exp` slice that appears only when an expansion is enabled (no ghost state).
 - @bc/game: CoreGame.setup now parses `setupData` via MatchConfigSchema and passes expansion flags into state builder.
 - Tests: schema validation, CORE-only vs exp01-enabled state, and game-setup wiring.
+## 2026-02-11 — Task 0011: Resource registry generalization
+- @bc/rules: introduced registry-driven resources (ResourceId) and helpers (makeEmptyResourceBank, addResources, subResources, canPay, assertNonNegative);
+- @bc/rules: CoreState now stores resource amounts as maps keyed by ResourceId (no arrays); bank/noise initialized from registry; no hardcoded DOM/FOR/INF branching in logic.
+- @bc/game: golden hash updated due to deterministic state-shape change.
+- Tests: registry behavior, CORE-only keyset, paying/insufficient checks; updated production tests for map counts.

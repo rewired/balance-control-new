@@ -7,14 +7,9 @@ export type Zone =
   | 'Noise'
   | 'PersonalSupply';
 
-// Resources (CORE-01-02-04A..G)
-export type Resort = 'DOM' | 'FOR' | 'INF';
-export const CoreResorts: readonly Resort[] = ['DOM', 'FOR', 'INF'];
-
-export interface Resource {
-  id: string;
-  resort: Resort;
-}
+// Resources (CORE-01-02-04A..G) Ã¢â‚¬â€ registry-based; do not hardcode unions in logic (AGENTS Ã‚Â§1.6)
+export type ResourceId = string; // e.g., 'DOM' | 'FOR' | 'INF' in CORE registry
+export const CoreResorts: readonly ResourceId[] = ['DOM', 'FOR', 'INF'];
 
 // Influence objects (CORE-01-01-01, CORE-01-03-04..06)
 export interface Influence {
@@ -37,7 +32,7 @@ export interface BaseTile {
 
 export interface ResortTile extends BaseTile {
   kind: 'ResortTile';
-  resort: Resort;
+  resort: ResourceId;
   w: 1 | 2 | 3 | 4 | 5; // CORE-01-02-17
 }
 
@@ -56,7 +51,7 @@ export interface AxialCoord { q: number; r: number }
 export interface BoardPlacement { tileId: string; coord: AxialCoord }
 
 export interface PlayerPersonalSupply {
-  resources: Resource[];
+  resources: Record<ResourceId, number>; // registry-driven amounts
   influence: Influence[];
 }
 
@@ -72,8 +67,8 @@ export interface TileZonesState {
 }
 
 export interface ResourceZonesState {
-  bank: Resource[];
-  noise: Resource[];
+  bank: Record<ResourceId, number>;
+  noise: Record<ResourceId, number>;
 }
 
 export interface TurnScratch { pending?: { tileId: string; legalCoords: AxialCoord[] } }
@@ -81,7 +76,7 @@ export interface TurnScratch { pending?: { tileId: string; legalCoords: AxialCoo
 export interface InfluenceOnBoard { tileId: string; owner: string; count: number }
 
 export interface ExpansionsState {
-  // Placeholders for modular expansions; present only when enabled (AGENTS §3.4, §3.8, §5.5)
+  // Placeholders for modular expansions; present only when enabled (AGENTS Ãƒâ€šÃ‚Â§3.4, Ãƒâ€šÃ‚Â§3.8, Ãƒâ€šÃ‚Â§5.5)
   exp01?: Record<string, never>;
   exp02?: Record<string, never>;
   exp03?: Record<string, never>;

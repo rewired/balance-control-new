@@ -1,13 +1,14 @@
-import { shuffleSeeded } from '@bc/shared';
-import type { CoreState, Resort, Tile, ResortTile, StartCommitteeTile } from './types.js';
+﻿import { shuffleSeeded } from '@bc/shared';
+import type { CoreState, ResourceId, Tile, ResortTile, StartCommitteeTile } from './types.js';
 import { CoreResorts } from './types.js';
+import { createCoreResourceRegistry, makeEmptyResourceBank } from './resources.js';
 
 function makeId(prefix: string, n: number): string {
   return `${prefix}-${n}`;
 }
 
 // CORE-01-02-10..16 tile counts
-const resortCounts: Record<Resort, Record<1|2|3|4|5, number>> = {
+const resortCounts: Record<ResourceId, Record<1|2|3|4|5, number>> = {
   DOM: { 1: 2, 2: 4, 3: 4, 4: 1, 5: 1 },
   FOR: { 1: 2, 2: 4, 3: 4, 4: 1, 5: 1 },
   INF: { 1: 2, 2: 4, 3: 4, 4: 1, 5: 1 },
@@ -48,6 +49,8 @@ function buildNonResortTiles(): Tile[] {
 }
 
 export function buildInitialCoreState(numPlayers: number, matchSeed: string, opts?: { expansions?: import('./schemas.js').ExpansionFlags }): CoreState {
+  const registry = createCoreResourceRegistry();
+
   // Gather all tiles
   const start = buildStartCommittee();
   const resortTiles = buildResortTiles();
@@ -70,7 +73,7 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string, opt
     players[id] = {
       id,
       personal: {
-        resources: [],
+        resources: makeEmptyResourceBank(registry),
         influence: Array.from({ length: starting }, (_, i) => ({ id: `INF-${id}-${i+1}`, owner: id })),
       },
     };
@@ -86,8 +89,8 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string, opt
     allTiles,
     players,
     resources: {
-      bank: [],
-      noise: [],
+      bank: makeEmptyResourceBank(registry),
+      noise: makeEmptyResourceBank(registry),
     },
   };
 

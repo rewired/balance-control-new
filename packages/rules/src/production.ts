@@ -1,4 +1,4 @@
-import type { AxialCoord, CoreState, Tile, Resort } from './types.js';
+import type { AxialCoord, CoreState, Tile, ResourceId } from './types.js';
 import { computeMajority } from './majority.js';
 
 function getPlacement(state: CoreState, coord: AxialCoord) {
@@ -7,20 +7,17 @@ function getPlacement(state: CoreState, coord: AxialCoord) {
 
 function printedValue(tile: Tile): number { return tile.kind === 'ResortTile' ? tile.w : 0 }
 
-function addResources(state: CoreState, playerID: string, resort: Resort, n: number) {
-  const p = state.players[playerID];
-  for (let i = 0; i < n; i++) {
-    const id = `${resort}-R-${playerID}-${p.personal.resources.length + 1}`;
-    p.personal.resources.push({ id, resort });
-  }
+function addResources(state: CoreState, playerID: string, resort: ResourceId, n: number) {
+  const amounts = state.players[playerID].personal.resources;
+  amounts[resort] = (amounts[resort] ?? 0) + n;
 }
 
-function addNoise(state: CoreState, resort: Resort, n: number) {
-  for (let i = 0; i < n; i++) {
-    const id = `${resort}-N-${state.resources.noise.length + 1}`;
-    state.resources.noise.push({ id, resort });
-  }
+
+function addNoise(state: CoreState, resort: ResourceId, n: number) {
+  const noise = state.resources.noise;
+  noise[resort] = (noise[resort] ?? 0) + n;
 }
+
 
 function scores(state: CoreState, coord: AxialCoord): Array<[string, number]> {
   // Mirror majority computation by sampling getControl over players using the same tally basis

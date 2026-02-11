@@ -47,7 +47,7 @@ describe('Golden replay — 0006', () => {
 
     const hash = stableHash(G);
     // Replace EXPECTED with the first observed value to lock determinism
-    const EXPECTED = '5d4b46446fd07330f868ff17508ce1fd70e8800afebffc1e04e4665ea893ef92';
+    const EXPECTED = '0354c350b76c354d8b6403672ae55e0d768c5315eaeb49fdcd4bed4e15c8b534';
     expect(hash).toBe(EXPECTED);
   });
 });

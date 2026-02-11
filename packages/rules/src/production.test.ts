@@ -9,28 +9,28 @@ function stateWithResort(q=1,r=0,w=5): CoreState {
     tiles: { drawPile: [], discardFaceUp: [], board: [ { tileId: tile.id, coord: { q, r } } ] },
     allTiles: { [tile.id]: tile },
     players: {
-      '0': { id: '0', personal: { resources: [], influence: [] } },
-      '1': { id: '1', personal: { resources: [], influence: [] } },
+      '0': { id: '0', personal: { resources: { DOM: 0, FOR: 0, INF: 0 }, influence: [] } },
+      '1': { id: '1', personal: { resources: { DOM: 0, FOR: 0, INF: 0 }, influence: [] } },
     },
-    resources: { bank: [], noise: [] },
+    resources: { bank: { DOM:0,FOR:0,INF:0 }, noise: { DOM:0,FOR:0,INF:0 } },
     influencesOnBoard: [],
   };
 }
 
-describe('Production — CORE-01-06-16', () => {
+describe('Production â€” CORE-01-06-16', () => {
   it('awards all to controlling player', () => {
     const G = stateWithResort(1,0,3);
     G.influencesOnBoard = [ { tileId: 'DOM-W1-1', owner: '0', count: 1 } ];
     resolveProductionForTile(G, { q:1, r:0 });
-    expect(G.players['0'].personal.resources).toHaveLength(3);
-    expect(G.resources.noise).toHaveLength(0);
+    expect(G.players['0'].personal.resources.DOM).toBe(3);
+    expect(G.resources.noise.DOM).toBe(0);
   });
   it('tie splits evenly; remainder to Noise', () => {
     const G = stateWithResort(1,0,5);
     G.influencesOnBoard = [ { tileId: 'DOM-W1-1', owner: '0', count: 1 }, { tileId: 'DOM-W1-1', owner: '1', count: 1 } ];
     resolveProductionForTile(G, { q:1, r:0 });
-    expect(G.players['0'].personal.resources).toHaveLength(2);
-    expect(G.players['1'].personal.resources).toHaveLength(2);
-    expect(G.resources.noise).toHaveLength(1);
+    expect(G.players['0'].personal.resources.DOM).toBe(2);
+    expect(G.players['1'].personal.resources.DOM).toBe(2);
+    expect(G.resources.noise.DOM).toBe(1);
   });
 });
