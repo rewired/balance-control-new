@@ -90,3 +90,8 @@
 - @bc/rules: hotspot award path issues moveInfluenceToTile via resolver; test migrated to use resolveHotspotAt.
 - Determinism & Start Committee immunity preserved in resolver pipeline.
 - Dev: added scripts/check-no-direct-mutation.mjs and root script "check:mutation" to gate direct G-writes in @bc/game.- Phase 2 follow-up: hotspot.ts is now pure (no state mutation); hotspot resolution goes exclusively through resolver (resolveHotspotAt). Golden test updated accordingly. Mutation gate tightened (rules allowlist no longer includes hotspot.ts).- Phase 2 follow-up: production planner extracted (production.plan.ts); resolveProductionForTile/resolveRoundSettlement now route through resolver (applyProductionAt). Mutation gate updated to remove production.ts from allowlist.
+## 2026-02-11 — Task 0021: Canonical match config plumbing
+- CoreState now includes `cfg` with validated `MatchConfig` (expansion flags).
+- Added `isExpansionEnabled(cfg, id)` and `assertExpansionStateMatchesConfig(G)` in @bc/rules.
+- Game factory stores cfg at setup and runs guard; phases/moves build expansion registries strictly from `G.cfg.expansions` (no state-derived flags).
+- Tests: disabled-config ignores ghost slice; enabled-config requires slice (throws when missing). Golden hash updated due to state shape change.
