@@ -1,0 +1,27 @@
+{
+    "name":  "@bc/server",
+    "version":  "0.0.0",
+    "type":  "module",
+    "main":  "dist/index.js",
+    "types":  "dist/index.d.ts",
+    "files":  [
+                  "dist"
+              ],
+    "scripts":  {
+                    "dev":  "tsx watch src/index.ts",
+                    "build":  "tsc -b",
+                    "lint":  "eslint src --ext .ts",
+                    "test":  "vitest run"
+                },
+    "dependencies":  {
+                         "@bc/game":  "workspace:*",
+                         "@bc/shared":  "workspace:*",
+                         "boardgame.io":  "^1.4.4"
+                     },
+    "devDependencies":  {
+                            "eslint":  "^8.57.1",
+                            "tsx":  "^4.21.0",
+                            "typescript":  "^5.9.3",
+                            "vitest":  "^1.6.1"
+                        }
+}

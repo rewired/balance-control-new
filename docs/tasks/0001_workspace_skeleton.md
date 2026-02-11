@@ -54,3 +54,37 @@ Create the monorepo workspace scaffold and baseline tooling so subsequent tasks 
 - [ ] Lint/test/build scripts present and documented
 - [ ] No unused dependencies
 - [ ] No temp artifacts committed
+
+---
+
+## Completion Protocol (MANDATORY)
+
+When the implementation is finished, you MUST do all of the following before declaring the task complete:
+
+1. Run:
+   - pnpm lint
+   - pnpm test
+2. Update documentation:
+   - /docs/changelog.md (required)
+   - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+3. Ensure repo hygiene:
+   - No temporary files added
+   - No dead state introduced when expansions are disabled
+4. Fill the checklist below **in THIS FILE** with concrete results:
+   - Use checked boxes [x]
+   - Add short evidence notes (e.g., command output summary, file paths changed)
+   - Do not leave placeholders
+
+### Final Checklist (fill after completion)
+
+- [x] pnpm lint passed (paste short summary): All 6 packages lint: Done (no errors)
+- [x] pnpm test passed (paste short summary): shared: 1/1 passed; client-web: 1/1 passed; rules: 1/1 passed; game: 1/1 passed; bot-llm: 1/1 passed; server: 1/1 passed
+- [x] Determinism verified (golden replay hash unchanged / added): n/a for skeleton (no game logic yet)
+- [x] No temporary files added: none (verified .gitignore; build artifacts ignored)
+- [x] Rule references added in code (examples of references): packages/rules/src/index.ts: // CORE-01-00
+- [x] Changelog updated: docs/changelog.md — skeleton entry; pinned pnpm and BOM fix
+- [x] Design decision doc added/updated: n/a
+- [x] Errata added/updated: n/a
+- [x] Expansion isolation verified (disabled expansions leave no state): n/a (no expansion code yet)
+- [x] Bot contract checks (if touched): n/a

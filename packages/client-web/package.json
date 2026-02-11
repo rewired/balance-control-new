@@ -1,0 +1,28 @@
+{
+    "name":  "@bc/client-web",
+    "version":  "0.0.0",
+    "private":  true,
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "vite",
+                    "build":  "vite build",
+                    "preview":  "vite preview",
+                    "lint":  "eslint src --ext .ts,.tsx",
+                    "test":  "vitest run"
+                },
+    "dependencies":  {
+                         "@bc/shared":  "workspace:*",
+                         "react":  "^18.2.0",
+                         "react-dom":  "^18.2.0",
+                         "boardgame.io":  "^1.4.4"
+                     },
+    "devDependencies":  {
+                            "@types/react":  "^18.2.61",
+                            "@types/react-dom":  "^18.2.19",
+                            "eslint":  "^8.57.1",
+                            "typescript":  "^5.9.3",
+                            "vite":  "^5.0.12",
+                            "vite-tsconfig-paths":  "^4.3.1",
+                            "vitest":  "^1.6.1"
+                        }
+}
