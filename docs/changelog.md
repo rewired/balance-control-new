@@ -81,3 +81,12 @@
 - @bc/game: added resolver.migration test using a stub expansion move routed through doPoliticalAction; effects go via resolveEffect (AGENTS 3.5).
 - Tests demonstrate cost increases apply on normal tiles and are ignored on Start Committee (AGENTS 3.7).
 - No behavior change to core production/placement yet; migration focuses on political move path.
+
+## 2026-02-11 — Task 0020: Resolver enforcement (phase 2)
+- @bc/rules: expanded EffectDescriptor union: offerTile, placeTile, resolveHotspotAt, applyProductionAt, addNoise, moveInfluenceToTile; kept addResources.
+- @bc/game: Draw/Place routed via resolver (onBegin -> offerTile, placeTile move -> placeTile, hotspot resolutions -> resolveHotspotAt).
+- @bc/game: Round settlement now iterates board and calls applyProductionAt via resolver; no direct writes.
+- @bc/rules: production now planned via planProductionForTile; applyProductionAt issues addResources/addNoise effects (no direct bank/noise writes in caller).
+- @bc/rules: hotspot award path issues moveInfluenceToTile via resolver; test migrated to use resolveHotspotAt.
+- Determinism & Start Committee immunity preserved in resolver pipeline.
+- Dev: added scripts/check-no-direct-mutation.mjs and root script "check:mutation" to gate direct G-writes in @bc/game.
