@@ -25,6 +25,7 @@ Auflagen:
 - verändern **Effekte**, nicht Besitz
 - gelten **für alle Spieler**
 - bleiben liegen, bis sie entfernt oder versetzt werden
+- Auflagen sind nicht limitiert – es gibt keinen maximalen Vorrat an Auflagen.
 
 ---
 
@@ -70,7 +71,11 @@ Der Effekt dieses Tiles erzeugt **1 Einheit weniger** (Minimum 0).
 ---
 
 ### 2. Auflage: Kontrolle  
-*Handlungen generell verteuern*
+*Politischer Hebel*
+
+Kontrolle kann nur auf Politikfelder gelegt werden,
+die keine Ressourcen erzeugen oder umwandeln.
+(z. B. Lobbyisten, Ausschüsse, Schaltzentren, Brennpunkte)
 
 **Effekt:**  
 Jeder Effekt über dieses Tile kostet  
@@ -80,13 +85,16 @@ Kann die Ressource nicht bezahlt werden, wird der Effekt nicht ausgeführt.
 ---
 
 ### 3. Auflage: Verwaltung  
-*Handlungen gezielt verteuern*
+*Verteuert operative Abläufe*
+
+Verwaltung kann nur auf Politikfelder gelegt werden,
+die Ressourcen erzeugen oder umwandeln.
+(z. B. Innenpolitik-W3, Außenpolitik-W2, Basisarbeit)
 
 **Effekt:**  
 Jeder Effekt dieses Tiles kostet  
 **1 zusätzliche Ressource eines beliebigen Ressorts**.
-
-*(Im Unterschied zu „Kontrolle“ entfällt der Effekt nicht, sondern wird nur teurer.)*
+Kann die Ressource nicht bezahlt werden, wird der Effekt nicht ausgeführt.
 
 ---
 
