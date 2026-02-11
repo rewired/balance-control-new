@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { adjacent } from './topology/hex.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';

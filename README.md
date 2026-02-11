@@ -1,4 +1,4 @@
-﻿# BALANCE // CONTROL — Monorepo Skeleton
+# BALANCE // CONTROL — Monorepo Skeleton
 
 - Node LTS: 20.11.x (`.nvmrc` provided)
 - Package manager: pnpm 9

@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { CounterGame } from './index.js';
 
 // Test the game setup + move without spinning a Client (no timers)

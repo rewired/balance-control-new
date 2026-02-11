@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Client as BGClient, Lobby } from 'boardgame.io/react';
 import { CounterGame, CoreGame } from '@bc/game';
 import CounterBoard from './Board';

@@ -1,4 +1,4 @@
-﻿# Task 0006 â€” Effects: Hotspots + Round Settlement + Production Order â€” CORE-01-06/07
+# Task 0006 â€” Effects: Hotspots + Round Settlement + Production Order â€” CORE-01-06/07
 
 ## Goal
 Implement the canonical effect system pieces needed for CORE completion:

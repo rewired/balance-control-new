@@ -1,4 +1,4 @@
-﻿// CORE-01-05 â€” Majority & Control (canonical)
+// CORE-01-05 â€” Majority & Control (canonical)
 import type { AxialCoord, BoardPlacement, CoreState, Tile } from './types.js';
 
 export interface MajorityBreakdown { [playerID: string]: number }

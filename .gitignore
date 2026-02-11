@@ -1,4 +1,4 @@
-﻿# Node / pnpm
+# Node / pnpm
 node_modules/
 .pnpm-store/
 .pnpm-debug.log*

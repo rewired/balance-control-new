@@ -1,10 +1,10 @@
-# DD-0016 — Move Catalog and Router Move
+# DD-0016 REPLACEMENT CHARACTER (U+FFFD) Move Catalog and Router Move
 
 Decision date: 2026-02-11
 
 Context:
-- Moves must be extensible by expansions without contaminating core (AGENTS §3.4, §3.8).
-- Bot output requires strict JSON validation (AGENTS §4.2) and deterministic legal listings (AGENTS §4.1).
+- Moves must be extensible by expansions without contaminating core (AGENTS REPLACEMENT CHARACTER (U+FFFD)3.4, REPLACEMENT CHARACTER (U+FFFD)3.8).
+- Bot output requires strict JSON validation (AGENTS REPLACEMENT CHARACTER (U+FFFD)4.2) and deterministic legal listings (AGENTS REPLACEMENT CHARACTER (U+FFFD)4.1).
 - boardgame.io `Game` structure is static; per-match dynamic move keys are cumbersome.
 
 Decision:
