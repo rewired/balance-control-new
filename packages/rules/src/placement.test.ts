@@ -1,4 +1,5 @@
-﻿import { describe, it, expect } from 'vitest';
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+import { describe, it, expect } from 'vitest';
 import { adjacent } from './topology/hex.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
 import type { BoardPlacement } from './types.js';
@@ -20,6 +21,6 @@ describe('Hex adjacency and placement — CORE-01-04-05/08', () => {
     const legal = legalPlacementCoords(board, ((): any => false as any));
     expect(legal.length).toBe(0);
   });
-});
-
-
+});
+
+

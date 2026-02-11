@@ -1,5 +1,4 @@
 ﻿// CORE-01-05 â€” Majority & Control (canonical)
-import { adjacent as hexAdjacent } from './topology/hex.js';
 import type { AxialCoord, BoardPlacement, CoreState, Tile } from './types.js';
 
 export interface MajorityBreakdown { [playerID: string]: number }
@@ -9,7 +8,7 @@ function findPlacementAt(board: BoardPlacement[], coord: AxialCoord): BoardPlace
 }
 
 function influencesOnTile(state: CoreState, tileId: string, playerID: string): number {
-  const list = (state as any).influencesOnBoard as Array<{ tileId: string; owner: string; count: number }> | undefined;
+  const list = (state as CoreState & { influencesOnBoard?: Array<{ tileId: string; owner: string; count: number }> }).influencesOnBoard as Array<{ tileId: string; owner: string; count: number }> | undefined;
   if (!list) return 0;
   return list.filter((i) => i.tileId === tileId && i.owner === playerID).reduce((a, b) => a + b.count, 0);
 }

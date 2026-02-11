@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { computeMajority } from './majority.js';
 import type { CoreState, Tile } from './types.js';
@@ -35,7 +36,7 @@ function baseState(): CoreState {
   };
 }
 
-describe('computeMajority — CORE-01-05', () => {
+describe('computeMajority â€” CORE-01-05', () => {
   it('simple majority (no lobbyists)', () => {
     const G = baseState();
     G.influencesOnBoard = [

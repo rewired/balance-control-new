@@ -1,4 +1,4 @@
-# Task 0006 — Effects: Hotspots + Round Settlement + Production Order — CORE-01-06/07
+﻿# Task 0006 â€” Effects: Hotspots + Round Settlement + Production Order â€” CORE-01-06/07
 
 ## Goal
 Implement the canonical effect system pieces needed for CORE completion:
@@ -27,8 +27,8 @@ Implement the canonical effect system pieces needed for CORE completion:
 
 ## Constraints
 - No expansion modifiers yet, but implement the modifier pipeline hook points:
-  - “doubling effects” step
-  - “production output modifiers” step
+  - â€œdoubling effectsâ€ step
+  - â€œproduction output modifiersâ€ step
   (Leave them empty for core-only.)
 - Hotspots produce no resources.
 
@@ -63,7 +63,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -74,13 +74,13 @@ When the implementation is finished, you MUST do all of the following before dec
 
 ### Final Checklist (fill after completion)
 
-- [ ] pnpm lint passed (paste short summary):
-- [ ] pnpm test passed (paste short summary):
-- [ ] Determinism verified (golden replay hash unchanged / added):
-- [ ] No temporary files added:
-- [ ] Rule references added in code (examples of references):
-- [ ] Changelog updated: (path + brief entry summary)
-- [ ] Design decision doc added/updated: (path or “n/a”)
-- [ ] Errata added/updated: (path or “n/a”)
-- [ ] Expansion isolation verified (disabled expansions leave no state):
-- [ ] Bot contract checks (if touched): schema + illegal fallback tested
+- [x] pnpm lint passed (paste short summary): All workspaces linted clean (no errors).
+- [x] pnpm test passed (paste short summary): All packages passed (rules 6/6, game 3/3, shared 2/2).
+- [x] Determinism verified (golden replay hash unchanged / added): Added packages/game/src/golden.test.ts with final hash 5d4b46446fd07330f868ff17508ce1fd70e8800afebffc1e04e4665ea893ef92.
+- [x] No temporary files added: Verified via git status (only source and test changes).
+- [x] Rule references added in code (examples of references): production.ts // CORE-01-06-16; hotspot.ts // CORE-01-06-02..03; production.ts remainder to Noise // CORE-01-06-15; core.ts settlement // CORE-01-07.
+- [x] Changelog updated: docs/changelog.md — added entry for Task 0006 (rules/game/shared changes + tests).
+- [x] Design decision doc added/updated: n/a
+- [x] Errata added/updated: n/a
+- [x] Expansion isolation verified (disabled expansions leave no state): Core-only state shape; no expansion registries present; tests cover only CORE paths.
+- [x] Bot contract checks (if touched): n/a (bot not modified)

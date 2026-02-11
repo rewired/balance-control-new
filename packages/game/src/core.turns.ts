@@ -1,6 +1,6 @@
 ﻿import type { Game } from 'boardgame.io';
-import type { CoreState, AxialCoord } from '@bc/rules';\nimport { isFullySurrounded, resolveHotspot, resolveRoundSettlement } from '@bc/rules';
-import { drawUntilPlaceable, adjacent as hexAdjacent } from '@bc/rules';\nimport { isFullySurrounded, resolveHotspot, resolveRoundSettlement } from '@bc/rules';
+import type { CoreState, AxialCoord, Tile } from '@bc/rules';
+import { resolveHotspot, isFullySurrounded, drawUntilPlaceable, adjacent as hexAdjacent } from '@bc/rules';
 
 export const Phases = {
   DrawAndPlaceTile: 'DrawAndPlaceTile',
@@ -8,6 +8,17 @@ export const Phases = {
 } as const;
 
 export type PhaseName = typeof Phases[keyof typeof Phases];
+
+function neighborsOf(c: AxialCoord): AxialCoord[] {
+  return [
+    { q: c.q + 1, r: c.r + 0 },
+    { q: c.q + 1, r: c.r - 1 },
+    { q: c.q + 0, r: c.r - 1 },
+    { q: c.q - 1, r: c.r + 0 },
+    { q: c.q - 1, r: c.r + 1 },
+    { q: c.q + 0, r: c.r + 1 },
+  ];
+}
 
 export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
   [Phases.DrawAndPlaceTile]: {
@@ -27,24 +38,47 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
         const p = G.turn?.pending;
         if (!p) return;
         if (!p.legalCoords.some((c) => c.q === coord.q && c.r === coord.r)) return;
+
+        // Record neighbor Hotspot enclosure state BEFORE placement
+        const candidates = neighborsOf(coord)
+          .map((c) => ({ c, placement: G.tiles.board.find((bp) => bp.coord.q === c.q && bp.coord.r === c.r) }))
+          .filter((x) => !!x.placement)
+          .map((x) => ({
+            coord: x.c,
+            tile: G.allTiles[x.placement!.tileId] as Tile,
+            was: isFullySurrounded(G, x.c),
+          }))
+          .filter((x) => x.tile && x.tile.kind === 'Hotspot');
+
+        // Apply placement
         G.tiles.board.push({ tileId: p.tileId, coord });
         G.turn = { pending: undefined };
-        events?.endPhase?.();
+
+        // CORE-01-06-02..03: resolve any Hotspot that becomes fully surrounded immediately
+        // Check placed tile if it is a Hotspot
+        const placedTile = G.allTiles[p.tileId] as Tile;
+        if (placedTile && placedTile.kind === 'Hotspot' && isFullySurrounded(G, coord)) {
+          resolveHotspot(G, coord);
+        }
+        // Check neighbor Hotspots that changed from not surrounded -> surrounded
+        for (const h of candidates) {
+          if (!h.was && isFullySurrounded(G, h.coord)) {
+            resolveHotspot(G, h.coord);
+          }
+        }
+
+        events?.endPhase?.(); // proceed to ExactlyOnePoliticalAction
       },
     },
     next: Phases.ExactlyOnePoliticalAction,
   },
   [Phases.ExactlyOnePoliticalAction]: {
     moves: {
-      chooseNoop: ({ events }) => {
       // CORE-01-04-09: Exactly one political action (placeholder noop)
-      events?.endTurn?.();
-    },
+      chooseNoop: ({ events }) => {
+        events?.endTurn?.();
+      },
     },
     next: Phases.DrawAndPlaceTile,
   },
 };
-
-
-
-

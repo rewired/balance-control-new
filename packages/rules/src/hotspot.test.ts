@@ -1,7 +1,9 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { isFullySurrounded, resolveHotspot } from './hotspot.js';
 import type { CoreState, Tile } from './types.js';
-unction base(): CoreState {
+
+function base(): CoreState {
   const hotspot: Tile = { id: 'H1', kind: 'Hotspot' } as any;
   // 6 neighbor fillers
   const fillers: Tile[] = Array.from({ length: 6 }, (_, i) => ({ id: `F${i+1}`, kind: 'Committee' } as any));
@@ -16,7 +18,7 @@ import type { CoreState, Tile } from './types.js';
       '1': { id: '1', personal: { resources: [], influence: [] } },
     },
     resources: { bank: [], noise: [] },
-    influencesOnBoard: [ { tileId: 'F1', owner: '0', count: 1 } ],
+    influencesOnBoard: [ { tileId: 'H1', owner: '0', count: 1 } ],
   };
 }
 
@@ -38,7 +40,7 @@ describe('Hotspot — CORE-01-06', () => {
     surround(G);
     resolveHotspot(G, { q:0,r:0 });
     const onHotspot = (G.influencesOnBoard ?? []).find(i=>i.tileId==='H1'&&i.owner==='0');
-    expect(onHotspot?.count ?? 0).toBe(1);
+    expect(onHotspot?.count ?? 0).toBe(2);
     expect(G.players['0'].personal.influence).toHaveLength(0);
   });
 });
