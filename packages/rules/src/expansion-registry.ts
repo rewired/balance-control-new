@@ -20,7 +20,7 @@ export interface ExpansionModule {
   id: ExpansionId;
   registerResources(registry: ResourceRegistry): void;
   setupExpansionState(G: CoreState, ctx: { numPlayers: number; seed: string }): void;
-  extendMoves?: (moves: unknown) => void;
+  extendMoves?: (builder: import('./moves.js').MoveExtensionBuilder) => void;
   hooks?: ExpansionHooks;
 }
 

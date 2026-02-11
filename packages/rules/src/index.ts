@@ -16,3 +16,5 @@ export * from './production.js';
 
 export * from './resources.js';
 export * from './expansion-registry.js';
+
+export * from './moves.js';
