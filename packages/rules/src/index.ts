@@ -15,3 +15,4 @@ export * from './hotspot.js';
 export * from './production.js';
 
 export * from './resources.js';
+export * from './expansion-registry.js';

@@ -1,7 +1,7 @@
-﻿import { shuffleSeeded } from '@bc/shared';
+import { shuffleSeeded } from '@bc/shared';
 import type { CoreState, ResourceId, Tile, ResortTile, StartCommitteeTile } from './types.js';
 import { CoreResorts } from './types.js';
-import { createCoreResourceRegistry, makeEmptyResourceBank } from './resources.js';
+import { createCoreResourceRegistry, makeEmptyResourceBank } from './resources.js'; import { createExpansionRegistry } from './expansion-registry.js';
 
 function makeId(prefix: string, n: number): string {
   return `${prefix}-${n}`;
@@ -50,6 +50,8 @@ function buildNonResortTiles(): Tile[] {
 
 export function buildInitialCoreState(numPlayers: number, matchSeed: string, opts?: { expansions?: import('./schemas.js').ExpansionFlags }): CoreState {
   const registry = createCoreResourceRegistry();
+  const modules = createExpansionRegistry(opts?.expansions);
+  for (const m of modules) m.registerResources(registry);
 
   // Gather all tiles
   const start = buildStartCommittee();
@@ -94,7 +96,7 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string, opt
     },
   };
 
-  // Apply expansion placeholders only when enabled (AGENTS §3.4, §3.8, §5.5)
+  // Apply expansion placeholders only when enabled (AGENTS Ã‚Â§3.4, Ã‚Â§3.8, Ã‚Â§5.5)
   const flags = opts?.expansions;
   if (flags && (flags.exp01 || flags.exp02 || flags.exp03)) {
     (state as CoreState & { exp?: import('./types.js').ExpansionsState }).exp = {} as import('./types.js').ExpansionsState;

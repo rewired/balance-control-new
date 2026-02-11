@@ -35,3 +35,7 @@
 - @bc/rules: added ExpansionId and typed expansion slices (Exp01State, Exp02State, Exp03State) under `G.exp`.
 - @bc/game/@bc/rules setup already ensures `G.exp` is omitted unless at least one expansion is enabled; present keys only for enabled expansions.
 - Tests: existing expansion-config tests assert absence/presence; types updated without changing behavior.
+## 2026-02-11 — Task 0013: Expansion registry interface
+- @bc/rules: added expansion module/types and registry — ExpansionModule, ExpansionHooks, registerExpansion, createExpansionRegistry(flags) with deterministic ordering.
+- @bc/rules: setup applies registerResources of enabled modules on the core resource registry; modules remain stubs (no mechanics yet).
+- Tests: verify module filtering and deterministic order (core-only, single, and mixed combinations).
