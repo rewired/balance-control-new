@@ -2,7 +2,7 @@ import type { AxialCoord, CoreState, ResourceId } from './types.js';
 import { canPay, subResources, addResources as addRes, createCoreResourceRegistry, type ResourceAmounts } from './resources.js';
 import type { ExpansionModule } from './expansion-registry.js';
 import { isFullySurrounded } from './hotspot.js';
-import { planProductionForTile } from './production.js';
+import { planProductionForTile } from './production.plan.js';
 import { computeMajority } from './majority.js';
 
 export type EffectKind =
