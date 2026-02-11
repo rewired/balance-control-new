@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import { RULES_MODULE } from "./index";
 
 describe("rules skeleton", () => {

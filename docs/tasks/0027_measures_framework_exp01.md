@@ -1,4 +1,4 @@
-# Task 0027 — Expansion-Ready Measures Framework (Zones per Expansion) — EXP-01 baseline
+# Task 0027  Expansion-Ready Measures Framework (Zones per Expansion)  EXP-01 baseline
 
 ## Goal
 Introduce the shared Measure lifecycle framework in an expansion-safe way, using EXP-01 as the first implementation.
@@ -28,7 +28,7 @@ EXP-02 and EXP-03 will reuse the same lifecycle rules but keep separate zones.
     - max 2 Measures in hand (EXP-01-06-03)
 
 ## Constraints
-- Measures from one expansion must never enter another expansion’s zones.
+- Measures from one expansion must never enter another expansion�s zones.
 - Timing windows must be limited to those defined in EXP-01/02/03.
 - Start Committee immunity remains intact (CORE-01-08-06A/B).
 
@@ -61,7 +61,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for �convenience�)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -78,7 +78,7 @@ When the implementation is finished, you MUST do all of the following before dec
 - [ ] No temporary files added:
 - [ ] Rule references added in code (examples of references):
 - [ ] Changelog updated: (path + brief entry summary)
-- [ ] Design decision doc added/updated: (path or “n/a”)
-- [ ] Errata added/updated: (path or “n/a”)
+- [ ] Design decision doc added/updated: (path or �n/a�)
+- [ ] Errata added/updated: (path or �n/a�)
 - [ ] Expansion isolation verified (disabled expansions leave no state):
 - [ ] Bot contract checks (if touched): schema + illegal fallback tested

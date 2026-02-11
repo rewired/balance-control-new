@@ -1,34 +1,34 @@
-# Codex Task — BALANCE // CONTROL (Software Edition)
+# Codex Task  BALANCE // CONTROL (Software Edition)
 
 **Date:** 2026-02-11  
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
 
 **Primary contract:** `AGENTS.md` (repo root)  
 Key anchors:
-- Determinism: AGENTS §0.2  
-- Rules anchoring & no drift: AGENTS §0.1, §0.5, §0.6  
-- Resource generalization: AGENTS §1.6  
-- Expansions modular + isolation: AGENTS §3.4, §3.8, §5.4, §5.5  
-- Canonical effect resolver: AGENTS §3.5  
-- Production order: AGENTS §3.6  
-- Start Committee immunity: AGENTS §3.7  
-- Tests + golden replays + hashing: AGENTS §5.1–§5.3
+- Determinism: AGENTS �0.2  
+- Rules anchoring & no drift: AGENTS �0.1, �0.5, �0.6  
+- Resource generalization: AGENTS �1.6  
+- Expansions modular + isolation: AGENTS �3.4, �3.8, �5.4, �5.5  
+- Canonical effect resolver: AGENTS �3.5  
+- Production order: AGENTS �3.6  
+- Start Committee immunity: AGENTS �3.7  
+- Tests + golden replays + hashing: AGENTS �5.1��5.3
 
-**Context:** Task 0016 is completed. This bundle defines **fix tasks 0017–0022** to close remaining architectural gaps before starting Task 0027+ (next feature work).
+**Context:** Task 0016 is completed. This bundle defines **fix tasks 0017�0022** to close remaining architectural gaps before starting Task 0027+ (next feature work).
 
 ---
 
-# Task 0019 — Expansion Setup Execution + Zone Contract (No Ghost Slices)
+# Task 0019  Expansion Setup Execution + Zone Contract (No Ghost Slices)
 
 ## Goal
 Make `setupExpansionState` the **only** authority that creates expansion state slices/zones.
 
-Remove any “placeholder” expansion slice creation that happens outside module setup, so expansions own their state cleanly.
+Remove any �placeholder expansion slice creation that happens outside module setup, so expansions own their state cleanly.
 
-This is the isolation contract that makes EXP‑01 package implementation straightforward.
+This is the isolation contract that makes EXP01 package implementation straightforward.
 
 ## Inputs
-- `AGENTS.md` §3.8 (Expansion Isolation Layer), §5.5 (No Dead State)
+- `AGENTS.md` �3.8 (Expansion Isolation Layer), �5.5 (No Dead State)
 - Task 0018 game factory in place.
 
 ## Outputs
@@ -36,8 +36,8 @@ This is the isolation contract that makes EXP‑01 package implementation straig
 - `@bc/game` / `@bc/rules`:
   - Remove any code that pre-creates `G.exp.exp01 = {}` etc.
   - Ensure:
-    - If no expansions enabled → `G.exp` is absent (preferred)
-    - If some enabled → `G.exp` exists and only contains enabled ids
+    - If no expansions enabled  `G.exp` is absent (preferred)
+    - If some enabled  `G.exp` exists and only contains enabled ids
   - Provide a helper: `ensureExpansionSlice(G, expId, initialValue)` used **only inside modules**.
 
 ### Tests
@@ -45,7 +45,7 @@ This is the isolation contract that makes EXP‑01 package implementation straig
 - CORE + exp01: assert only exp01 slice exists.
 
 ### Docs
-- `/docs/changelog.md` entry: “Expansion slices are created only by modules; removed placeholders.”
+- `/docs/changelog.md` entry: �Expansion slices are created only by modules; removed placeholders.�
 
 ## Constraints
 - No real expansion zones yet. You may create minimal exp-only containers **only if** the expansion is enabled and the module owns them.

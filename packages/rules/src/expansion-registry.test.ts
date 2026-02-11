@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createExpansionRegistry, registerExpansion, __resetRegisteredExpansionsForTest } from './expansion-registry.js';
 import type { ExpansionModule } from './expansion-registry.js';
 
@@ -10,7 +10,7 @@ function mod(id: 'exp01'|'exp02'|'exp03'): ExpansionModule {
   };
 }
 
-describe('Expansion registry — Task 0013', () => {
+describe('Expansion registry  Task 0013', () => {
   beforeEach(() => {
     __resetRegisteredExpansionsForTest();
   });

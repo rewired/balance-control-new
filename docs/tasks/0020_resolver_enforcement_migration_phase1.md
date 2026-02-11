@@ -1,32 +1,32 @@
-# Codex Task — BALANCE // CONTROL (Software Edition)
+# Codex Task  BALANCE // CONTROL (Software Edition)
 
 **Date:** 2026-02-11  
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
 
 **Primary contract:** `AGENTS.md` (repo root)  
 Key anchors:
-- Determinism: AGENTS §0.2  
-- Rules anchoring & no drift: AGENTS §0.1, §0.5, §0.6  
-- Resource generalization: AGENTS §1.6  
-- Expansions modular + isolation: AGENTS §3.4, §3.8, §5.4, §5.5  
-- Canonical effect resolver: AGENTS §3.5  
-- Production order: AGENTS §3.6  
-- Start Committee immunity: AGENTS §3.7  
-- Tests + golden replays + hashing: AGENTS §5.1–§5.3
+- Determinism: AGENTS �0.2  
+- Rules anchoring & no drift: AGENTS �0.1, �0.5, �0.6  
+- Resource generalization: AGENTS �1.6  
+- Expansions modular + isolation: AGENTS �3.4, �3.8, �5.4, �5.5  
+- Canonical effect resolver: AGENTS �3.5  
+- Production order: AGENTS �3.6  
+- Start Committee immunity: AGENTS �3.7  
+- Tests + golden replays + hashing: AGENTS �5.1��5.3
 
-**Context:** Task 0016 is completed. This bundle defines **fix tasks 0017–0022** to close remaining architectural gaps before starting Task 0027+ (next feature work).
+**Context:** Task 0016 is completed. This bundle defines **fix tasks 0017�0022** to close remaining architectural gaps before starting Task 0027+ (next feature work).
 
 ---
 
-# Task 0020 — Resolver Enforcement Migration (Phase 1)
+# Task 0020  Resolver Enforcement Migration (Phase 1)
 
 ## Goal
-Enforce AGENTS §3.5 (“No move may directly mutate state outside this resolver”) by migrating the existing core moves to use `resolveEffect(...)`.
+Enforce AGENTS �3.5 (�No move may directly mutate state outside this resolver�) by migrating the existing core moves to use `resolveEffect(...)`.
 
 This is a migration task: keep behavior identical, but route mutations through the canonical resolver.
 
 ## Inputs
-- `AGENTS.md` §3.5 Canonical Effect Resolver, §3.2 ContextTile, §3.7 Start Committee immunity
+- `AGENTS.md` �3.5 Canonical Effect Resolver, �3.2 ContextTile, �3.7 Start Committee immunity
 - Existing moves currently mutating `G` directly.
 - `resolveEffect` implementation from prior tasks.
 
@@ -39,7 +39,7 @@ This is a migration task: keep behavior identical, but route mutations through t
 
 - `@bc/rules`:
   - If needed, extend `EffectDescriptor` minimally to cover existing move needs.
-  - Keep resolver ordering exactly per AGENTS §3.5:
+  - Keep resolver ordering exactly per AGENTS �3.5:
     1) ContextTile
     2) Prohibitions
     3) Cost increases
@@ -54,11 +54,11 @@ This is a migration task: keep behavior identical, but route mutations through t
   - but is ignored when ContextTile is Start Committee.
 
 ### Docs
-- `/docs/changelog.md` entry: “Core moves now route through canonical effect resolver.”
+- `/docs/changelog.md` entry: �Core moves now route through canonical effect resolver.�
 
 ## Constraints
 - No new mechanics.
-- If ContextTile binding is ambiguous, write a DD doc (AGENTS §0.6).
+- If ContextTile binding is ambiguous, write a DD doc (AGENTS �0.6).
 
 ## Invariants
 - Determinism preserved.

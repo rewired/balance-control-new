@@ -1,4 +1,4 @@
-﻿# DD-0002-vite-aliases-and-non-normative-hello-game
+# DD-0002-vite-aliases-and-non-normative-hello-game
 
 Decision date: 2026-02-11
 Status: Accepted

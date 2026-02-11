@@ -17,10 +17,10 @@
 
 ### Modules
 
-* `core` → Base Game
-* `ex01` → Economy & Labor
-* `ex02` → Security & Order
-* `ex03` → Climate & Future
+* `core`  Base Game
+* `ex01`  Economy & Labor
+* `ex02`  Security & Order
+* `ex03`  Climate & Future
 
 ### Identifier
 
@@ -93,6 +93,6 @@ Background: Black #000000;
 * Resorts define **economic identity**
 * Tile classes define **mechanical role**
 * Module separation enables expansion-isolated color control
-* Namespace guarantees scalability (ex04, ex05, …)
+* Namespace guarantees scalability (ex04, ex05, �)
 
 ---

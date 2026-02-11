@@ -1,4 +1,4 @@
-﻿// CORE-01-05 â€” Majority & Control (canonical)
+// CORE-01-05 â€ Majority & Control (canonical)
 import type { AxialCoord, BoardPlacement, CoreState, Tile } from './types.js';
 
 export interface MajorityBreakdown { [playerID: string]: number }
@@ -29,7 +29,7 @@ function adjacentLobbyistBonus(state: CoreState, targetCoord: AxialCoord, player
     if (!placement) continue;
     const tile = state.allTiles[placement.tileId] as Tile | undefined;
     if (tile && tile.kind === 'Lobbyist') {
-      // CORE-01-05-04..06 â€” Lobbyist contributes +1 virtual Influence to adjacent tile for the same player
+      // CORE-01-05-04..06 â€ Lobbyist contributes +1 virtual Influence to adjacent tile for the same player
       // Design note: we interpret contribution for the player who has any Influence present on the Lobbyist tile.
       // If multiple players have presence, both will get +1 from that tile (no exclusivity specified in CORE text).
       const present = influencesOnTile(state, placement.tileId, playerID);
@@ -55,7 +55,7 @@ export function computeMajority(state: CoreState, coord: AxialCoord): string | n
   const [topPlayer, topScore] = entries[0];
   const second = entries[1]?.[1] ?? -Infinity;
   if (topScore <= 0) return null; // nobody present
-  if (topScore === second) return null; // CORE-01-05-02 tie â†’ no control
+  if (topScore === second) return null; // CORE-01-05-02 tie â† no control
   return topPlayer; // CORE-01-05-01 strict majority
 }
 

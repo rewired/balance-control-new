@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Expansion flags — explicit IDs only (Task 0010)
+// Expansion flags  explicit IDs only (Task 0010)
 export const ExpansionIdEnum = z.enum(['exp01', 'exp02', 'exp03']);
 export type ExpansionId = z.infer<typeof ExpansionIdEnum>;
 
@@ -21,7 +21,7 @@ export const ExpansionFlagsSchema = z
 
 export type ExpansionFlags = z.infer<typeof ExpansionFlagsSchema>;
 
-// Canonical match config (strict) — focus of Task 0010
+// Canonical match config (strict)  focus of Task 0010
 export const MatchConfigSchema = z
   .object({
     expansions: ExpansionFlagsSchema,

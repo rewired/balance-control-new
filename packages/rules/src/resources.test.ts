@@ -1,8 +1,8 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { createCoreResourceRegistry, makeEmptyResourceBank, addResources, canPay, subResources } from './resources.js';
 
-describe('Resource registry — Task 0011', () => {
+describe('Resource registry  Task 0011', () => {
   it('core-only registry contains exactly DOM/FOR/INF', () => {
     const r = createCoreResourceRegistry();
     expect(r.list()).toEqual(['DOM','FOR','INF']);

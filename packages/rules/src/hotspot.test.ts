@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { isFullySurrounded, resolveHotspot } from './hotspot.js';
 import type { CoreState, Tile } from './types.js';
@@ -28,7 +28,7 @@ function surround(G: CoreState) {
   for (let k=0;k<6;k++) G.tiles.board.push({ tileId: ids[k], coord: { q: nbrs[k].q, r: nbrs[k].r } });
 }
 
-describe('Hotspot — CORE-01-06', () => {
+describe('Hotspot  CORE-01-06', () => {
   it('triggers only when fully surrounded', () => {
     const G = base();
     expect(isFullySurrounded(G, { q:0,r:0 })).toBe(false);

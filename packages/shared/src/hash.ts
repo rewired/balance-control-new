@@ -1,4 +1,4 @@
-﻿import crypto from 'node:crypto';
+import crypto from 'node:crypto';
 
 function stableStringifyInternal(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);

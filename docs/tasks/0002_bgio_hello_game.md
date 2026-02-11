@@ -1,4 +1,4 @@
-# Task 0002 â€” boardgame.io Hello-Game (Hotseat + Network skeleton)
+# Task 0002  boardgame.io Hello-Game (Hotseat + Network skeleton)
 
 ## Goal
 Introduce a minimal boardgame.io game that can run:
@@ -51,7 +51,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for �convenience�)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -75,7 +75,7 @@ server: 1/1 passed
 - [x] Determinism verified (golden replay hash unchanged / added): n/a (no CORE rules yet; example move is deterministic)
 - [x] No temporary files added: none (verified .gitignore; build artifacts ignored)
 - [x] Rule references added in code (examples of references): non-normative hello-game only; documented in docs/design-decisions/DD-0002-vite-aliases-and-hello-game.md
-- [x] Changelog updated: docs/changelog.md — added Task 0002 entry
+- [x] Changelog updated: docs/changelog.md  added Task 0002 entry
 - [x] Design decision doc added/updated: docs/design-decisions/DD-0002-vite-aliases-and-hello-game.md
 - [x] Errata added/updated: n/a
 - [x] Expansion isolation verified (disabled expansions leave no state): n/a (no expansions yet)

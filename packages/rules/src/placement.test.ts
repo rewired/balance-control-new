@@ -1,10 +1,10 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { adjacent } from './topology/hex.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
 import type { BoardPlacement } from './types.js';
 
-describe('Hex adjacency and placement — CORE-01-04-05/08', () => {
+describe('Hex adjacency and placement  CORE-01-04-05/08', () => {
   it('adjacent axial neighbors match expected set', () => {
     expect(adjacent({ q:0, r:0 }, { q:1, r:0 })).toBe(true);
     expect(adjacent({ q:0, r:0 }, { q:2, r:0 })).toBe(false);
@@ -21,6 +21,6 @@ describe('Hex adjacency and placement — CORE-01-04-05/08', () => {
     const legal = legalPlacementCoords(board, ((): any => false as any));
     expect(legal.length).toBe(0);
   });
-});
-
-
+});
+
+

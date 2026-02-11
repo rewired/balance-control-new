@@ -52,7 +52,7 @@ export function createResolver(modules: ExpansionModule[] = []) {
     // Prepare working copies for atomicity
     const workResources: ResourceAmounts = { ...G.players[effect.playerID]?.personal.resources } as ResourceAmounts;
 
-    // 3) Cost increases (apply to effect.cost) — call even if no initial cost
+    // 3) Cost increases (apply to effect.cost)  call even if no initial cost
     let cost: Partial<Record<ResourceId, number>> | undefined = effect.cost ? { ...effect.cost } : undefined;
     if (!immune) {
       for (const h of hooks) {
@@ -102,5 +102,6 @@ export function createResolver(modules: ExpansionModule[] = []) {
     }
   };
 }
+
 
 

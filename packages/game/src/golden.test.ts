@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { buildInitialCoreState, drawUntilPlaceable, adjacent as hexAdjacent, isFullySurrounded, resolveHotspot, resolveRoundSettlement } from '@bc/rules';
 import type { CoreState, Tile, AxialCoord } from '@bc/rules';
 import { stableHash } from '@bc/shared';
@@ -14,7 +14,7 @@ function neighborsOf(c: AxialCoord): AxialCoord[] {
   ];
 }
 
-describe('Golden replay — 0006', () => {
+describe('Golden replay  0006', () => {
   it('stable final hash for fixed seed + action list', () => {
     const G: CoreState = buildInitialCoreState(2, 'golden-0006');
     let pos = 0; const N = 10; // 10 placements across 5 full rounds

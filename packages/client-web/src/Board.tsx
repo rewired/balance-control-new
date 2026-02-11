@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 export interface Moves { increment: () => void }
 export interface CounterProps { G: { count: number }; moves: Moves }

@@ -1,24 +1,24 @@
-# Codex Task — BALANCE // CONTROL (Software Edition)
+# Codex Task  BALANCE // CONTROL (Software Edition)
 
 **Date:** 2026-02-11  
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
 
 **Primary contract:** `AGENTS.md` (repo root)  
 Key anchors:
-- Determinism: AGENTS §0.2  
-- Rules anchoring & no drift: AGENTS §0.1, §0.5, §0.6  
-- Resource generalization: AGENTS §1.6  
-- Expansions modular + isolation: AGENTS §3.4, §3.8, §5.4, §5.5  
-- Canonical effect resolver: AGENTS §3.5  
-- Production order: AGENTS §3.6  
-- Start Committee immunity: AGENTS §3.7  
-- Tests + golden replays + hashing: AGENTS §5.1–§5.3
+- Determinism: AGENTS �0.2  
+- Rules anchoring & no drift: AGENTS �0.1, �0.5, �0.6  
+- Resource generalization: AGENTS �1.6  
+- Expansions modular + isolation: AGENTS �3.4, �3.8, �5.4, �5.5  
+- Canonical effect resolver: AGENTS �3.5  
+- Production order: AGENTS �3.6  
+- Start Committee immunity: AGENTS �3.7  
+- Tests + golden replays + hashing: AGENTS �5.1��5.3
 
-**Context:** Task 0016 is completed. This bundle defines **fix tasks 0017–0022** to close remaining architectural gaps before starting Task 0027+ (next feature work).
+**Context:** Task 0016 is completed. This bundle defines **fix tasks 0017�0022** to close remaining architectural gaps before starting Task 0027+ (next feature work).
 
 ---
 
-# Task 0022 — EXP‑01 Package Scaffold (Stub Module Only)
+# Task 0022  EXP01 Package Scaffold (Stub Module Only)
 
 ## Goal
 Introduce `@bc/exp-01-economy` as a new workspace package with a stub `ExpansionModule` that:
@@ -26,11 +26,11 @@ Introduce `@bc/exp-01-economy` as a new workspace package with a stub `Expansion
 - initializes its own state slice when enabled
 - optionally contributes a trivial stub move (for wiring test)
 
-No measures, no mechanics yet — just the package boundary and integration proof.
+No measures, no mechanics yet  just the package boundary and integration proof.
 
 ## Inputs
-- `AGENTS.md` §1.6 (Resource registry), §3.4/§3.8 (Modular expansions), §5.5 (No dead state)
-- Tasks 0018–0021 completed.
+- `AGENTS.md` �1.6 (Resource registry), �3.4/�3.8 (Modular expansions), �5.5 (No dead state)
+- Tasks 0018�0021 completed.
 
 ## Outputs
 ### Code
@@ -50,10 +50,10 @@ No measures, no mechanics yet — just the package boundary and integration proo
 - CORE + exp01: ECO exists, exp01 slice exists, exp01 stub move exists + zod-validated.
 
 ### Docs
-- `/docs/changelog.md` entry: “Added EXP‑01 package scaffold (stub module).”
+- `/docs/changelog.md` entry: �Added EXP01 package scaffold (stub module).�
 
 ## Constraints
-- No real EXP‑01 rule logic.
+- No real EXP01 rule logic.
 
 ## Invariants
 - Disabling exp01 leaves zero footprint.

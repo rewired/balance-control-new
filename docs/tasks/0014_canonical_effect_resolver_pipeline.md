@@ -1,33 +1,33 @@
-# Codex Task — BALANCE // CONTROL (Software Edition)
+# Codex Task  BALANCE // CONTROL (Software Edition)
 
 **Date:** 2026-02-11  
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
 
 **Primary contract:** `AGENTS.md` (repo root)  
-- Determinism: AGENTS §0.2  
-- Rules anchoring & no drift: AGENTS §0.1, §0.5, §0.6  
-- Resource generalization: AGENTS §1.6  
-- Expansions modular + isolation: AGENTS §3.4, §3.8, §5.4, §5.5  
-- Canonical effect resolver: AGENTS §3.5  
-- Production order: AGENTS §3.6  
-- Start Committee immunity: AGENTS §3.7  
-- Tests + golden replays + hashing: AGENTS §5.1–§5.3
+- Determinism: AGENTS �0.2  
+- Rules anchoring & no drift: AGENTS �0.1, �0.5, �0.6  
+- Resource generalization: AGENTS �1.6  
+- Expansions modular + isolation: AGENTS �3.4, �3.8, �5.4, �5.5  
+- Canonical effect resolver: AGENTS �3.5  
+- Production order: AGENTS �3.6  
+- Start Committee immunity: AGENTS �3.7  
+- Tests + golden replays + hashing: AGENTS �5.1��5.3
 
 **Repo:** This task assumes the current codebase is the one where Task 0006 is completed.
 
 ---
 
-# Task 0014 — Canonical Effect Resolver Pipeline (Core + Hooks)
+# Task 0014  Canonical Effect Resolver Pipeline (Core + Hooks)
 
 ## Goal
-Implement the **single canonical effect resolver** described in AGENTS §3.5 and route state mutations through it.
+Implement the **single canonical effect resolver** described in AGENTS �3.5 and route state mutations through it.
 
-This is the key “one choke point” that lets expansions add prohibitions/cost/output modifiers later without editing core moves everywhere.
+This is the key �one choke point that lets expansions add prohibitions/cost/output modifiers later without editing core moves everywhere.
 
 ## Inputs
-- `AGENTS.md` §3.5 (Canonical Effect Resolver), §3.2 (ContextTile), §3.7 (Start Committee immunity)
+- `AGENTS.md` �3.5 (Canonical Effect Resolver), �3.2 (ContextTile), �3.7 (Start Committee immunity)
 - Current move implementations in `@bc/game`
-- Core rules in `/docs/rules/000-core.md` regarding ContextTile and Start Committee immunity (refer to exact sections in code comments as per AGENTS §0.5)
+- Core rules in `/docs/rules/000-core.md` regarding ContextTile and Start Committee immunity (refer to exact sections in code comments as per AGENTS �0.5)
 
 ## Outputs
 ### Code
@@ -40,7 +40,7 @@ This is the key “one choke point” that lets expansions add prohibitions/cost
     4. apply output modifiers (hooks later)
     5. apply floors (where relevant)
     6. execute atomic state change
-  - Explicit bypass rules when ContextTile is StartCommittee (AGENTS §3.7):
+  - Explicit bypass rules when ContextTile is StartCommittee (AGENTS �3.7):
     - ignore prohibitions/cost/output modifiers
     - but do not bypass formalization timing restrictions (enforced by the move itself if needed)
 
@@ -58,7 +58,7 @@ This is the key “one choke point” that lets expansions add prohibitions/cost
 - `/docs/changelog.md` entry: canonical resolver introduced + move routing.
 
 ## Constraints
-- No rule interpretation. If ContextTile assignment is ambiguous, create DD doc (AGENTS §0.6).
+- No rule interpretation. If ContextTile assignment is ambiguous, create DD doc (AGENTS �0.6).
 - No new mechanics.
 
 ## Invariants
@@ -90,13 +90,13 @@ After completing the task, **fill in the PR Checklist** below by changing `[ ]` 
 
 ## PR Checklist (Fill after implementation)
 
-- [x] `pnpm lint` passes � ran pnpm -r lint: all packages passed
-- [x] `pnpm test` passes � ran pnpm -r test: all workspace tests green
-- [x] Determinism verified � no Date.now/Math.random introduced; resolver deterministic; existing seeded paths unchanged
-- [x] No temporary files committed � verified via git status clean after changes
-- [x] Rule / contract references added � comments cite AGENTS �3.5 and �3.7 in resolver
-- [x] Expansion isolation preserved � hooks typed; no expansion state created in CORE-only
-- [x] Changelog updated � added 0014 entry
-- [x] If architectural decision was needed: N/A � no new architecture beyond typed hooks
+- [x] `pnpm lint` passes  ran pnpm -r lint: all packages passed
+- [x] `pnpm test` passes  ran pnpm -r test: all workspace tests green
+- [x] Determinism verified  no Date.now/Math.random introduced; resolver deterministic; existing seeded paths unchanged
+- [x] No temporary files committed  verified via git status clean after changes
+- [x] Rule / contract references added  comments cite AGENTS �3.5 and �3.7 in resolver
+- [x] Expansion isolation preserved  hooks typed; no expansion state created in CORE-only
+- [x] Changelog updated  added 0014 entry
+- [x] If architectural decision was needed: N/A  no new architecture beyond typed hooks
 
 

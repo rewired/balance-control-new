@@ -7,7 +7,7 @@ const setup = (numPlayers: number, setupData?: unknown) => {
   return fn({ matchID: 't', numPlayers, setupData });
 };
 
-describe('CoreGame setup — expansion flags (Task 0010)', () => {
+describe('CoreGame setup  expansion flags (Task 0010)', () => {
   it('no setupData -> pure CORE (no exp slice)', () => {
     const G = setup(2);
     expect((G as any).exp).toBeUndefined();

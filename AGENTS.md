@@ -1,4 +1,4 @@
-# AGENTS.md — BALANCE // CONTROL (Software Edition)
+# AGENTS.md  BALANCE // CONTROL (Software Edition)
 
 This repository contains the TypeScript implementation of **BALANCE // CONTROL** using **boardgame.io** as the rules engine, with:
 
@@ -16,11 +16,11 @@ This file is the operational contract for Codex (and humans). Follow it strictly
 
 The game must implement the normative rule specifications in `/docs/rules/`:
 
-* `000-core.md` — CORE-01 Simulation Specification (v1.0.14)
-* `001-expansion01.md` — EXP-01 Economy & Labor (v1.3)
-* `002-expansion02.md` — EXP-02 Security & Order (v1.0)
-* `003-expansion03.md` — EXP-03 Climate & Future (v1.0)
-* `notation.md` — Notation Specification (informative, non-normative)
+* `000-core.md`  CORE-01 Simulation Specification (v1.0.14)
+* `001-expansion01.md`  EXP-01 Economy & Labor (v1.3)
+* `002-expansion02.md`  EXP-02 Security & Order (v1.0)
+* `003-expansion03.md`  EXP-03 Climate & Future (v1.0)
+* `notation.md`  Notation Specification (informative, non-normative)
 
 No implicit rules.
 If something is not stated in the specs, it does not exist.

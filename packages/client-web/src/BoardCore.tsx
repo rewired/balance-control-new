@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 export interface CoreMoves { placeTile: (coord: { q: number; r: number }) => void; chooseNoop?: () => void }
 export interface CoreProps { G: unknown; moves: CoreMoves }
@@ -7,7 +7,7 @@ export default function CoreBoard({ G, moves }: CoreProps) {
   const pending = G.turn?.pending;
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <div><strong>Core â€” DrawAndPlaceTile</strong></div>
+      <div><strong>Core â€ DrawAndPlaceTile</strong></div>
       {pending?.tileId ? (
         <div>
           <div>Drawn: <code>{pending.tileId}</code></div>

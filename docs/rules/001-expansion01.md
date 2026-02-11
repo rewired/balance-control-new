@@ -1,4 +1,4 @@
-# EXP-01 — Economy & Labor
+# EXP-01  Economy & Labor
 
 Fully Engine-Formalized Specification v1.3
 Requires: CORE-01 (v1.0.14)
@@ -12,7 +12,7 @@ EXP-01-01 ECO Resource
 EXP-01-02 Components & Definitions
 EXP-01-03 Setup
 EXP-01-04 Round & Production Model
-EXP-01-05 System Tile — Investment Program
+EXP-01-05 System Tile  Investment Program
 EXP-01-06 Political Action Extension
 EXP-01-07 Measure System
 EXP-01-08 Measure Definitions
@@ -36,8 +36,8 @@ EXP-01-00-05 EXP-01 modifies Political Action timing for PlayMeasure.
 EXP-01-01-01 ECO is a Resource type.
 EXP-01-01-02 ECO represents Economy.
 EXP-01-01-03 ECO behaves identically to DOM, FOR, INF unless explicitly modified.
-EXP-01-01-04 ECO counts as a distinct resort for all “different resorts” requirements.
-EXP-01-01-05 ECO may be used wherever “a Resource” is required.
+EXP-01-01-04 ECO counts as a distinct resort for all �different resorts requirements.
+EXP-01-01-05 ECO may be used wherever �a Resource is required.
 EXP-01-01-06 ECO exists only while EXP-01 is active.
 
 ---
@@ -46,23 +46,23 @@ EXP-01-01-06 ECO exists only while EXP-01 is active.
 
 ## EXP-01-02-A ECO ResortTiles
 
-EXP-01-02-A-01 For 2–4 players add:
-• ECO-W1 ×2
-• ECO-W2 ×1
-• ECO-W3 ×1
+EXP-01-02-A-01 For 2�4 players add:
+" ECO-W1 �2
+" ECO-W2 �1
+" ECO-W3 �1
 
-EXP-01-02-A-02 For 5–6 players additionally add:
-• ECO-W1 ×1
-• ECO-W2 ×1
-• ECO-W3 ×1
+EXP-01-02-A-02 For 5�6 players additionally add:
+" ECO-W1 �1
+" ECO-W2 �1
+" ECO-W3 �1
 
 ## EXP-01-02-B Printed Production Value
 
-EXP-01-02-B-01 The production value of a ResortTile equals the number printed after “W”.
+EXP-01-02-B-01 The production value of a ResortTile equals the number printed after �W�.
 EXP-01-02-B-02 ECO-W1 = 1.
 EXP-01-02-B-03 ECO-W2 = 2.
 EXP-01-02-B-04 ECO-W3 = 3.
-EXP-01-02-B-05 “Printed production value” refers exclusively to this base value.
+EXP-01-02-B-05 �Printed production value refers exclusively to this base value.
 
 ## EXP-01-02-C Labor Market
 
@@ -72,21 +72,21 @@ EXP-01-02-C-03 Resolution Trigger: Full enclosure, following CORE Hotspot rules.
 EXP-01-02-C-04 Resolution Effect: Majority leader receives exactly 1 Influence marker.
 EXP-01-02-C-05 Labor Market produces no Resources.
 EXP-01-02-C-06 Labor Market has no additional special rules.
-EXP-01-02-C-07 Tile text: “When fully surrounded: if you have majority, gain 1 Influence.”
+EXP-01-02-C-07 Tile text: �When fully surrounded: if you have majority, gain 1 Influence.�
 
 ## EXP-01-02-D Investment Program
 
-EXP-01-02-D-01 Add System Tile “Investment Program” ×1.
+EXP-01-02-D-01 Add System Tile �Investment Program �1.
 EXP-01-02-D-02 It is not a Committee, not a Grassroots tile, and not a Hotspot.
 
 ## EXP-01-02-E Measure Components
 
 EXP-01-02-E-01 Measure zones are:
-• MeasureDrawPile
-• OpenMeasures (3 face up)
-• PlayerHand
-• MeasureRecyclePile
-• MeasureFinalDiscard
+" MeasureDrawPile
+" OpenMeasures (3 face up)
+" PlayerHand
+" MeasureRecyclePile
+" MeasureFinalDiscard
 
 EXP-01-02-E-01A These Measure zones exist as an EXP-01-specific instance.
 They do not contain Measures from any other expansions.
@@ -108,18 +108,18 @@ EXP-01-03-05 No modification to Round structure.
 ## EXP-01-04-A Round Definition
 
 EXP-01-04-A-01 A round consists of one full cycle of player turns followed by Round Settlement.
-EXP-01-04-A-02 “This round” refers to the current round until the next Round Settlement begins.
-EXP-01-04-A-03 “Next round” refers to the round immediately following the next Round Settlement.
+EXP-01-04-A-02 �This round refers to the current round until the next Round Settlement begins.
+EXP-01-04-A-03 �Next round refers to the round immediately following the next Round Settlement.
 
 ## EXP-01-04-B Production Resolution Order
 
 EXP-01-04-B-01 Production during Round Settlement follows CORE-01-06-16 (Production Resolution Order).
-EXP-01-04-B-02 For EXP-01, “doubling effects” refers to any Measure that doubles printed production value (e.g., Economic Stimulus).
-EXP-01-04-B-03 For EXP-01, “production output modifiers” includes reductions or increases from EXP-01 Measures that modify production output.
+EXP-01-04-B-02 For EXP-01, �doubling effects refers to any Measure that doubles printed production value (e.g., Economic Stimulus).
+EXP-01-04-B-03 For EXP-01, �production output modifiers includes reductions or increases from EXP-01 Measures that modify production output.
 
 ---
 
-# EXP-01-05 SYSTEM TILE — INVESTMENT PROGRAM
+# EXP-01-05 SYSTEM TILE  INVESTMENT PROGRAM
 
 EXP-01-05-01 When performing ConvertResources, the controlling player may exchange 2 ECO for 1 Resource of a different resort.
 EXP-01-05-02 This exchange is optional.
@@ -131,11 +131,11 @@ EXP-01-05-04 This effect does not stack.
 # EXP-01-06 POLITICAL ACTION EXTENSION
 
 EXP-01-06-01 Political Actions are:
-• PlaceOrMoveInfluence
-• FormalizeInfluence
-• ConvertResources
-• TakeMeasure
-• PlayMeasure
+" PlaceOrMoveInfluence
+" FormalizeInfluence
+" ConvertResources
+" TakeMeasure
+" PlayMeasure
 
 EXP-01-06-01A TakeMeasure and PlayMeasure interact only with the Measure zones of the expansion that provides them.
 A Measure taken from one expansion cannot be played as a Measure of another expansion.
@@ -155,20 +155,20 @@ EXP-01-06-05 When performing PlayMeasure:
 # EXP-01-07 MEASURE SYSTEM
 
 EXP-01-07-01 When a Measure is played, increment its play counter.
-EXP-01-07-02 After first play → move to MeasureRecyclePile.
-EXP-01-07-03 After second play → move to MeasureFinalDiscard.
+EXP-01-07-02 After first play  move to MeasureRecyclePile.
+EXP-01-07-03 After second play  move to MeasureFinalDiscard.
 EXP-01-07-04 Measures in FinalDiscard never return.
 EXP-01-07-05 If MeasureDrawPile is empty, shuffle MeasureRecyclePile.
 
 EXP-01-07-06 Timing keywords allowed:
-• This turn
-• This round
-• During this Round Settlement
-• Next round
-• Until consumed
+" This turn
+" This round
+" During this Round Settlement
+" Next round
+" Until consumed
 
 EXP-01-07-07 Per-Round Usage Flags
-If a Measure grants an effect limited to “once this round”, the engine tracks a boolean flag per player and per measure instance: usedThisRound.
+If a Measure grants an effect limited to �once this round�, the engine tracks a boolean flag per player and per measure instance: usedThisRound.
 usedThisRound resets for all players at the beginning of each Round (immediately after Round Settlement ends).
 EXP-01-07-07 No other timing windows exist.
 
@@ -176,7 +176,7 @@ EXP-01-07-07 No other timing windows exist.
 
 # EXP-01-08 MEASURE DEFINITIONS
 
-## EXP-01-08-M01 — Budget Compromise
+## EXP-01-08-M01  Budget Compromise
 
 EXP-01-08-M01-01 Name: Budget Compromise.
 EXP-01-08-M01-02 Cost: DOM + ECO + INF.
@@ -186,17 +186,17 @@ EXP-01-08-M01-05 Effect: The targeted Hotspot does not resolve when it would nor
 
 ---
 
-## EXP-01-08-M02 — Economic Stimulus
+## EXP-01-08-M02  Economic Stimulus
 
 EXP-01-08-M02-01 Name: Economic Stimulus.
 EXP-01-08-M02-02 Cost: ECO + FOR.
 EXP-01-08-M02-03 Target: One ResortTile in Board.
 EXP-01-08-M02-04 Duration: During this Round Settlement.
-EXP-01-08-M02-05 Effect: During this Round Settlement, double the tile’s printed production value before majority calculation.
+EXP-01-08-M02-05 Effect: During this Round Settlement, double the tile�s printed production value before majority calculation.
 
 ---
 
-## EXP-01-08-M03 — Collective Bargaining
+## EXP-01-08-M03  Collective Bargaining
 
 EXP-01-08-M03-01 Name: Collective Bargaining.
 EXP-01-08-M03-02 Cost: ECO + ECO.
@@ -205,39 +205,39 @@ EXP-01-08-M03-04 Effect: During this round, ConvertResources may not convert ECO
 
 ---
 
-## EXP-01-08-M04 — Subsidy Reduction
+## EXP-01-08-M04  Subsidy Reduction
 
 EXP-01-08-M04-01 Name: Subsidy Reduction.
 EXP-01-08-M04-02 Cost: ECO + DOM.
 EXP-01-08-M04-03 Target: One opponent-controlled ECO ResortTile in Board.
 EXP-01-08-M04-04 Duration: During this Round Settlement.
-EXP-01-08-M04-05 Effect: During this Round Settlement, reduce that tile’s production by 1 (minimum 0).
+EXP-01-08-M04-05 Effect: During this Round Settlement, reduce that tile�s production by 1 (minimum 0).
 
 ---
 
-## EXP-01-08-M05 — Location Debate
+## EXP-01-08-M05  Location Debate
 
 EXP-01-08-M05-01 Name: Location Debate.
 EXP-01-08-M05-02 Cost: ECO + INF.
 EXP-01-08-M05-03 Target: One ResortTile in Board.
 EXP-01-08-M05-04 Duration: During this Round Settlement.
-EXP-01-08-M05-05 Effect: During this Round Settlement, reduce that tile’s production by 1 (minimum 0).
+EXP-01-08-M05-05 Effect: During this Round Settlement, reduce that tile�s production by 1 (minimum 0).
 
 ---
 
-## EXP-01-08-M06 — Budget Deficit
+## EXP-01-08-M06  Budget Deficit
 
 EXP-01-08-M06-01 Name: Budget Deficit.
 EXP-01-08-M06-02 Cost: ECO + ECO.
 EXP-01-08-M06-03 Target: One player.
 EXP-01-08-M06-04 Duration: Until consumed.
-EXP-01-08-M06-05 Effect: The targeted player’s next Political Action requires +1 additional Resource.
+EXP-01-08-M06-05 Effect: The targeted player�s next Political Action requires +1 additional Resource.
 EXP-01-08-M06-06 If unpaid, the Action fails and produces no effect.
 EXP-01-08-M06-07 The effect is consumed after that Action attempt.
 
 ---
 
-## EXP-01-08-M07 — Debt Brake
+## EXP-01-08-M07  Debt Brake
 
 EXP-01-08-M07-01 Name: Debt Brake.
 EXP-01-08-M07-02 Cost: DOM + ECO + ECO.
@@ -246,7 +246,7 @@ EXP-01-08-M07-04 Effect: During the next round, ConvertResources may not be chos
 
 ---
 
-## EXP-01-08-M08 — Economic Council
+## EXP-01-08-M08  Economic Council
 
 EXP-01-08-M08-01 Name: Economic Council.
 EXP-01-08-M08-02 Cost: ECO + ECO + ECO.
@@ -255,17 +255,17 @@ EXP-01-08-M08-04 Effect: Once this round, when paying a cost that includes ECO, 
 
 ---
 
-## EXP-01-08-M09 — Investment Freeze
+## EXP-01-08-M09  Investment Freeze
 
 EXP-01-08-M09-01 Name: Investment Freeze.
 EXP-01-08-M09-02 Cost: ECO + ECO + INF.
 EXP-01-08-M09-03 Target: One opponent player.
 EXP-01-08-M09-04 Duration: This turn.
-EXP-01-08-M09-05 Effect: During the targeted player’s current turn, ignore Measure effects that modify production output or printed production value.
+EXP-01-08-M09-05 Effect: During the targeted player�s current turn, ignore Measure effects that modify production output or printed production value.
 
 ---
 
-## EXP-01-08-M10 — Supplemental Budget
+## EXP-01-08-M10  Supplemental Budget
 
 EXP-01-08-M10-01 Name: Supplemental Budget.
 EXP-01-08-M10-02 Cost: ECO.

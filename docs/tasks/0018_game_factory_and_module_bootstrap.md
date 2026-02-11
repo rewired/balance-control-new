@@ -1,38 +1,38 @@
-# Codex Task — BALANCE // CONTROL (Software Edition)
+# Codex Task  BALANCE // CONTROL (Software Edition)
 
 **Date:** 2026-02-11  
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
 
 **Primary contract:** `AGENTS.md` (repo root)  
 Key anchors:
-- Determinism: AGENTS §0.2  
-- Rules anchoring & no drift: AGENTS §0.1, §0.5, §0.6  
-- Resource generalization: AGENTS §1.6  
-- Expansions modular + isolation: AGENTS §3.4, §3.8, §5.4, §5.5  
-- Canonical effect resolver: AGENTS §3.5  
-- Production order: AGENTS §3.6  
-- Start Committee immunity: AGENTS §3.7  
-- Tests + golden replays + hashing: AGENTS §5.1–§5.3
+- Determinism: AGENTS �0.2  
+- Rules anchoring & no drift: AGENTS �0.1, �0.5, �0.6  
+- Resource generalization: AGENTS �1.6  
+- Expansions modular + isolation: AGENTS �3.4, �3.8, �5.4, �5.5  
+- Canonical effect resolver: AGENTS �3.5  
+- Production order: AGENTS �3.6  
+- Start Committee immunity: AGENTS �3.7  
+- Tests + golden replays + hashing: AGENTS �5.1��5.3
 
-**Context:** Task 0016 is completed. This bundle defines **fix tasks 0017–0022** to close remaining architectural gaps before starting Task 0027+ (next feature work).
+**Context:** Task 0016 is completed. This bundle defines **fix tasks 0017�0022** to close remaining architectural gaps before starting Task 0027+ (next feature work).
 
 ---
 
-# Task 0018 — Game Factory + Module Bootstrapping (Register & Activate Expansions)
+# Task 0018  Game Factory + Module Bootstrapping (Register & Activate Expansions)
 
 ## Goal
 Ensure expansion modules can be registered and actually used in runtime by introducing a canonical **game factory** that:
 - Instantiates enabled expansion modules from match config
 - Builds the move catalog from core + modules
-- Builds initial state and calls each module’s `setupExpansionState`
+- Builds initial state and calls each module�s `setupExpansionState`
 
 This closes the gap where the registry exists but modules are never registered/bootstrapped.
 
 ## Inputs
 - `AGENTS.md`:
-  - §3.4 Expansions are Modular
-  - §3.8 Expansion Isolation Layer
-  - §5.5 No Dead State Policy
+  - �3.4 Expansions are Modular
+  - �3.8 Expansion Isolation Layer
+  - �5.5 No Dead State Policy
 - Existing code after 0016:
   - Expansion registry interface
   - Move catalog builder
@@ -63,11 +63,11 @@ This closes the gap where the registry exists but modules are never registered/b
   - `setupExpansionState` was executed (assert via initialized sentinel value)
 
 ### Docs
-- `/docs/changelog.md` entry: “Game factory introduced; expansion modules are bootstrapped from match config.”
+- `/docs/changelog.md` entry: �Game factory introduced; expansion modules are bootstrapped from match config.�
 
 ## Constraints
-- No real expansion mechanics yet — modules can remain stub, but must execute setup.
-- Disabled expansion must leave **zero footprint** in state and moves (AGENTS §5.5).
+- No real expansion mechanics yet  modules can remain stub, but must execute setup.
+- Disabled expansion must leave **zero footprint** in state and moves (AGENTS �5.5).
 
 ## Invariants
 - Factory must be deterministic: enabled module ordering stable across runs.

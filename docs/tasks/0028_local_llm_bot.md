@@ -1,4 +1,4 @@
-# Task 0028 — Local LLM Bot (Legal-Option Picker) — node-llama-cpp + fallback
+# Task 0028  Local LLM Bot (Legal-Option Picker)  node-llama-cpp + fallback
 
 ## Goal
 Add an LLM-driven bot player that runs **locally** (RTX 2070 / 8GB VRAM) alongside the game, without compromising determinism or rules legality.
@@ -7,7 +7,7 @@ The bot must choose **only** from enumerated legal options.
 
 ## Inputs
 - AGENTS.md LLM Bot Contract (must follow)
-- Core move schema definitions (from Tasks 0003–0007)
+- Core move schema definitions (from Tasks 0003�0007)
 
 ## Outputs
 - In `@bc/bot-llm`:
@@ -68,7 +68,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for �convenience�)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -85,7 +85,7 @@ When the implementation is finished, you MUST do all of the following before dec
 - [ ] No temporary files added:
 - [ ] Rule references added in code (examples of references):
 - [ ] Changelog updated: (path + brief entry summary)
-- [ ] Design decision doc added/updated: (path or “n/a”)
-- [ ] Errata added/updated: (path or “n/a”)
+- [ ] Design decision doc added/updated: (path or �n/a�)
+- [ ] Errata added/updated: (path or �n/a�)
 - [ ] Expansion isolation verified (disabled expansions leave no state):
 - [ ] Bot contract checks (if touched): schema + illegal fallback tested

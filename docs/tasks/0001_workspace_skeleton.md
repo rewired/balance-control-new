@@ -1,4 +1,4 @@
-# Task 0001 — Workspace Skeleton & Tooling (pnpm + TS + React + boardgame.io)
+# Task 0001  Workspace Skeleton & Tooling (pnpm + TS + React + boardgame.io)
 
 ## Goal
 Create the monorepo workspace scaffold and baseline tooling so subsequent tasks can implement game logic safely and consistently.
@@ -67,7 +67,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for �convenience�)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -83,7 +83,7 @@ When the implementation is finished, you MUST do all of the following before dec
 - [x] Determinism verified (golden replay hash unchanged / added): n/a for skeleton (no game logic yet)
 - [x] No temporary files added: none (verified .gitignore; build artifacts ignored)
 - [x] Rule references added in code (examples of references): packages/rules/src/index.ts: // CORE-01-00
-- [x] Changelog updated: docs/changelog.md — skeleton entry; pinned pnpm and BOM fix
+- [x] Changelog updated: docs/changelog.md  skeleton entry; pinned pnpm and BOM fix
 - [x] Design decision doc added/updated: n/a
 - [x] Errata added/updated: n/a
 - [x] Expansion isolation verified (disabled expansions leave no state): n/a (no expansion code yet)

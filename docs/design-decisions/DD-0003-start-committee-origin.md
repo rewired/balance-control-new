@@ -1,4 +1,4 @@
-﻿# DD-0003-start-committee-origin
+# DD-0003-start-committee-origin
 
 Decision date: 2026-02-11
 Status: Accepted

@@ -1,4 +1,4 @@
-# Task 0003 â€” Core State Model (Zones + Objects) â€” CORE-01-00/02
+# Task 0003  Core State Model (Zones + Objects)  CORE-01-00/02
 
 ## Goal
 Implement the **canonical state model** and object representations required by CORE-01.
@@ -58,7 +58,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for �convenience�)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -82,7 +82,7 @@ server: 1/1 passed
 - [x] Determinism verified (golden replay hash unchanged / added): n/a (no turn progression yet; setup uses seeded shuffle)
 - [x] No temporary files added: none (verified .gitignore; build artifacts ignored)
 - [x] Rule references added in code (examples of references): packages/rules/src/setup.ts (CORE-01-02-10..16, CORE-01-03-01..02); tests quote CORE IDs
-- [x] Changelog updated: docs/changelog.md — added Task 0003 entry
+- [x] Changelog updated: docs/changelog.md  added Task 0003 entry
 - [x] Design decision doc added/updated: docs/design-decisions/DD-0003-start-committee-origin.md
 - [x] Errata added/updated: n/a
 - [x] Expansion isolation verified (disabled expansions leave no state): n/a (core-only)

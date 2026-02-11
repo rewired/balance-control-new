@@ -1,4 +1,4 @@
-﻿import type { Game,  } from "boardgame.io";
+import type { Game,  } from "boardgame.io";
 
 export interface CounterState {
   count: number;

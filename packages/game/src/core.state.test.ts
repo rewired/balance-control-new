@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { CoreGame } from './index.js';
 import type { CoreState, Tile } from '@bc/rules';
 
@@ -7,7 +7,7 @@ const setup = (numPlayers: number) => {
   return fn({ matchID: 'test', numPlayers });
 };
 
-describe('CoreGame setup — CORE-01-03/02', () => {
+describe('CoreGame setup  CORE-01-03/02', () => {
   it('assigns correct starting Influence for 2/3/4 players (CORE-01-03-04..06)', () => {
     const g2 = setup(2);
     expect(g2.players['0'].personal.influence).toHaveLength(4);
