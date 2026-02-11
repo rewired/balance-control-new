@@ -11,3 +11,4 @@ export * from './draw.js';
 
 
 export * from './majority.js';
+\nexport * from './hotspot.js';\nexport * from './production.js';\n

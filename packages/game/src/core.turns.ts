@@ -1,6 +1,6 @@
 ﻿import type { Game } from 'boardgame.io';
-import type { CoreState, AxialCoord } from '@bc/rules';
-import { drawUntilPlaceable, adjacent as hexAdjacent } from '@bc/rules';
+import type { CoreState, AxialCoord } from '@bc/rules';\nimport { isFullySurrounded, resolveHotspot, resolveRoundSettlement } from '@bc/rules';
+import { drawUntilPlaceable, adjacent as hexAdjacent } from '@bc/rules';\nimport { isFullySurrounded, resolveHotspot, resolveRoundSettlement } from '@bc/rules';
 
 export const Phases = {
   DrawAndPlaceTile: 'DrawAndPlaceTile',
@@ -44,6 +44,7 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
     next: Phases.DrawAndPlaceTile,
   },
 };
+
 
 
 
