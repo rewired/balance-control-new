@@ -1,0 +1,32 @@
+﻿{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@bc/shared": ["packages/shared/src/index.ts"],
+      "@bc/shared/*": ["packages/shared/src/*"],
+      "@bc/rules": ["packages/rules/src/index.ts"],
+      "@bc/rules/*": ["packages/rules/src/*"],
+      "@bc/game": ["packages/game/src/index.ts"],
+      "@bc/game/*": ["packages/game/src/*"]
+    }
+  },
+  "include": ["packages/**/*"],
+  "exclude": ["**/dist", "**/build", "node_modules"]
+}

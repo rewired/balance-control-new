@@ -46,3 +46,37 @@ This task establishes the phase pipeline and legal tile placement for hex adjace
 - [ ] Hex adjacency uses a standard coordinate system and is tested
 - [ ] No hidden randomness
 - [ ] Turn/phase flow mirrors CORE section numbering
+
+---
+
+## Completion Protocol (MANDATORY)
+
+When the implementation is finished, you MUST do all of the following before declaring the task complete:
+
+1. Run:
+   - pnpm lint
+   - pnpm test
+2. Update documentation:
+   - /docs/changelog.md (required)
+   - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+3. Ensure repo hygiene:
+   - No temporary files added
+   - No dead state introduced when expansions are disabled
+4. Fill the checklist below **in THIS FILE** with concrete results:
+   - Use checked boxes [x]
+   - Add short evidence notes (e.g., command output summary, file paths changed)
+   - Do not leave placeholders
+
+### Final Checklist (fill after completion)
+
+- [ ] pnpm lint passed (paste short summary):
+- [ ] pnpm test passed (paste short summary):
+- [ ] Determinism verified (golden replay hash unchanged / added):
+- [ ] No temporary files added:
+- [ ] Rule references added in code (examples of references):
+- [ ] Changelog updated: (path + brief entry summary)
+- [ ] Design decision doc added/updated: (path or “n/a”)
+- [ ] Errata added/updated: (path or “n/a”)
+- [ ] Expansion isolation verified (disabled expansions leave no state):
+- [ ] Bot contract checks (if touched): schema + illegal fallback tested
