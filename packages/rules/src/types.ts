@@ -76,10 +76,16 @@ export interface ResourceZonesState {
   noise: Resource[];
 }
 
+export interface TurnScratch { pending?: { tileId: string; legalCoords: AxialCoord[] } }
+
+export interface InfluenceOnBoard { tileId: string; owner: string; count: number }
+
 export interface CoreState {
-  matchSeed: string; // deterministic seed anchor
+  matchSeed: string;
   tiles: TileZonesState;
-  allTiles: Record<string, Tile>; // id -> tile
+  allTiles: Record<string, Tile>;
   players: Record<string, PlayerState>;
   resources: ResourceZonesState;
+  turn?: TurnScratch;
+  influencesOnBoard?: InfluenceOnBoard[];
 }

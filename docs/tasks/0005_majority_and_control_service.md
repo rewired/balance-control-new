@@ -1,4 +1,4 @@
-# Task 0005 — Majority & Control Service (Canonical computeMajority) — CORE-01-05
+# Task 0005 â€” Majority & Control Service (Canonical computeMajority) â€” CORE-01-05
 
 ## Goal
 Implement `computeMajority(tileCoord)` as the single canonical majority function and derive control from it.
@@ -53,7 +53,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -64,13 +64,21 @@ When the implementation is finished, you MUST do all of the following before dec
 
 ### Final Checklist (fill after completion)
 
-- [ ] pnpm lint passed (paste short summary):
-- [ ] pnpm test passed (paste short summary):
-- [ ] Determinism verified (golden replay hash unchanged / added):
-- [ ] No temporary files added:
-- [ ] Rule references added in code (examples of references):
-- [ ] Changelog updated: (path + brief entry summary)
-- [ ] Design decision doc added/updated: (path or “n/a”)
-- [ ] Errata added/updated: (path or “n/a”)
-- [ ] Expansion isolation verified (disabled expansions leave no state):
-- [ ] Bot contract checks (if touched): schema + illegal fallback tested
+- [x] pnpm lint passed (paste short summary): All packages lint: Done (no errors)
+- [x] pnpm test passed (paste short summary):
+`
+shared: 1/1 passed
+client-web: 1/1 passed
+rules: 4/4 files, 9 tests passed (majority + placement + draw + index)
+game: 2/2 files, 4 tests passed
+bot-llm: 1/1 passed
+server: 1/1 passed
+`
+- [x] Determinism verified (golden replay hash unchanged / added): n/a (pure functions; no RNG)
+- [x] No temporary files added: none (verified .gitignore; build artifacts ignored)
+- [x] Rule references added in code (examples of references): rules/majority.ts (CORE-01-05-01..06)
+- [x] Changelog updated: docs/changelog.md — Task 0005 entry
+- [x] Design decision doc added/updated: n/a
+- [x] Errata added/updated: n/a
+- [x] Expansion isolation verified (disabled expansions leave no state): core-only state unchanged
+- [x] Bot contract checks (if touched): n/a

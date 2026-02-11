@@ -17,8 +17,9 @@ describe('Hex adjacency and placement — CORE-01-04-05/08', () => {
 
   it('unplaceable drawn tile would be discarded (simulated via no-adjacency)', () => {
     const board: BoardPlacement[] = [{ tileId: 'StartCommittee', coord: { q:0,r:0 } }];
-    const legal = legalPlacementCoords(board, ((a: {q:number;r:number}, b: {q:number;r:number}) => false));
+    const legal = legalPlacementCoords(board, ((): any => false as any));
     expect(legal.length).toBe(0);
   });
 });
+
 

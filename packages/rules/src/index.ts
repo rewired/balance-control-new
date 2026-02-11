@@ -10,3 +10,4 @@ export * from './placement.js';
 export * from './draw.js';
 
 
+export * from './majority.js';
