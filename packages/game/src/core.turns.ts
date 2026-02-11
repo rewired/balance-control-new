@@ -1,5 +1,6 @@
-﻿import type { Game } from 'boardgame.io';
+import type { Game } from 'boardgame.io';
 import type { CoreState, AxialCoord, Tile } from '@bc/rules';
+import { buildMoveCatalog, corePoliticalMoves, createExpansionRegistry } from '@bc/rules';
 import { resolveHotspot, isFullySurrounded, drawUntilPlaceable, adjacent as hexAdjacent } from '@bc/rules';
 
 export const Phases = {
@@ -75,7 +76,14 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
   [Phases.ExactlyOnePoliticalAction]: {
     moves: {
       // CORE-01-04-09: Exactly one political action (placeholder noop)
-      chooseNoop: ({ events }) => {
+      doPoliticalAction: ({ G, events }, action: { type: string; payload: unknown }) => {
+        const flags = { exp01: !!G.exp?.exp01, exp02: !!G.exp?.exp02, exp03: !!G.exp?.exp03 };
+        const modules = createExpansionRegistry(flags);
+        const catalog = buildMoveCatalog(corePoliticalMoves(), modules);
+        const def = catalog.definitions[action?.type as string];
+        if (!def) return;
+        const validated = def.payloadSchema.parse(action?.payload ?? {});
+        def.execute(G, validated as unknown as never);
         events?.endTurn?.();
       },
     },

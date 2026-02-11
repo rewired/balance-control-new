@@ -50,3 +50,8 @@
 - @bc/rules: typed production modifier hook in ExpansionHooks and wired into resolveProductionForTile/resolveRoundSettlement with optional modules.
 - @bc/game: Round settlement now derives enabled expansions from state and passes modules to rules.
 - Tests: new production.hooks tests verifying +1 and negative clamp before floors/majority/distribution; core golden and unit tests remain green.
+## 2026-02-11 — Task 0016: Move extension injection (boardgame.io)
+- @bc/rules: introduced typed move catalog (buildMoveCatalog) and corePoliticalMoves with strict zod payload schemas (AGENTS §4.2). Deterministic type ordering for legal listing (AGENTS §4.1).
+- @bc/rules: expansion registry now supports extendMoves via a typed MoveExtensionBuilder (AGENTS §3.8). No expansion state contamination when disabled.
+- @bc/game: ExactlyOnePoliticalAction phase now routes a single `doPoliticalAction` move that validates payloads against the catalog and ends the turn after execution (CORE-01-04-09).
+- Tests: core-only vs exp01-enabled catalog presence; strict schema failure for illegal payloads.

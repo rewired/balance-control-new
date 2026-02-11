@@ -92,12 +92,13 @@ After completing the task, **fill in the PR Checklist** below by changing `[ ]` 
 
 ## PR Checklist (Fill after implementation)
 
-- [ ] `pnpm lint` passes
-- [ ] `pnpm test` passes
-- [ ] Determinism verified (no `Date.now`, no `Math.random`, no non-seeded sources)
-- [ ] No temporary files committed
-- [ ] Rule / contract references added where required
-- [ ] Expansion isolation preserved (no ghost zones/resources when disabled)
-- [ ] Changelog updated (`/docs/changelog.md`)
-- [ ] If architectural decision was needed: created `/docs/design-decisions/DD-XXXX-<topic>.md`
+- [x] `pnpm lint` passes
+- [x] `pnpm test` passes
+- [x] Determinism verified (no `Date.now`, no `Math.random`, no non-seeded sources)
+- [x] No temporary files committed
+- [x] Rule / contract references added where required
+- [x] Expansion isolation preserved (no ghost zones/resources when disabled)
+- [x] Changelog updated (`/docs/changelog.md`)
+- [x] If architectural decision was needed: created `/docs/design-decisions/DD-XXXX-<topic>.md`
+
 
