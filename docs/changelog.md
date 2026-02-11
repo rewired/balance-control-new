@@ -19,3 +19,6 @@
 - @bc/shared: introduced stableHash with deterministic JSON serialization (CORE-01-05, 5.3 Deterministic Hashing).
 - Tests: unit tests for hotspot triggering/award, production majority/tie-to-noise; golden replay test with fixed seed and action list asserting final state hash.
 - Lint: tightened types (no any), fixed previous encoding artifacts in tests.
+
+## 2026-02-11 Chore/Renumbering
+- Task Renumber Notice: Legacy numbering 0007+ shifted to 0027+ to introduce expansion plumbing layer.
