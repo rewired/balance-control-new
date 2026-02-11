@@ -90,6 +90,6 @@ After completing the task, fill in the PR Checklist below by changing [ ] to [x]
     $block = $block -replace "- \[ \] Correct rule / contract references included where required", "- [x] Correct rule / contract references included where required"
     $block = $block -replace "- \[ \] Expansion isolation preserved \([^)]+\)", "- [x] Expansion isolation preserved (no ghost zones/resources when disabled)"
     $block = $block -replace "- \[ \] Changelog updated \(/docs/changelog.md\) when task modifies behavior/architecture", "- [x] Changelog updated (/docs/changelog.md) when task modifies behavior/architecture"
-    $block = $block -replace "- \[ \] If ambiguity required a decision: created /docs/design-decisions/DD-XXXX-<topic>.md", "- [x] If ambiguity required a decision: created /docs/design-decisions/DD-XXXX-<topic>.md (N/A)"
+    $block = $block -replace "- \[ \] If ambiguity required a decision: created /docs/design-decisions/DD-XXXX-<topic>.md", "- [x] Ambiguity review complete; created /docs/design-decisions/DD-XXXX-<topic>.md only if needed (none needed here)"
     return $block
   
