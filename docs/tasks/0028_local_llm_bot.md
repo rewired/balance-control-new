@@ -1,4 +1,4 @@
-# Task 0008 — Local LLM Bot (Legal-Option Picker) — node-llama-cpp + fallback
+# Task 0028 — Local LLM Bot (Legal-Option Picker) — node-llama-cpp + fallback
 
 ## Goal
 Add an LLM-driven bot player that runs **locally** (RTX 2070 / 8GB VRAM) alongside the game, without compromising determinism or rules legality.

@@ -1,4 +1,4 @@
-# Task 0007 — Expansion-Ready Measures Framework (Zones per Expansion) — EXP-01 baseline
+# Task 0027 — Expansion-Ready Measures Framework (Zones per Expansion) — EXP-01 baseline
 
 ## Goal
 Introduce the shared Measure lifecycle framework in an expansion-safe way, using EXP-01 as the first implementation.
