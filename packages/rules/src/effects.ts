@@ -1,8 +1,9 @@
 import type { AxialCoord, CoreState, ResourceId } from './types.js';
 import { canPay, subResources, addResources as addRes, createCoreResourceRegistry, type ResourceAmounts } from './resources.js';
 import type { ExpansionModule } from './expansion-registry.js';
-import { resolveHotspot } from './hotspot.js';
+import { isFullySurrounded } from './hotspot.js';
 import { planProductionForTile } from './production.js';
+import { computeMajority } from './majority.js';
 
 export type EffectKind =
   | 'addResources'
@@ -10,7 +11,8 @@ export type EffectKind =
   | 'placeTile'
   | 'resolveHotspotAt'
   | 'applyProductionAt'
-  | 'addNoise';
+  | 'addNoise'
+  | 'moveInfluenceToTile';
 
 export interface BaseEffect {
   kind: EffectKind;
@@ -54,13 +56,21 @@ export interface AddNoiseEffect extends BaseEffect {
   amount: number;
 }
 
+export interface MoveInfluenceToTileEffect extends BaseEffect {
+  kind: 'moveInfluenceToTile';
+  playerID: string;
+  tileId: string;
+  count: number; // >=1
+}
+
 export type EffectDescriptor =
   | AddResourcesEffect
   | OfferTileEffect
   | PlaceTileEffect
   | ResolveHotspotAtEffect
   | ApplyProductionAtEffect
-  | AddNoiseEffect;
+  | AddNoiseEffect
+  | MoveInfluenceToTileEffect;
 
 function findTileAt(G: CoreState, coord?: AxialCoord) {
   if (!coord) return undefined;
@@ -149,8 +159,15 @@ export function createResolver(modules: ExpansionModule[] = []) {
       }
 
       case 'resolveHotspotAt': {
-        resolveHotspot(G, effect.coord);
-        return { ok: true };
+        const placement = G.tiles.board.find(p => p.coord.q===effect.coord.q && p.coord.r===effect.coord.r);
+        if (!placement) return { ok: true };
+        const tile = G.allTiles[placement.tileId];
+        if (!tile || tile.kind !== 'Hotspot') return { ok: true };
+        if (!isFullySurrounded(G, effect.coord)) return { ok: true };
+        const winner = computeMajority(G, effect.coord);
+        if (!winner) return { ok: true };
+        const move: MoveInfluenceToTileEffect = { kind: 'moveInfluenceToTile', playerID: winner, tileId: placement.tileId, count: 1, contextCoord: effect.coord };
+        return resolveEffect(G, move);
       }
 
       case 'applyProductionAt': {
@@ -158,12 +175,12 @@ export function createResolver(modules: ExpansionModule[] = []) {
         if (!plan) return { ok: true };
         for (const pid of plan.winners) {
           if (plan.share > 0) {
-            const add: EffectDescriptor = { kind: 'addResources', playerID: pid, resource: plan.resort, amount: plan.share, contextCoord: effect.coord } as AddResourcesEffect;
+            const add: AddResourcesEffect = { kind: 'addResources', playerID: pid, resource: plan.resort, amount: plan.share, contextCoord: effect.coord };
             const r = resolveEffect(G, add); if (!r.ok) return r;
           }
         }
         if (plan.remainder > 0) {
-          const addN: EffectDescriptor = { kind: 'addNoise', resource: plan.resort, amount: plan.remainder, contextCoord: effect.coord } as AddNoiseEffect;
+          const addN: AddNoiseEffect = { kind: 'addNoise', resource: plan.resort, amount: plan.remainder, contextCoord: effect.coord };
           const r2 = resolveEffect(G, addN); if (!r2.ok) return r2;
         }
         return { ok: true };
@@ -175,6 +192,19 @@ export function createResolver(modules: ExpansionModule[] = []) {
           const noise = G.resources.noise as Record<ResourceId, number>;
           noise[effect.resource] = (noise[effect.resource] ?? 0) + n;
         }
+        return { ok: true };
+      }
+
+      case 'moveInfluenceToTile': {
+        const n = Math.max(1, (effect.count as number) | 0);
+        const p = G.players[(effect as MoveInfluenceToTileEffect).playerID];
+        if (!p) return { ok: false, reason: 'no-player' };
+        if (p.personal.influence.length < n) return { ok: true }; // nothing to move
+        for (let i=0;i<n;i++) p.personal.influence.pop();
+        if (!G.influencesOnBoard) (G as CoreState & { influencesOnBoard: NonNullable<CoreState['influencesOnBoard']> }).influencesOnBoard = [] as NonNullable<CoreState['influencesOnBoard']>;
+        const list = G.influencesOnBoard as NonNullable<CoreState['influencesOnBoard']>;
+        const rec = list.find((r) => r.tileId === (effect as MoveInfluenceToTileEffect).tileId && r.owner === p.id);
+        if (rec) rec.count += n; else list.push({ tileId: (effect as MoveInfluenceToTileEffect).tileId, owner: p.id, count: n });
         return { ok: true };
       }
 

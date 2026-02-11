@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
-import { isFullySurrounded, resolveHotspot } from './hotspot.js';
+import { isFullySurrounded } from './hotspot.js';
+import { createResolver } from './effects.js';
 import type { CoreState, Tile } from './types.js';
 
 function base(): CoreState {
@@ -37,8 +38,7 @@ describe('Hotspot — CORE-01-06', () => {
   });
   it('awards 1 influence to majority player if available', () => {
     const G = base();
-    surround(G);
-    resolveHotspot(G, { q:0,r:0 });
+    surround(G); { const resolve = createResolver([]); resolve(G, { kind: 'resolveHotspotAt', coord: { q:0,r:0 }, contextCoord: { q:0,r:0 } }); }
     const onHotspot = (G.influencesOnBoard ?? []).find(i=>i.tileId==='H1'&&i.owner==='0');
     expect(onHotspot?.count ?? 0).toBe(2);
     expect(G.players['0'].personal.influence).toHaveLength(0);
