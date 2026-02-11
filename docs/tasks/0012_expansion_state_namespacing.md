@@ -90,5 +90,5 @@ After completing the task, **fill in the PR Checklist** below by changing `[ ]` 
 - [x] Rule / contract references added where required (AGENTS §3.4, §3.8, §5.5)
 - [x] Expansion isolation preserved (no ghost zones/resources when disabled)
 - [x] Changelog updated (`/docs/changelog.md`)
-- [x] If architectural decision was needed: created `/docs/design-decisions/DD-XXXX-<topic>.md` (n/a)
+- [x] Ambiguity review complete; created /docs/design-decisions/DD-XXXX-<topic>.md only if needed (none needed here)
 
