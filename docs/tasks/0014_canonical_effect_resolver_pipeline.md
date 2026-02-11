@@ -90,12 +90,13 @@ After completing the task, **fill in the PR Checklist** below by changing `[ ]` 
 
 ## PR Checklist (Fill after implementation)
 
-- [ ] `pnpm lint` passes
-- [ ] `pnpm test` passes
-- [ ] Determinism verified (no `Date.now`, no `Math.random`, no non-seeded sources)
-- [ ] No temporary files committed
-- [ ] Rule / contract references added where required
-- [ ] Expansion isolation preserved (no ghost zones/resources when disabled)
-- [ ] Changelog updated (`/docs/changelog.md`)
-- [ ] If architectural decision was needed: created `/docs/design-decisions/DD-XXXX-<topic>.md`
+- [x] `pnpm lint` passes — ran pnpm -r lint: all packages passed
+- [x] `pnpm test` passes — ran pnpm -r test: all workspace tests green
+- [x] Determinism verified — no Date.now/Math.random introduced; resolver deterministic; existing seeded paths unchanged
+- [x] No temporary files committed — verified via git status clean after changes
+- [x] Rule / contract references added — comments cite AGENTS §3.5 and §3.7 in resolver
+- [x] Expansion isolation preserved — hooks typed; no expansion state created in CORE-only
+- [x] Changelog updated — added 0014 entry
+- [x] If architectural decision was needed: N/A — no new architecture beyond typed hooks
+
 

@@ -1,11 +1,16 @@
-﻿import type { CoreState, ExpansionId } from './types.js';
-import type { ResourceRegistry } from './resources.js';
+import type { CoreState, ExpansionId } from './types.js';
+import type { ResourceRegistry, ResourceAmounts } from './resources.js';
+import type { EffectDescriptor } from './effects.js';
 import type { ExpansionFlags } from './schemas.js';
 
+export interface ProhibitionsArgs { G: CoreState; effect: EffectDescriptor }
+export interface CostIncreasesArgs { G: CoreState; effect: EffectDescriptor; cost?: Partial<ResourceAmounts> }
+export interface OutputModifiersArgs { G: CoreState; effect: EffectDescriptor; amount: number }
+
 export interface ExpansionHooks {
-  prohibitions?: unknown;
-  costIncreases?: unknown;
-  outputModifiers?: unknown;
+  prohibitions?: (args: ProhibitionsArgs) => boolean;
+  costIncreases?: (args: CostIncreasesArgs) => Partial<ResourceAmounts> | void;
+  outputModifiers?: (args: OutputModifiersArgs) => number | void;
   productionModifiers?: unknown;
 }
 
