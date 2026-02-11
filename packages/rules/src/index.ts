@@ -4,3 +4,9 @@ export const RULES_MODULE = 'rules-skeleton';
 export * from './types.js';
 export * from './schemas.js';
 export * from './setup.js';
+
+export * from './topology/hex.js';
+export * from './placement.js';
+export * from './draw.js';
+
+

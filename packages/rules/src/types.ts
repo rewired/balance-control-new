@@ -1,4 +1,4 @@
-// Zones are first-class (CORE-01-00-01..06)
+﻿// Zones are first-class (CORE-01-00-01..06)
 export type Zone =
   | 'Board'
   | 'DrawPile'

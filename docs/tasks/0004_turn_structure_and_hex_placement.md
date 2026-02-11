@@ -1,4 +1,4 @@
-# Task 0004 — Turn Structure: DrawAndPlaceTile + Political Action Shell — CORE-01-04
+# Task 0004 â€” Turn Structure: DrawAndPlaceTile + Political Action Shell â€” CORE-01-04
 
 ## Goal
 Implement the CORE turn flow in boardgame.io:
@@ -27,7 +27,7 @@ This task establishes the phase pipeline and legal tile placement for hex adjace
     - cannot be placed on top of another tile (CORE-01-04-08)
 
 ## Constraints
-- Must be deterministic; “shuffle” must use seeded RNG.
+- Must be deterministic; â€œshuffleâ€ must use seeded RNG.
 - The topology adapter must be isolated so it can be swapped in future.
 - Do not implement Hotspot enclosure resolution yet (Task 0006 will cover triggers + settlement).
 
@@ -59,7 +59,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -70,13 +70,21 @@ When the implementation is finished, you MUST do all of the following before dec
 
 ### Final Checklist (fill after completion)
 
-- [ ] pnpm lint passed (paste short summary):
-- [ ] pnpm test passed (paste short summary):
-- [ ] Determinism verified (golden replay hash unchanged / added):
-- [ ] No temporary files added:
-- [ ] Rule references added in code (examples of references):
-- [ ] Changelog updated: (path + brief entry summary)
-- [ ] Design decision doc added/updated: (path or “n/a”)
-- [ ] Errata added/updated: (path or “n/a”)
-- [ ] Expansion isolation verified (disabled expansions leave no state):
-- [ ] Bot contract checks (if touched): schema + illegal fallback tested
+- [x] pnpm lint passed (paste short summary): All packages lint: Done (no errors)
+- [x] pnpm test passed (paste short summary):
+`
+shared: 1/1 passed
+client-web: 1/1 passed
+rules: 3/3 files, 5 tests passed (adjacency, legal/illegal, discard-redraw)
+game: 2/2 files, 4 tests passed
+bot-llm: 1/1 passed
+server: 1/1 passed
+`
+- [x] Determinism verified (golden replay hash unchanged / added): n/a (no full turns hashed yet; draw is deterministic from seeded pile)
+- [x] No temporary files added: none (verified .gitignore; build artifacts ignored)
+- [x] Rule references added in code (examples of references): rules/topology/hex.ts (CORE-01-00-T01..T05); rules/placement.ts (CORE-01-04-05/08); rules/draw.ts (CORE-01-04-06..07)
+- [x] Changelog updated: docs/changelog.md — Task 0004 entry
+- [x] Design decision doc added/updated: n/a
+- [x] Errata added/updated: n/a
+- [x] Expansion isolation verified (disabled expansions leave no state): core-only state unchanged
+- [x] Bot contract checks (if touched): n/a
