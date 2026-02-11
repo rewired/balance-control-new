@@ -18,7 +18,7 @@ function stateWithResort(q=1,r=0,w=1): CoreState {
   };
 }
 
-describe('Production hooks — Task 0015', () => {
+describe('Production hooks â€” Task 0015', () => {
   it('applies +1 modifier at step 3 before floors/majority', () => {
     const G = stateWithResort(1,0,1);
     const mod: ExpansionModule = {

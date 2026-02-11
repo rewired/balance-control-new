@@ -86,13 +86,13 @@ After completing the task, **fill in the PR Checklist** below by changing `[ ]` 
 
 ## PR Checklist (Fill after implementation)
 
-- [x] `pnpm lint` passes — ran pnpm -r lint: all packages passed
-- [x] `pnpm test` passes — ran pnpm -r test: all workspace tests green
-- [x] Determinism verified — no Date.now/Math.random introduced; production order preserved (AGENTS §3.6)
-- [x] No temporary files committed — verified via git status clean after changes
-- [x] Rule / contract references added — comments cite AGENTS §3.6 at integration point
-- [x] Expansion isolation preserved — hooks optional; CORE-only unchanged
-- [x] Changelog updated — added 0015 entry
-- [x] If architectural decision was needed: N/A — no new architecture beyond typed hook
+- [x] `pnpm lint` passes REPLACEMENT CHARACTER (U+FFFD) ran pnpm -r lint: all packages passed
+- [x] `pnpm test` passes REPLACEMENT CHARACTER (U+FFFD) ran pnpm -r test: all workspace tests green
+- [x] Determinism verified REPLACEMENT CHARACTER (U+FFFD) no Date.now/Math.random introduced; production order preserved (AGENTS REPLACEMENT CHARACTER (U+FFFD)3.6)
+- [x] No temporary files committed REPLACEMENT CHARACTER (U+FFFD) verified via git status clean after changes
+- [x] Rule / contract references added REPLACEMENT CHARACTER (U+FFFD) comments cite AGENTS REPLACEMENT CHARACTER (U+FFFD)3.6 at integration point
+- [x] Expansion isolation preserved REPLACEMENT CHARACTER (U+FFFD) hooks optional; CORE-only unchanged
+- [x] Changelog updated REPLACEMENT CHARACTER (U+FFFD) added 0015 entry
+- [x] If architectural decision was needed: N/A REPLACEMENT CHARACTER (U+FFFD) no new architecture beyond typed hook
 
 

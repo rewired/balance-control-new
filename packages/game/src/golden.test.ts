@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { buildInitialCoreState, drawUntilPlaceable, adjacent as hexAdjacent, isFullySurrounded, resolveHotspot, resolveRoundSettlement } from '@bc/rules';
 import type { CoreState, Tile, AxialCoord } from '@bc/rules';
 import { stableHash } from '@bc/shared';

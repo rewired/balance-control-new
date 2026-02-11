@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { createCoreResourceRegistry, makeEmptyResourceBank, addResources, canPay, subResources } from './resources.js';
 

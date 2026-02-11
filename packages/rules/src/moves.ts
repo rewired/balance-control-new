@@ -2,12 +2,12 @@ import { z, ZodFirstPartyTypeKind, type ZodTypeAny } from 'zod';
 import type { CoreState } from './types.js';
 import type { ExpansionModule } from './expansion-registry.js';
 
-// MoveDefinition is rules-only (no boardgame.io types here per AGENTS ง1.2)
+// MoveDefinition is rules-only (no boardgame.io types here per AGENTS ยง1.2)
 export interface MoveDefinition<P> {
   type: string; // canonical move id (stable)
-  payloadSchema: ZodTypeAny; // strict schema per AGENTS ง4.2
+  payloadSchema: ZodTypeAny; // strict schema per AGENTS ยง4.2
   execute: (G: CoreState, payload: P) => void; // pure state mutation
-  enumerate?: (G: CoreState) => P[]; // optional deterministic enumerator (AGENTS ง4.1)
+  enumerate?: (G: CoreState) => P[]; // optional deterministic enumerator (AGENTS ยง4.1)
 }
 
 export interface MoveCatalog {
@@ -31,7 +31,7 @@ export function buildMoveCatalog(coreMoves: MoveDefinition<unknown>[], modules: 
     // zod objects should be strict; other schema types are fine
     if ('_def' in s && (s as unknown as { _def?: { typeName?: unknown; unknownKeys?: unknown } })._def?.typeName === ZodFirstPartyTypeKind.ZodObject) {
       const isStrict = (s as unknown as { _def?: { typeName?: unknown; unknownKeys?: unknown } })._def?.unknownKeys === 'strict';
-      if (!isStrict) throw new Error(`Move schema for ${def.type} must be strict (AGENTS ง4.2)`);
+      if (!isStrict) throw new Error(`Move schema for ${def.type} must be strict (AGENTS ยง4.2)`);
     }
     defs[def.type] = def;
     schemas[def.type] = s;
@@ -40,7 +40,7 @@ export function buildMoveCatalog(coreMoves: MoveDefinition<unknown>[], modules: 
   // Seed with core moves
   for (const m of coreMoves) add(m as MoveDefinition<unknown>);
 
-  // Let enabled expansion modules extend moves (AGENTS ง3.8)
+  // Let enabled expansion modules extend moves (AGENTS ยง3.8)
   for (const mod of modules) {
     mod.extendMoves?.({ add });
   }

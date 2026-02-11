@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 export interface CoreMoves { placeTile: (coord: { q: number; r: number }) => void; chooseNoop?: () => void }
 export interface CoreProps { G: unknown; moves: CoreMoves }

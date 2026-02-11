@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createExpansionRegistry, registerExpansion, __resetRegisteredExpansionsForTest } from './expansion-registry.js';
 import type { ExpansionModule } from './expansion-registry.js';
 

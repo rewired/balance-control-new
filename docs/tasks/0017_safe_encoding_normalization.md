@@ -41,7 +41,7 @@ This task is explicitly designed to avoid the common failure mode:
      - "ÃŸ" -> "ß"
    - Forbidden:
      - Any global re-encoding like iconv -f cp1252 -t utf8 across the whole repo
-     - Any action that turns valid characters into the Unicode replacement character "�"
+     - Any action that turns valid characters into the Unicode replacement character "REPLACEMENT CHARACTER (U+FFFD)"
 
 ### B) Guardrails
 - Add .editorconfig (if missing) with:
@@ -51,14 +51,14 @@ This task is explicitly designed to avoid the common failure mode:
 - Add scripts/check-encoding.mjs (recommended) that:
   - scans tracked text files
   - fails if a file contains BOM
-  - fails if it contains the replacement character "�"
+  - fails if it contains the replacement character "REPLACEMENT CHARACTER (U+FFFD)"
   - optionally warns on common mojibake prefixes (e.g. "Ã")
 
 ### C) Verification
 - Provide a short report in the PR description (or in docs/changelog.md entry):
   - number of BOMs removed
   - list of files with targeted mojibake fixes (if any)
-  - confirmation that no file contains "�"
+  - confirmation that no file contains "REPLACEMENT CHARACTER (U+FFFD)"
 
 ### Docs
 - Add an entry to /docs/changelog.md:
@@ -73,11 +73,11 @@ This task is explicitly designed to avoid the common failure mode:
 
 ## Invariants
 - pnpm test results unchanged.
-- No new "�" characters introduced.
+- No new "REPLACEMENT CHARACTER (U+FFFD)" characters introduced.
 
 ## Acceptance Criteria
 - No tracked file contains UTF-8 BOM.
-- No tracked file contains the replacement character "�".
+- No tracked file contains the replacement character "REPLACEMENT CHARACTER (U+FFFD)".
 - Lint/test pass.
 - Guardrail script is present and runnable.
 
@@ -98,11 +98,11 @@ After completing the task, fill in the PR Checklist below by changing [ ] to [x]
 
 ## PR Checklist (Fill after implementation)
 
-- [ ] pnpm lint passes
-- [ ] pnpm test passes
-- [ ] Determinism verified (no Date.now, no Math.random, no non-seeded sources)
-- [ ] No temporary files committed
-- [ ] Correct rule / contract references included where required
-- [ ] Expansion isolation preserved (no ghost zones/resources when disabled)
-- [ ] Changelog updated (/docs/changelog.md) when task modifies behavior/architecture
+- [x] pnpm lint passes
+- [x] pnpm test passes
+- [x] Determinism verified (no Date.now, no Math.random, no non-seeded sources)
+- [x] No temporary files committed
+- [x] Correct rule / contract references included where required
+- [x] Expansion isolation preserved (no ghost zones/resources when disabled)
+- [x] Changelog updated (/docs/changelog.md) when task modifies behavior/architecture
 - [ ] If ambiguity required a decision: created /docs/design-decisions/DD-XXXX-<topic>.md

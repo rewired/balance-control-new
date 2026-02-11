@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { CoreGame } from './index.js';
 import type { CoreState, Tile } from '@bc/rules';
 

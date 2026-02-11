@@ -20,7 +20,7 @@ function makeStubExp01(): ExpansionModule {
   };
 }
 
-describe('Move catalog — Task 0016', () => {
+describe('Move catalog â€” Task 0016', () => {
   beforeEach(() => {
     __resetRegisteredExpansionsForTest();
   });
