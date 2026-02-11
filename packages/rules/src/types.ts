@@ -71,7 +71,7 @@ export interface ResourceZonesState {
   noise: Record<ResourceId, number>;
 }
 
-export interface TurnScratch { pending?: { tileId: string; legalCoords: AxialCoord[] } }
+export interface TurnScratch { pending?: { tileId: string; legalCoords: AxialCoord[] }; allowExtraPoliticalAction?: boolean; bannedMoveType?: string }
 
 export interface InfluenceOnBoard { tileId: string; owner: string; count: number }
 
@@ -84,7 +84,17 @@ export interface ExpansionsState {
 
 export type ExpansionId = 'exp01' | 'exp02' | 'exp03';
 
-export interface Exp01State {}
+export interface Exp01MeasuresState {
+  drawPile: string[];
+  open: string[];
+  recycle: string[];
+  finalDiscard: string[];
+  hands: Record<string, string[]>; // by playerID
+  usedThisRound: Record<string, boolean>; // per player
+  playCounts: Record<string, number>; // per measure id
+}
+
+export interface Exp01State { sentinel?: boolean; measures?: Exp01MeasuresState }
 export interface Exp02State {}
 export interface Exp03State {}
 

@@ -80,14 +80,14 @@ export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
   [Phases.ExactlyOnePoliticalAction]: {
     moves: {
       // CORE-01-04-09: Exactly one political action (placeholder noop)
-      doPoliticalAction: ({ G, events }, action: { type: string; payload: unknown }) => {
+      doPoliticalAction: ({ G, ctx, events }, action: { type: string; payload: unknown }) => {
         const modules = createExpansionRegistry(G.cfg.expansions);
         const catalog = buildMoveCatalog(corePoliticalMoves(), modules);
         const def = catalog.definitions[action?.type as string];
         if (!def) return;
         const validated = def.payloadSchema.parse(action?.payload ?? {});
-        def.execute(G, validated as unknown as never);
-        events?.endTurn?.();
+        def.execute(G, String((ctx as any)?.currentPlayer ?? (ctx as any)?.playerID ?? '0'), validated as unknown as never);
+        const t = (G as any).turn ?? ((G as any).turn = {}); if (t.bannedMoveType && def.type === t.bannedMoveType) { return; } if (t.allowExtraPoliticalAction) { t.allowExtraPoliticalAction = false; } else { t.bannedMoveType = undefined; events?.endTurn?.(); }
       },
     },
     next: Phases.DrawAndPlaceTile,

@@ -6,8 +6,8 @@ import type { ExpansionModule } from './expansion-registry.js';
 export interface MoveDefinition<P> {
   type: string; // canonical move id (stable)
   payloadSchema: ZodTypeAny; // strict schema per AGENTS §4.2
-  execute: (G: CoreState, payload: P) => void; // pure state mutation
-  enumerate?: (G: CoreState) => P[]; // optional deterministic enumerator (AGENTS §4.1)
+  execute: (G: CoreState, playerID: string, payload: P) => void; // pure state mutation
+  enumerate?: (G: CoreState, playerID: string) => P[]; // optional deterministic enumerator (AGENTS §4.1)
 }
 
 export interface MoveCatalog {

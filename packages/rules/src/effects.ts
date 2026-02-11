@@ -1,4 +1,5 @@
-import type { AxialCoord, CoreState, ResourceId, Zone } from './types.js';
+import { shuffleSeeded } from '@bc/shared';
+import type { AxialCoord, CoreState, ResourceId, Zone, ExpansionId } from './types.js';
 import { canPay, subResources, addResources as addRes, createCoreResourceRegistry, type ResourceAmounts } from './resources.js';
 import type { ExpansionModule } from './expansion-registry.js';
 import { isFullySurrounded } from './hotspot.js';
@@ -13,7 +14,11 @@ export type EffectKind =
   | 'applyProductionAt'
   | 'addNoise'
   | 'moveInfluenceToTile'
-  | 'moveObject';
+  | 'moveObject'
+  | 'initMeasures'
+  | 'takeMeasure'
+  | 'playMeasure'
+  | 'resetMeasuresRound';
 
 export interface BaseEffect {
   kind: EffectKind;
@@ -72,6 +77,29 @@ export interface MoveObjectEffect extends BaseEffect { // AGENTS §3.1 Zones
   count: number;
 }
 
+export interface InitMeasuresEffect extends BaseEffect {
+  kind: 'initMeasures';
+  expansion: ExpansionId;
+  deck: string[];
+  openCount: number;
+}
+export interface TakeMeasureEffect extends BaseEffect {
+  kind: 'takeMeasure';
+  expansion: ExpansionId;
+  playerID: string;
+  measureId: string; // must be from open
+}
+export interface PlayMeasureEffect extends BaseEffect {
+  kind: 'playMeasure';
+  expansion: ExpansionId;
+  playerID: string;
+  measureId: string; // must be in hand
+}
+export interface ResetMeasuresRoundEffect extends BaseEffect {
+  kind: 'resetMeasuresRound';
+  expansion: ExpansionId;
+}
+
 export type EffectDescriptor =
   | AddResourcesEffect
   | OfferTileEffect
@@ -80,7 +108,11 @@ export type EffectDescriptor =
   | ApplyProductionAtEffect
   | AddNoiseEffect
   | MoveInfluenceToTileEffect
-  | MoveObjectEffect;
+  | MoveObjectEffect
+  | InitMeasuresEffect
+  | TakeMeasureEffect
+  | PlayMeasureEffect
+  | ResetMeasuresRoundEffect;
 
 function findTileAt(G: CoreState, coord?: AxialCoord) {
   if (!coord) return undefined;
@@ -95,6 +127,11 @@ function isStartCommitteeContext(G: CoreState, coord?: AxialCoord): boolean {
 }
 
 export interface ResolveResult { ok: boolean; reason?: string }
+
+function getExp01Measures(G: CoreState) {
+  const exp = (G.exp as any) ?? undefined;
+  return exp?.exp01?.measures as import('./types.js').Exp01MeasuresState | undefined;
+}
 
 export function createResolver(modules: ExpansionModule[] = []) {
   const registry = createCoreResourceRegistry();
@@ -218,7 +255,7 @@ export function createResolver(modules: ExpansionModule[] = []) {
         return { ok: true };
       }
 
-      case 'moveObject': { // AGENTS §3.1 Zones — generic wrapper
+            case 'moveObject': { // AGENTS §3.1 Zones — generic wrapper
         const mo = effect as MoveObjectEffect;
         if (mo.object.kind === 'Influence' && mo.from.zone === 'PersonalSupply' && mo.to.zone === 'Board' && mo.to.tileId) {
           const placement = G.tiles.board.find(p => p.tileId === mo.to.tileId);
@@ -227,6 +264,63 @@ export function createResolver(modules: ExpansionModule[] = []) {
           return resolveEffect(G, move);
         }
         return { ok: false, reason: 'unsupported-move' };
+      }
+
+      case 'initMeasures': {
+        const { expansion, deck, openCount } = effect as InitMeasuresEffect;
+        if (expansion !== 'exp01') return { ok: true };
+        if (!G.exp) (G as any).exp = {};
+        if (!(G.exp as any).exp01) (G.exp as any).exp01 = {};
+        const state: import('./types.js').Exp01MeasuresState = {
+          drawPile: shuffleSeeded(deck, G.matchSeed + '|exp01:measures'),
+          open: [],
+          recycle: [],
+          finalDiscard: [],
+          hands: Object.fromEntries(Object.keys(G.players).map(pid => [pid, [] as string[]])),
+          usedThisRound: Object.fromEntries(Object.keys(G.players).map(pid => [pid, false])),
+          playCounts: {},
+        };
+        for (let i=0; i<openCount && state.drawPile.length>0; i++) state.open.push(state.drawPile.shift()!);
+        (G.exp as any).exp01.measures = state;
+        return { ok: true };
+      }
+
+      case 'takeMeasure': {
+        const { expansion, playerID, measureId } = effect as TakeMeasureEffect;
+        if (expansion !== 'exp01') return { ok: true };
+        const m = getExp01Measures(G); if (!m) return { ok: true };
+        const hand = m.hands[playerID]; if (!hand) return { ok: false, reason: 'no-player' };
+        if (hand.length >= 2) return { ok: false, reason: 'hand-full' };
+        const idx = m.open.indexOf(measureId); if (idx < 0) return { ok: false, reason: 'not-open' };
+        m.open.splice(idx,1);
+        hand.push(measureId);
+        if (m.drawPile.length > 0) m.open.push(m.drawPile.shift()!);
+        return { ok: true };
+      }
+
+      case 'playMeasure': {
+        const { expansion, playerID, measureId } = effect as PlayMeasureEffect;
+        if (expansion !== 'exp01') return { ok: true };
+        const m = getExp01Measures(G); if (!m) return { ok: true };
+        if (m.usedThisRound[playerID]) return { ok: false, reason: 'limit-per-round' };
+        const hand = m.hands[playerID] ?? [];
+        const idx = hand.indexOf(measureId); if (idx < 0) return { ok: false, reason: 'not-in-hand' };
+        hand.splice(idx,1);
+        const c = (m.playCounts[measureId] ?? 0) + 1; m.playCounts[measureId] = c;
+        if (c >= 2) m.finalDiscard.push(measureId); else m.recycle.push(measureId);
+        m.usedThisRound[playerID] = true;
+        if (!G.turn) (G as any).turn = {};
+        (G.turn as any).allowExtraPoliticalAction = true;
+        (G.turn as any).bannedMoveType = 'exp01_playMeasure';
+        return { ok: true };
+      }
+
+      case 'resetMeasuresRound': {
+        const { expansion } = effect as ResetMeasuresRoundEffect;
+        if (expansion !== 'exp01') return { ok: true };
+        const m = getExp01Measures(G); if (!m) return { ok: true };
+        for (const pid of Object.keys(m.usedThisRound)) m.usedThisRound[pid] = false;
+        return { ok: true };
       }
 
       default:

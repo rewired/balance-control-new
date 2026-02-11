@@ -29,6 +29,10 @@ export function createBCGame(defaultConfig?: unknown): Game<CoreState> {
           for (const p of G.tiles.board) {
             resolve(G, { kind: 'applyProductionAt', coord: p.coord, contextCoord: p.coord });
           }
+          // EXP measures: reset per-round flags after settlement (EXP-01-07-07)
+          for (const m of mods) {
+            if (m.id === 'exp01') resolve(G, { kind: 'resetMeasuresRound', expansion: 'exp01' });
+          }
         }
       },
     },

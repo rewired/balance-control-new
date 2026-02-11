@@ -16,7 +16,7 @@ function makeTestModule(): ExpansionModule {
       const def: MoveDefinition<any> = {
         type: 'testAddDom',
         payloadSchema: TestPayload,
-        execute: (G: CoreState, p) => {
+        execute: (G: CoreState, _playerID: string, p) => {
           const mods = createExpansionRegistry({ exp01: true, exp02: false, exp03: false });
           const resolve = createResolver(mods);
           resolve(G, { kind: 'addResources', playerID: p.playerID, resource: 'DOM', amount: p.amount, contextCoord: p.contextCoord });
