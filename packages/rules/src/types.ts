@@ -1,4 +1,4 @@
-﻿// Zones are first-class (CORE-01-00-01..06)
+// Zones are first-class (CORE-01-00-01..06)
 export type Zone =
   | 'Board'
   | 'DrawPile'
@@ -80,6 +80,13 @@ export interface TurnScratch { pending?: { tileId: string; legalCoords: AxialCoo
 
 export interface InfluenceOnBoard { tileId: string; owner: string; count: number }
 
+export interface ExpansionsState {
+  // Placeholders for modular expansions; present only when enabled (AGENTS §3.4, §3.8, §5.5)
+  exp01?: Record<string, never>;
+  exp02?: Record<string, never>;
+  exp03?: Record<string, never>;
+}
+
 export interface CoreState {
   matchSeed: string;
   tiles: TileZonesState;
@@ -88,4 +95,5 @@ export interface CoreState {
   resources: ResourceZonesState;
   turn?: TurnScratch;
   influencesOnBoard?: InfluenceOnBoard[];
+  exp?: ExpansionsState;
 }

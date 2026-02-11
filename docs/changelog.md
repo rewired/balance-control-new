@@ -21,4 +21,8 @@
 - Lint: tightened types (no any), fixed previous encoding artifacts in tests.
 
 ## 2026-02-11 Chore/Renumbering
-- Task Renumber Notice: Legacy numbering 0007+ shifted to 0027+ to introduce expansion plumbing layer.
+- Task Renumber Notice: Legacy numbering 0007+ shifted to 0027+ to introduce expansion plumbing layer.## 2026-02-11 — Task 0010: Expansion flags & match config contract
+- @bc/rules: added ExpansionId type, ExpansionFlagsSchema (strict), and MatchConfigSchema; defaults to CORE-only when missing; rejects unknown keys.
+- @bc/rules: extended CoreState with optional `exp` slice that appears only when an expansion is enabled (no ghost state).
+- @bc/game: CoreGame.setup now parses `setupData` via MatchConfigSchema and passes expansion flags into state builder.
+- Tests: schema validation, CORE-only vs exp01-enabled state, and game-setup wiring.

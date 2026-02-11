@@ -1,5 +1,6 @@
 ﻿import type { Game } from 'boardgame.io';
 import { buildInitialCoreState } from '@bc/rules';
+import { MatchConfigSchema } from '@bc/rules';
 import type { CoreState } from '@bc/rules';
 import { CorePhases } from './core.turns.js';
 import { resolveRoundSettlement } from '@bc/rules';
@@ -10,7 +11,8 @@ export const CoreGame: Game<CoreState> = {
   setup: (ctx): CoreState => {
     const seed = String(ctx.matchID ?? 'match');
     const num = Number(ctx.numPlayers ?? 2);
-    return buildInitialCoreState(num, seed);
+    const cfg = MatchConfigSchema.parse((ctx as unknown as { setupData?: unknown }).setupData ?? { expansions: {} });
+    return buildInitialCoreState(num, seed, { expansions: cfg.expansions });
   },
   phases: CorePhases,
   turn: {
