@@ -145,20 +145,20 @@ export function createResolver(modules: ExpansionModule[] = []) {
         return { ok: true };
       }
 
-      case 'offerTile': {
+      case 'offerTile': { // CORE-01-04-06..08 draw/offer pipeline
         G.tiles.drawPile = effect.drawPile.slice();
         G.tiles.discardFaceUp = effect.discardFaceUp.slice();
         G.turn = { pending: effect.pending ? { tileId: effect.pending.tileId, legalCoords: effect.pending.legalCoords } : undefined } as CoreState['turn'];
         return { ok: true };
       }
 
-      case 'placeTile': {
+      case 'placeTile': { // CORE-01-04-08 placement apply
         G.tiles.board.push({ tileId: effect.tileId, coord: effect.coord });
         G.turn = { pending: undefined };
         return { ok: true };
       }
 
-      case 'resolveHotspotAt': {
+      case 'resolveHotspotAt': { // CORE-01-06-02..03 hotspot resolution
         const placement = G.tiles.board.find(p => p.coord.q===effect.coord.q && p.coord.r===effect.coord.r);
         if (!placement) return { ok: true };
         const tile = G.allTiles[placement.tileId];
@@ -170,7 +170,7 @@ export function createResolver(modules: ExpansionModule[] = []) {
         return resolveEffect(G, move);
       }
 
-      case 'applyProductionAt': {
+      case 'applyProductionAt': { // CORE-01-06-16 production order (ties to Noise per CORE-01-06-15)
         const plan = planProductionForTile(G, effect.coord, modules);
         if (!plan) return { ok: true };
         for (const pid of plan.winners) {
@@ -186,7 +186,7 @@ export function createResolver(modules: ExpansionModule[] = []) {
         return { ok: true };
       }
 
-      case 'addNoise': {
+      case 'addNoise': { // CORE-01-06-15 remainder to Noise
         const n = Math.max(0, (effect.amount as number) | 0);
         if (n > 0) {
           const noise = G.resources.noise as Record<ResourceId, number>;
