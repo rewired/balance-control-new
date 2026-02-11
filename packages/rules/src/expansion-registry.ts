@@ -45,3 +45,9 @@ export function createExpansionRegistry(flags: ExpansionFlags | undefined): Expa
   return filtered;
 }
 
+export function ensureExpansionSlice<T extends object>(G: CoreState, id: ExpansionId, initial: T): T {
+  if (!G.exp) (G as CoreState & { exp: NonNullable<CoreState['exp']> }).exp = {} as NonNullable<CoreState['exp']>;
+  const exp = G.exp as Record<string, unknown>;
+  if (!exp[id]) exp[id] = initial as unknown as NonNullable<CoreState['exp']>[keyof NonNullable<CoreState['exp']>];
+  return exp[id] as T;
+}

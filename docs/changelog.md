@@ -72,3 +72,8 @@
 - @bc/game: added createBCGame() that builds core state from match config, loads enabled expansion modules (stubs), and runs setupExpansionState for each.
 - @bc/game: CoreGame now exported via the factory with CORE-only defaults.
 - Tests: CORE-only has no modules/exp slice and only core moves; enabling exp01 registers the module and executes its setup (sentinel asserted).
+## 2026-02-11 — Task 0019: Expansion setup ownership
+- @bc/rules: removed pre-creation of expansion slices from buildInitialCoreState; modules now own creation (AGENTS 3.8, 5.5).
+- @bc/rules: added ensureExpansionSlice(G, expId, initial) helper for modules.
+- @bc/game: stub expansion modules now create their slice in setupExpansionState using ensureExpansionSlice and set a sentinel.
+- Tests: updated rules tests to reflect module-owned slices; game factory tests assert setup hook only when enabled.
