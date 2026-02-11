@@ -14,7 +14,7 @@
                          "@bc/shared":  "workspace:*",
                          "react":  "^18.2.0",
                          "react-dom":  "^18.2.0",
-                         "boardgame.io":  "^1.4.4"
+                         "boardgame.io":  "^0.50.2"
                      },
     "devDependencies":  {
                             "@types/react":  "^18.2.61",

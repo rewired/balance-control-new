@@ -1,4 +1,4 @@
-# Task 0003 — Core State Model (Zones + Objects) — CORE-01-00/02
+# Task 0003 â€” Core State Model (Zones + Objects) â€” CORE-01-00/02
 
 ## Goal
 Implement the **canonical state model** and object representations required by CORE-01.
@@ -58,7 +58,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -69,13 +69,21 @@ When the implementation is finished, you MUST do all of the following before dec
 
 ### Final Checklist (fill after completion)
 
-- [ ] pnpm lint passed (paste short summary):
-- [ ] pnpm test passed (paste short summary):
-- [ ] Determinism verified (golden replay hash unchanged / added):
-- [ ] No temporary files added:
-- [ ] Rule references added in code (examples of references):
-- [ ] Changelog updated: (path + brief entry summary)
-- [ ] Design decision doc added/updated: (path or “n/a”)
-- [ ] Errata added/updated: (path or “n/a”)
-- [ ] Expansion isolation verified (disabled expansions leave no state):
-- [ ] Bot contract checks (if touched): schema + illegal fallback tested
+- [x] pnpm lint passed (paste short summary): All packages lint: Done (no errors)
+- [x] pnpm test passed (paste short summary):
+```
+shared: 1/1 passed
+client-web: 1/1 passed
+rules: 1/1 passed
+game: 2 files, 4 tests passed (setup + counter)
+bot-llm: 1/1 passed
+server: 1/1 passed
+```
+- [x] Determinism verified (golden replay hash unchanged / added): n/a (no turn progression yet; setup uses seeded shuffle)
+- [x] No temporary files added: none (verified .gitignore; build artifacts ignored)
+- [x] Rule references added in code (examples of references): packages/rules/src/setup.ts (CORE-01-02-10..16, CORE-01-03-01..02); tests quote CORE IDs
+- [x] Changelog updated: docs/changelog.md — added Task 0003 entry
+- [x] Design decision doc added/updated: docs/design-decisions/DD-0003-start-committee-origin.md
+- [x] Errata added/updated: n/a
+- [x] Expansion isolation verified (disabled expansions leave no state): n/a (core-only)
+- [x] Bot contract checks (if touched): n/a

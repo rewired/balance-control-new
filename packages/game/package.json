@@ -15,7 +15,7 @@
     "dependencies":  {
                          "@bc/rules":  "workspace:*",
                          "@bc/shared":  "workspace:*",
-                         "boardgame.io":  "^1.4.4"
+                         "boardgame.io":  "^0.50.2"
                      },
     "devDependencies":  {
                             "eslint":  "^8.57.1",

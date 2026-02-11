@@ -13,7 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@bc/shared": "workspace:*"
+    "@bc/shared": "workspace:*",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
