@@ -1,79 +1,119 @@
-# Codex Task — BALANCE // CONTROL (Software Edition)
-
-Date: 2026-02-11
-Style: Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
-
-Primary contract: AGENTS.md (repo root)
-Key anchors (ASCII only to avoid encoding drift):
-- Determinism: AGENTS 0.2
-- Rules anchoring & no drift: AGENTS 0.1, 0.5, 0.6
-- Resource generalization: AGENTS 1.6
-- Expansions modular + isolation: AGENTS 3.4, 3.8, 5.4, 5.5
-- Canonical effect resolver: AGENTS 3.5
-- Production order: AGENTS 3.6
-- Start Committee immunity: AGENTS 3.7
-- Tests + golden replays + hashing: AGENTS 5.1-5.3
-
-Context: Task 0016 is completed. This bundle defines fix tasks 0017-0022 to close remaining architectural gaps before starting Task 0027+ (next feature work).
-
----
-
-# Task 0021 — Match Config is Source of Truth (No Flag Derivation from State)
+# Task 0021 — Canonical Match Config Plumbing (Single Source of Truth)
 
 ## Goal
-Stop deriving expansion enablement flags from state shape and treat match config as the source of truth.
+
+Establish **one canonical, deterministic path** for match configuration (including expansion enablement) that is available to **all lifecycle hooks and moves** without deriving flags from state shape.
+
+This task is **plumbing only**: it creates the stable configuration surface that Task 0022 will build on.
 
 ## Inputs
-- AGENTS 0.2 Determinism
-- AGENTS 3.8 Expansion Isolation
-- Current code that derives flags in lifecycle hooks.
+
+* AGENTS 0.2 Determinism
+* AGENTS 0.1 / 0.5 / 0.6 Rules anchoring & no drift
+* AGENTS 3.8 Expansion Isolation
+* Current code deriving enablement via `!!G.exp?.exp01` etc.
+* Existing zod config schema (wherever currently defined)
 
 ## Outputs
+
 ### Code
-- Ensure match config is accessible where needed:
-  - store canonical config in state (core field) OR via boardgame.io setup data (documented).
-- Replace any derived flags (!!G.exp...) with config flags.
-- Helper isExpansionEnabled(config, 'exp01').
+
+1. **Canonical config stored in state**
+
+   * Add a required `G.cfg` (or `G.config`) field to the core state.
+   * `G.cfg` must contain the **validated canonical config**, at minimum:
+
+     * `expansions: { exp01: boolean; exp02: boolean; exp03: boolean; ... }`
+   * Populate `G.cfg` exactly once in `setup()` using zod validation.
+   * `G.cfg` must be treated as **read-only** after setup.
+
+2. **Config-only enablement helper**
+
+   * Add helper: `isExpansionEnabled(cfg, 'exp01') -> boolean`
+   * Prohibit use of `!!G.exp?.exp01` style derivation anywhere.
+
+3. **Hard guard: config/state mismatch is deterministic**
+
+   * Add helper: `assertExpansionStateMatchesConfig(G)`:
+
+     * If `cfg.expansions.expXX === true` then the corresponding expansion slice **must exist**.
+     * If `cfg.expansions.expXX === false` then the slice **may exist** (for replay/back-compat), but must be **treated as disabled**.
+   * Decide and implement a single policy:
+
+     * **Enabled but missing slice** → throw deterministic error (preferred)
+     * **Disabled but slice exists** → no throw; slice ignored
+   * Call the guard at deterministic choke points:
+
+     * end of `setup()`
+     * start of each `turn.onBegin` (or similar single entry point)
+     * before any expansion registry construction
+
+4. **Replace flag derivation**
+
+   * Replace all remaining flag derivations with config usage:
+
+     * `flags = G.cfg.expansions` (or `isExpansionEnabled(G.cfg, ...)`)
+   * Expansion registries must be built **only** from `G.cfg`, never from state presence.
 
 ### Tests
-- Config disables exp01 but state contains G.exp.exp01 -> still treated as disabled.
-- Config enables exp01 but slice missing -> state invalid (zod) or deterministic failure.
+
+Add deterministic tests for the policy above:
+
+1. **Disabled config ignores present slice**
+
+   * cfg: exp01=false
+   * state: contains `G.exp.exp01`
+   * Expect: exp01 features remain disabled (registry / hooks do not run exp01 behaviors).
+
+2. **Enabled config requires slice**
+
+   * cfg: exp01=true
+   * state: missing `G.exp.exp01`
+   * Expect: deterministic failure (throw) OR zod invalid state (depending on chosen policy).
 
 ### Docs
-- /docs/changelog.md entry.
+
+* Add `/docs/changelog.md` entry for Task 0021:
+
+  * “Canonical match config stored in state; expansion enablement derived exclusively from config; mismatch guard added.”
 
 ## Constraints
-- Keep boardgame.io-compatible patterns.
+
+* Boardgame.io compatible patterns only.
+* No rule changes.
+* No rebalancing.
+* No new gameplay behavior beyond deterministically enforcing config/source-of-truth.
 
 ## Invariants
-- Module set reconstructable from config deterministically.
+
+* Deterministic reconstruction of module set from `G.cfg` is possible at any time.
+* Expansion isolation preserved: disabled expansions may not affect game via “ghost slices”.
 
 ## Acceptance Criteria
-- No remaining places derive flags from state presence.
-- Tests cover mismatched state deterministically.
+
+* No remaining instances of `!!G.exp?.expXX` (or equivalent) for enablement.
+* `G.cfg` exists on every state and is validated at setup.
+* Guard behavior is deterministic and covered by tests.
+* Changelog updated.
 
 ---
 
 ## Commit Requirements
 
-Create one clean commit for this task.
+One clean commit:
 
-- Commit message format: task(00XX): <short summary>
-- No WIP commits.
-- No unrelated formatting churn (except Task 0017 which is explicitly an encoding/format normalization task).
-- Include docs/tests in the same commit when required.
-
-After completing the task, fill in the PR Checklist below by changing [ ] to [x].
-
----
+* `task(0021): canonical match config plumbing`
+* Includes code + tests + changelog.
 
 ## PR Checklist (Fill after implementation)
 
-- [ ] pnpm lint passes
-- [ ] pnpm test passes
-- [ ] Determinism verified (no Date.now, no Math.random, no non-seeded sources)
-- [ ] No temporary files committed
-- [ ] Correct rule / contract references included where required
-- [ ] Expansion isolation preserved (no ghost zones/resources when disabled)
-- [ ] Changelog updated (/docs/changelog.md) when task modifies behavior/architecture
-- [ ] If ambiguity required a decision: created /docs/design-decisions/DD-XXXX-<topic>.md
+* [ ] pnpm lint passes
+* [ ] pnpm test passes
+* [ ] Determinism verified (no Date.now, no Math.random, no non-seeded sources)
+* [ ] No temporary files committed
+* [ ] Correct rule / contract references included where required
+* [ ] Expansion isolation preserved (no ghost zones/resources when disabled)
+* [ ] Changelog updated (/docs/changelog.md)
+* [ ] If ambiguity required a decision: created /docs/design-decisions/DD-XXXX-<topic>.md
+
+---
