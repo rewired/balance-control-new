@@ -88,6 +88,9 @@ EXP-01-02-E-01 Measure zones are:
 • MeasureRecyclePile
 • MeasureFinalDiscard
 
+EXP-01-02-E-01A These Measure zones exist as an EXP-01-specific instance.
+They do not contain Measures from any other expansions.
+
 ---
 
 # EXP-01-03 SETUP
@@ -110,13 +113,9 @@ EXP-01-04-A-03 “Next round” refers to the round immediately following the ne
 
 ## EXP-01-04-B Production Resolution Order
 
-EXP-01-04-B-01 Start with the printed production value.
-EXP-01-04-B-02 Apply doubling effects.
-EXP-01-04-B-03 Apply production output modifiers (reductions or increases).
-EXP-01-04-B-04 Apply floors (minimum 0).
-EXP-01-04-B-05 Evaluate majority and tie rules.
-
-EXP-01-04-B-06 ECO production follows CORE majority and tie rules.
+EXP-01-04-B-01 Production during Round Settlement follows CORE-01-06-16 (Production Resolution Order).
+EXP-01-04-B-02 For EXP-01, “doubling effects” refers to any Measure that doubles printed production value (e.g., Economic Stimulus).
+EXP-01-04-B-03 For EXP-01, “production output modifiers” includes reductions or increases from EXP-01 Measures that modify production output.
 
 ---
 
@@ -137,6 +136,9 @@ EXP-01-06-01 Political Actions are:
 • ConvertResources
 • TakeMeasure
 • PlayMeasure
+
+EXP-01-06-01A TakeMeasure and PlayMeasure interact only with the Measure zones of the expansion that provides them.
+A Measure taken from one expansion cannot be played as a Measure of another expansion.
 
 EXP-01-06-02 A player may perform at most one PlayMeasure per round.
 EXP-01-06-03 A player may hold at most 2 Measures.
@@ -165,6 +167,9 @@ EXP-01-07-06 Timing keywords allowed:
 • Next round
 • Until consumed
 
+EXP-01-07-07 Per-Round Usage Flags
+If a Measure grants an effect limited to “once this round”, the engine tracks a boolean flag per player and per measure instance: usedThisRound.
+usedThisRound resets for all players at the beginning of each Round (immediately after Round Settlement ends).
 EXP-01-07-07 No other timing windows exist.
 
 ---

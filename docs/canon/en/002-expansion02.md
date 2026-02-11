@@ -131,8 +131,8 @@ EXP-02-02-G-07 Inner Order does not generate Influence.
 
 # EXP-02-03 SETUP
 
-EXP-02-03-01 Shuffle all EXP-02 Measures to form MeasureDrawPile.
-EXP-02-03-02 Place exactly 3 Measures face up in OpenMeasures.
+EXP-02-03-01 Shuffle all EXP-02 Measures to form the EXP-02 MeasureDrawPile.
+EXP-02-03-02 Place exactly 3 EXP-02 Measures face up in EXP-02 OpenMeasures.
 EXP-02-03-03 Add Hotspot “Inner Order” ×1 to DrawPile.
 EXP-02-03-04 Add System Tile “Authority Apparatus” ×1 to DrawPile.
 EXP-02-03-05 No modification to Starting Influence.
@@ -200,6 +200,7 @@ EXP-02-06-03 Regulation placement occurs only via:
 
 # EXP-02-07 MEASURE SYSTEM
 
+EXP-02-07-00-01 EXP-02 uses its own Measure zones (separate from any other expansion).
 EXP-02-07-01 Measures follow EXP-01 lifecycle rules.
 EXP-02-07-02 Timing windows allowed:
 
@@ -209,6 +210,9 @@ EXP-02-07-02 Timing windows allowed:
 • Next round
 • Until consumed
 
+EXP-02-07-04 Per-Round Usage Flags
+If a Measure grants an effect limited to “once this round”, the engine tracks a boolean flag per player and per measure instance: usedThisRound.
+usedThisRound resets for all players at the beginning of each Round (immediately after Round Settlement ends).
 EXP-02-07-03 No other timing windows exist.
 
 ---

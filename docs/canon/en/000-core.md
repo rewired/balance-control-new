@@ -38,6 +38,9 @@ CORE-01-00-08 Any rule that references adjacency uses the current topology’s a
 CORE-01-00-09 A topology attachment must be defined before game start.
 CORE-01-00-10 The topology attachment specifies how adjacency between Tiles is determined.
 CORE-01-00-11 The topology attachment does not modify any other rule.
+CORE-01-00-12 Expansion-specific zones
+If an expansion introduces additional zones (e.g., Measure zones), those zones exist separately per expansion.
+Zones introduced by different expansions never share objects unless a rule explicitly defines cross-expansion mixing.
 
 ---
 
@@ -151,10 +154,39 @@ CORE-01-05-06 Lobbyist contribution does not create or move Influence objects.
 
 # CORE-01-06 EFFECTS
 
-CORE-01-06-01 A Hotspot triggers when it becomes fully surrounded by Tiles.
-CORE-01-06-02 Hotspot resolution performs a majority check on that Hotspot Tile.
-CORE-01-06-03 If no player has majority on the Hotspot, no state change occurs.
-CORE-01-06-04 If players tie for majority on the Hotspot, no state change occurs.
+CORE-01-06-00-01 Definition — “Effect”
+An “Effect” is any rule-defined state change that is executed as a result of:
+(a) resolving a Tile’s printed behavior (including Resort production during Round Settlement), or
+(b) resolving a triggered Tile behavior (e.g., Hotspot resolution), or
+(c) resolving a Political Action (PlaceOrMoveInfluence, FormalizeInfluence, ConvertResources), or
+(d) resolving any Measure or Regulation instruction.
+
+CORE-01-06-00-02 Paying costs, checking prohibitions, and applying modifiers are part of effect resolution.
+CORE-01-06-00-03 If an Effect does not resolve, no partial state changes occur unless explicitly stated.
+
+CORE-01-06-00-04 Effect Context (Tile Binding)
+An effect resolves with exactly one ContextTile (nullable).
+Rules that apply “on that Tile” evaluate against ContextTile.
+
+CORE-01-06-00-05 ContextTile Assignment (Canonical)
+Assign ContextTile as follows:
+(a) If the effect is a Political Action performed via a Tile (Committee / Grassroots / Start Committee), ContextTile = that Tile.
+(b) If the effect targets exactly one Tile (e.g., “target one ResortTile / Hotspot”), ContextTile = that target Tile.
+(c) If the effect is Resort Production during Round Settlement, ContextTile = the producing ResortTile.
+(d) If the effect is Hotspot resolution, ContextTile = that Hotspot Tile.
+(e) If none applies, ContextTile = null.
+
+CORE-01-06-00-06 Multiple-Tile References
+If an instruction references multiple Tiles, it must explicitly state which Tile is the ContextTile; otherwise the effect is invalid and does not resolve.
+
+CORE-01-06-01 A Hotspot becomes “fully surrounded” when all positions adjacent to that Hotspot are occupied by Tiles.
+CORE-01-06-02 The check for full enclosure occurs immediately after a Tile is placed during DrawAndPlaceTile.
+CORE-01-06-03 If full enclosure is detected, Hotspot resolution is executed immediately before proceeding to the Political Action phase of that turn.
+CORE-01-06-04 Hotspot resolution follows this order:
+(a) Determine majority on that Hotspot.
+(b) Apply any pre-majority effects explicitly defined as occurring “before majority resolution.”
+(c) Resolve majority outcome.
+(d) Apply effect modifiers and prohibitions according to Rule Hierarchy.
 CORE-01-06-05 If a player has majority on the Hotspot, place exactly one Influence on that Hotspot for the majority player.
 CORE-01-06-06 Hotspot placement moves one Influence from that player’s PersonalSupply to the Hotspot Tile in Board.
 CORE-01-06-07 If the majority player has no available Influence in PersonalSupply, Hotspot placement cannot occur.
@@ -167,6 +199,27 @@ CORE-01-06-12 Produced Resources are moved from Bank to the controlling player�
 CORE-01-06-13 If no player controls a ResortTile, that ResortTile produces no Resources.
 CORE-01-06-14 If players tie for control of a ResortTile, divide the produced Resources evenly among tied players.
 CORE-01-06-15 Any remainder from a tied ResortTile production is moved to Noise.
+CORE-01-06-16 Production Resolution Order (Canonical)
+CORE-01-06-16-00 Modifier Collection Step
+Before resolving production for a tile, collect all applicable modifiers for that production instance.
+No modifier is applied until the canonical order steps (a)–(c) begin.
+
+When resolving a ResortTile’s production during Round Settlement, use the following order:
+
+(a) Determine the total production output amount using the applicable modifier steps:
+    1. Start with the tile’s printed production value.
+    2. Apply doubling effects (if any).
+    3. Apply production output modifiers (reductions or increases).
+    4. Apply floors (minimum 0).
+
+(b) Determine control for that Tile using the standard majority rules.
+
+(c) Distribute the produced Resources:
+    - If exactly one player controls the Tile, that player receives the full amount.
+    - If no player controls the Tile, produce 0.
+    - If players tie for control, split evenly; any remainder is moved to Noise.
+
+CORE-01-06-17 If an effect-level prohibition applies to production (e.g., “Blockade”), production output is treated as 0 and no Resources are distributed.
 
 ---
 
@@ -187,7 +240,17 @@ CORE-01-08-03 This restriction applies to all Committees, including the Start Co
 
 CORE-01-08-04 No Influence may be placed on the Start Committee.
 CORE-01-08-05 The Start Committee cannot be controlled.
-CORE-01-08-06 The Start Committee is immune to all effects.
+CORE-01-08-06 The Start Committee is immune to all effects, Measures, and Regulations.
+
+CORE-01-08-06A Immunity Scope:
+When an action is performed via the Start Committee (including Start Committee formalization),
+ignore any external modifiers that would:
+(a) prohibit execution (e.g., Blockade),
+(b) increase or alter costs,
+(c) reduce or alter output,
+unless that modifier explicitly states it affects the Start Committee.
+
+CORE-01-08-06B The Start Committee’s immunity does not override CORE-01-08-02 (timing restriction) and does not allow placing or moving Influence onto the Start Committee.
 
 CORE-01-08-07 Each player may FormalizeInfluence via the Start Committee at most once per game.
 CORE-01-08-08 Start Committee formalization cost requires paying 3 Resources of different resorts plus 1 additional Resource of any resort.
@@ -260,5 +323,10 @@ ADD56-01-01-16 These Hotspot labels do not modify Hotspot resolution rules.
 
 ADD56-01-02-01 For 5 players, assign 2 Influence objects to each player’s PersonalSupply during setup.
 ADD56-01-02-02 For 6 players, assign 2 Influence objects to each player’s PersonalSupply during setup.
+
+ADD56-01-03-00-01 Influence cap adjustment
+For 5 players, a player may not exceed 8 Influence objects in total.
+For 6 players, a player may not exceed 8 Influence objects in total.
+This overrides CORE-01-08-01 while the 5–6 Player Add-On is active.
 
 ADD56-01-03-01 All other CORE-01 rules remain unchanged when the 5–6 Player Add-On is active.

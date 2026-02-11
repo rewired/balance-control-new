@@ -83,6 +83,9 @@ EXP-03-02-C-05 CountdownMarkers are placed only when explicitly instructed by a 
 EXP-03-02-C-06 CountdownMarkers are persistent until removed by explicit effect.
 EXP-03-02-C-07 CountdownMarkers stack without limit.
 EXP-03-02-C-08 CountdownMarkers have no upkeep.
+EXP-03-02-C-09 No Implicit Countdown Resolution
+CountdownMarkers never trigger any effect and are never evaluated automatically.
+CountdownMarkers affect the game state only when explicitly referenced by an effect.
 
 ---
 
@@ -101,8 +104,8 @@ EXP-03-02-D-02 Effects not meeting EXP-03-02-D-01 are not Climate effects.
 # EXP-03-03 SETUP
 
 EXP-03-03-01 Shuffle CLM ResortTiles into DrawPile.
-EXP-03-03-02 Shuffle all EXP-03 Measures to form MeasureDrawPile.
-EXP-03-03-03 Place exactly 3 Measures face up in OpenMeasures.
+EXP-03-03-02 Shuffle all EXP-03 Measures to form the EXP-03 MeasureDrawPile.
+EXP-03-03-03 Place exactly 3 EXP-03 Measures face up in EXP-03 OpenMeasures.
 EXP-03-03-04 Add Transformationsdruck Hotspot ×1 to DrawPile.
 EXP-03-03-05 No modification to Starting Influence.
 EXP-03-03-06 No modification to Round structure.
@@ -141,17 +144,10 @@ EXP-03-04-C-03 If placement is prohibited, no cost for placement is paid.
 # EXP-03-05 PRODUCTION RULES
 
 EXP-03-05-01 CLM production follows CORE Resort Production timing.
-EXP-03-05-02 Production Resolution Order is:
-
-1. Start with printed production value.
-2. Apply doubling effects (EXP-01).
-3. Apply production output modifiers (reductions or increases).
-4. Apply floors (minimum 0).
-5. Evaluate majority and tie rules.
-6. Apply Overlays output reduction (EXP-02 order if present).
-
-EXP-03-05-03 Climate Measures modifying production are applied during step 3.
-EXP-03-05-04 Climate never replaces other Resources during production unless explicitly stated.
+EXP-03-05-02 Production during Round Settlement follows CORE-01-06-16 (Production Resolution Order).
+EXP-03-05-03 Climate Measures that modify production are applied as “production output modifiers” in CORE-01-06-16(a)(3).
+EXP-03-05-04 If EXP-02 is active, Regulation-based output reductions (SecurityLevel) are also applied as “production output modifiers” in CORE-01-06-16(a)(3), following EXP-02-04-B (Regulation Resolution Order) for effect modification.
+EXP-03-05-05 Climate never replaces other Resources during production unless explicitly stated.
 
 ---
 
@@ -170,6 +166,7 @@ EXP-03-06-07 Suppressed Influence is not placed and no replacement occurs unless
 
 # EXP-03-07 MEASURE SYSTEM
 
+EXP-03-07-00-01 EXP-03 uses its own Measure zones (separate from any other expansion).
 EXP-03-07-01 Measures follow EXP-01 lifecycle rules.
 EXP-03-07-02 Allowed timing windows:
 • This turn
@@ -178,9 +175,12 @@ EXP-03-07-02 Allowed timing windows:
 • Next round
 • Until consumed
 
-EXP-03-07-03 No other timing windows exist.
-EXP-03-07-04 Measures do not create hidden state.
-EXP-03-07-05 Measures cannot bypass prohibitions unless explicitly stated.
+EXP-01-07-03 Per-Round Usage Flags
+If a Measure grants an effect limited to “once this round”, the engine tracks a boolean flag per player and per measure instance: usedThisRound.
+usedThisRound resets for all players at the beginning of each Round (immediately after Round Settlement ends).
+EXP-03-07-04 No other timing windows exist.
+EXP-03-07-05 Measures do not create hidden state.
+EXP-03-07-06 Measures cannot bypass prohibitions unless explicitly stated.
 
 ---
 
@@ -216,6 +216,9 @@ EXP-03-08-M02-04 Duration: Until the end of the next round.
 EXP-03-08-M02-05 Effect: Actions executed on ResortTiles of that Resort require +1 CLM or +1 DOM.
 EXP-03-08-M02-06 Multiple instances of Carbon Levy may not target the same Resort simultaneously.
 EXP-03-08-M02-07 If the additional cost cannot be paid, the Action fails.
+EXP-03-08-M02-08 Scope Clarification
+This applies only to actions whose ContextTile is a ResortTile of the targeted Resort.
+It does not apply to actions whose ContextTile is not a ResortTile.
 
 ---
 
@@ -324,6 +327,11 @@ EXP-03-08-M13-02 Cost: CLM + DOM.
 EXP-03-08-M13-03 Duration: Until consumed.
 EXP-03-08-M13-04 Effect: When additional costs occur, you may transfer exactly 1 of those additional cost components to another player.
 EXP-03-08-M13-05 The effect is consumed immediately after one transfer.
+EXP-03-08-M13-06 Transfer Rule (Deterministic)
+The chosen other player must pay the transferred cost component from their PersonalSupply.
+If the chosen player cannot fully pay that component, the original action fails and no state change occurs.
+EXP-03-08-M13-07 No Refusal
+The chosen player may not refuse the transfer.
 
 ---
 
@@ -361,8 +369,8 @@ EXP-03-09-06 No upkeep is introduced.
 # EXP-03-10 RULE INTERACTION
 
 EXP-03-10-01 If EXP-03 is inactive, CLM and Countdown rules do not exist.
-EXP-03-10-02 Climate cost increases stack additively with Overlay cost increases.
-EXP-03-10-03 Overlay Blockade overrides Climate cost modifications.
+EXP-03-10-02 Climate cost increases stack additively with Regulation cost increases.
+EXP-03-10-03 Regulation Blockade overrides Climate cost modifications.
 EXP-03-10-04 If both EXP-01 and EXP-03 production modifiers apply, apply EXP-01 doubling first, then Climate modifications, then Overlay reductions.
 EXP-03-10-05 Measures cannot override CORE Rule Hierarchy.
 EXP-03-10-06 No rule in EXP-03 introduces automatic Countdown resolution.
