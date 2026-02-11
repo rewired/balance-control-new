@@ -1,4 +1,4 @@
-import type { AxialCoord, CoreState, ResourceId } from './types.js';
+import type { AxialCoord, CoreState, ResourceId, Zone } from './types.js';
 import { canPay, subResources, addResources as addRes, createCoreResourceRegistry, type ResourceAmounts } from './resources.js';
 import type { ExpansionModule } from './expansion-registry.js';
 import { isFullySurrounded } from './hotspot.js';
@@ -12,7 +12,8 @@ export type EffectKind =
   | 'resolveHotspotAt'
   | 'applyProductionAt'
   | 'addNoise'
-  | 'moveInfluenceToTile';
+  | 'moveInfluenceToTile'
+  | 'moveObject';
 
 export interface BaseEffect {
   kind: EffectKind;
@@ -63,6 +64,14 @@ export interface MoveInfluenceToTileEffect extends BaseEffect {
   count: number; // >=1
 }
 
+export interface MoveObjectEffect extends BaseEffect { // AGENTS §3.1 Zones
+  kind: 'moveObject';
+  object: { kind: 'Influence'; owner: string; id?: string };
+  from: { zone: Zone };
+  to: { zone: Zone; tileId?: string };
+  count: number;
+}
+
 export type EffectDescriptor =
   | AddResourcesEffect
   | OfferTileEffect
@@ -70,7 +79,8 @@ export type EffectDescriptor =
   | ResolveHotspotAtEffect
   | ApplyProductionAtEffect
   | AddNoiseEffect
-  | MoveInfluenceToTileEffect;
+  | MoveInfluenceToTileEffect
+  | MoveObjectEffect;
 
 function findTileAt(G: CoreState, coord?: AxialCoord) {
   if (!coord) return undefined;
@@ -166,7 +176,7 @@ export function createResolver(modules: ExpansionModule[] = []) {
         if (!isFullySurrounded(G, effect.coord)) return { ok: true };
         const winner = computeMajority(G, effect.coord);
         if (!winner) return { ok: true };
-        const move: MoveInfluenceToTileEffect = { kind: 'moveInfluenceToTile', playerID: winner, tileId: placement.tileId, count: 1, contextCoord: effect.coord };
+        const move: MoveInfluenceToTileEffect = { kind: 'moveInfluenceToTile', playerID: winner, tileId: placement.tileId, count: 1, contextCoord: effect.contextCoord ?? effect.coord };
         return resolveEffect(G, move);
       }
 
@@ -206,6 +216,17 @@ export function createResolver(modules: ExpansionModule[] = []) {
         const rec = list.find((r) => r.tileId === (effect as MoveInfluenceToTileEffect).tileId && r.owner === p.id);
         if (rec) rec.count += n; else list.push({ tileId: (effect as MoveInfluenceToTileEffect).tileId, owner: p.id, count: n });
         return { ok: true };
+      }
+
+      case 'moveObject': { // AGENTS §3.1 Zones — generic wrapper
+        const mo = effect as MoveObjectEffect;
+        if (mo.object.kind === 'Influence' && mo.from.zone === 'PersonalSupply' && mo.to.zone === 'Board' && mo.to.tileId) {
+          const placement = G.tiles.board.find(p => p.tileId === mo.to.tileId);
+          const coord = placement?.coord ?? effect.contextCoord;
+          const move: MoveInfluenceToTileEffect = { kind: 'moveInfluenceToTile', playerID: mo.object.owner, tileId: mo.to.tileId, count: mo.count, contextCoord: coord };
+          return resolveEffect(G, move);
+        }
+        return { ok: false, reason: 'unsupported-move' };
       }
 
       default:
