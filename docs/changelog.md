@@ -45,3 +45,8 @@
 - Tests: resolver sequencing, Start Committee immunity, and atomic failure when increased cost is unpayable. All packages pass pnpm test.
 - Lint: resolved ESLint errors; no any remaining in resolver/tests.
 
+## 2026-02-11 — Task 0015: Production modifier hooks integration
+- @bc/rules: added collectProductionModifiers() and integrated hook application at production step 3 (AGENTS §3.6) without changing core ordering.
+- @bc/rules: typed production modifier hook in ExpansionHooks and wired into resolveProductionForTile/resolveRoundSettlement with optional modules.
+- @bc/game: Round settlement now derives enabled expansions from state and passes modules to rules.
+- Tests: new production.hooks tests verifying +1 and negative clamp before floors/majority/distribution; core golden and unit tests remain green.

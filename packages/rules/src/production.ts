@@ -1,5 +1,16 @@
-import type { AxialCoord, CoreState, Tile, ResourceId } from './types.js';
+import type { AxialCoord, CoreState, Tile, ResourceId, ResortTile } from './types.js';
 import { computeMajority } from './majority.js';
+import type { ExpansionModule, ProductionModifier } from './expansion-registry.js';
+
+export function collectProductionModifiers(G: CoreState, coord: AxialCoord, tile: ResortTile, modules: ExpansionModule[]): ProductionModifier[] {
+  if (!modules || modules.length === 0) return [];
+  const out: ProductionModifier[] = [];
+  for (const m of modules) {
+    const list = m.hooks?.productionModifiers?.({ G, coord, tile, amount: tile.w });
+    if (Array.isArray(list)) out.push(...list);
+  }
+  return out;
+}
 
 function getPlacement(state: CoreState, coord: AxialCoord) {
   return state.tiles.board.find((p) => p.coord.q === coord.q && p.coord.r === coord.r);
@@ -12,20 +23,13 @@ function addResources(state: CoreState, playerID: string, resort: ResourceId, n:
   amounts[resort] = (amounts[resort] ?? 0) + n;
 }
 
-
 function addNoise(state: CoreState, resort: ResourceId, n: number) {
   const noise = state.resources.noise;
   noise[resort] = (noise[resort] ?? 0) + n;
 }
 
-
 function scores(state: CoreState, coord: AxialCoord): Array<[string, number]> {
-  // Mirror majority computation by sampling getControl over players using the same tally basis
   const players = Object.keys(state.players);
-  // Rebuild score table via difference-of-control: computeMajority checks tie; here we want per-player tallies.
-  // Approximate by checking influenceOnBoard counts only (no lobbyist bonus) would diverge; instead, sample via majority function is insufficient.
-  // For correctness, rely on majority.ts internals: we recompute locally as base + lobbyist adjacency using the same interpretation.
-  // Inline duplicate kept minimal and consistent: uses influencesOnBoard and adjacent Lobbyist counts.
   const placement = getPlacement(state, coord); if (!placement) return players.map(pid => [pid, 0]);
   const tileId = placement.tileId;
   function base(pid: string) {
@@ -50,13 +54,15 @@ function scores(state: CoreState, coord: AxialCoord): Array<[string, number]> {
   return players.map(pid => [pid, base(pid) + lobbyAdj(pid)]);
 }
 
-export function resolveProductionForTile(state: CoreState, coord: AxialCoord): void {
+export function resolveProductionForTile(state: CoreState, coord: AxialCoord, modules: ExpansionModule[] = []): void {
   const placement = getPlacement(state, coord); if (!placement) return;
   const tile = state.allTiles[placement.tileId]; if (!tile || tile.kind !== 'ResortTile') return;
   // CORE-01-06-16 order
   let out = printedValue(tile); // 1. printed value
   // 2. doubling effects (none in core)
-  // 3. production output modifiers (none in core)
+  // 3. production output modifiers
+  const modifiers = collectProductionModifiers(state, coord, tile, modules);
+  for (const f of modifiers) out = f(out);
   // 4. floors (ensure non-negative)
   if (out < 0) out = 0;
   if (out === 0) return;
@@ -77,10 +83,10 @@ export function resolveProductionForTile(state: CoreState, coord: AxialCoord): v
   if (rem > 0) addNoise(state, tile.resort, rem); // CORE-01-06-15 remainder to Noise
 }
 
-export function resolveRoundSettlement(state: CoreState): void {
+export function resolveRoundSettlement(state: CoreState, modules: ExpansionModule[] = []): void {
   // CORE-01-07 Round Settlement: produce for all ResortTiles on Board
   const coords = state.tiles.board
     .map(p => ({ tile: state.allTiles[p.tileId], coord: p.coord }))
     .filter(x => x.tile && x.tile.kind === 'ResortTile');
-  for (const x of coords) resolveProductionForTile(state, x.coord);
+  for (const x of coords) resolveProductionForTile(state, x.coord, modules);
 }

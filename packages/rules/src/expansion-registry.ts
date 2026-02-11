@@ -1,4 +1,4 @@
-import type { CoreState, ExpansionId } from './types.js';
+import type { AxialCoord, CoreState, ExpansionId, ResortTile } from './types.js';
 import type { ResourceRegistry, ResourceAmounts } from './resources.js';
 import type { EffectDescriptor } from './effects.js';
 import type { ExpansionFlags } from './schemas.js';
@@ -6,12 +6,14 @@ import type { ExpansionFlags } from './schemas.js';
 export interface ProhibitionsArgs { G: CoreState; effect: EffectDescriptor }
 export interface CostIncreasesArgs { G: CoreState; effect: EffectDescriptor; cost?: Partial<ResourceAmounts> }
 export interface OutputModifiersArgs { G: CoreState; effect: EffectDescriptor; amount: number }
+export interface ProductionModifiersArgs { G: CoreState; coord: AxialCoord; tile: ResortTile; amount: number }
+export type ProductionModifier = (amount: number) => number;
 
 export interface ExpansionHooks {
   prohibitions?: (args: ProhibitionsArgs) => boolean;
   costIncreases?: (args: CostIncreasesArgs) => Partial<ResourceAmounts> | void;
   outputModifiers?: (args: OutputModifiersArgs) => number | void;
-  productionModifiers?: unknown;
+  productionModifiers?: (args: ProductionModifiersArgs) => ProductionModifier[] | void;
 }
 
 export interface ExpansionModule {
@@ -42,3 +44,4 @@ export function createExpansionRegistry(flags: ExpansionFlags | undefined): Expa
   filtered.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return filtered;
 }
+
