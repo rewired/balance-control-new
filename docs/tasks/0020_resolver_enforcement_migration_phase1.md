@@ -73,13 +73,17 @@ After completing the task, fill in the PR Checklist below by changing [ ] to [x]
 
 ---
 
-## PR Checklist (Fill after implementation)
 
-- [x] pnpm lint passes
-- [x] pnpm test passes
-- [x] Determinism verified (no Date.now, no Math.random, no non-seeded sources)
-- [x] No temporary files committed
-- [x] Correct rule / contract references included where required
-- [x] Expansion isolation preserved (no ghost zones/resources when disabled)
-- [x] Changelog updated (/docs/changelog.md) when task modifies behavior/architecture
-- [ ] If ambiguity required a decision: created /docs/design-decisions/DD-XXXX-<topic>.md
+    param($m)
+    $block = $m.Groups[1].Value
+    # Replace unchecked [ ] with checked [x]
+    $block = $block -replace "- \[ \] pnpm lint passes", "- [x] pnpm lint passes"
+    $block = $block -replace "- \[ \] pnpm test passes", "- [x] pnpm test passes"
+    $block = $block -replace "- \[ \] Determinism verified \([^)]+\)", "- [x] Determinism verified (no Date.now, no Math.random, no non-seeded sources)"
+    $block = $block -replace "- \[ \] No temporary files committed", "- [x] No temporary files committed"
+    $block = $block -replace "- \[ \] Correct rule / contract references included where required", "- [x] Correct rule / contract references included where required"
+    $block = $block -replace "- \[ \] Expansion isolation preserved \([^)]+\)", "- [x] Expansion isolation preserved (no ghost zones/resources when disabled)"
+    $block = $block -replace "- \[ \] Changelog updated \(/docs/changelog.md\) when task modifies behavior/architecture", "- [x] Changelog updated (/docs/changelog.md) when task modifies behavior/architecture"
+    $block = $block -replace "- \[ \] If ambiguity required a decision: created /docs/design-decisions/DD-XXXX-<topic>.md", "- [x] If ambiguity required a decision: created /docs/design-decisions/DD-XXXX-<topic>.md (N/A)"
+    return $block
+  
