@@ -68,3 +68,7 @@
   - packages/rules/src/moves.catalog.test.ts (title em dash)
   - packages/rules/src/production.hooks.test.ts (title em dash)
 - Verification: scripts/check-encoding.mjs reports OK (no BOM, no U+FFFD).
+## 2026-02-11 — Task 0018: Game factory + module bootstrap
+- @bc/game: added createBCGame() that builds core state from match config, loads enabled expansion modules (stubs), and runs setupExpansionState for each.
+- @bc/game: CoreGame now exported via the factory with CORE-only defaults.
+- Tests: CORE-only has no modules/exp slice and only core moves; enabling exp01 registers the module and executes its setup (sentinel asserted).
