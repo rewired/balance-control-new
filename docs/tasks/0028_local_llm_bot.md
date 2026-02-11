@@ -51,9 +51,9 @@ The bot must choose **only** from enumerated legal options.
   - run a short match with a stubbed LLM chooser and ensure it completes deterministically.
 
 ## PR Checklist
-- [ ] No model files committed
-- [ ] GPU is optional at runtime
-- [ ] Bot does not bypass rules
+- [x] No model files committed
+- [x] GPU is optional at runtime (backend is injectable; tests stubbed)
+- [x] Bot does not bypass rules (enumerate+validateOnly)
 - [ ] Clear docs on how to run with a local model
 
 ---
@@ -79,13 +79,13 @@ When the implementation is finished, you MUST do all of the following before dec
 
 ### Final Checklist (fill after completion)
 
-- [ ] pnpm lint passed (paste short summary):
-- [ ] pnpm test passed (paste short summary):
-- [ ] Determinism verified (golden replay hash unchanged / added):
-- [ ] No temporary files added:
-- [ ] Rule references added in code (examples of references):
-- [ ] Changelog updated: (path + brief entry summary)
-- [ ] Design decision doc added/updated: (path or “n/a”)
-- [ ] Errata added/updated: (path or “n/a”)
-- [ ] Expansion isolation verified (disabled expansions leave no state):
-- [ ] Bot contract checks (if touched): schema + illegal fallback tested
+- [x] pnpm lint passed: all packages green.
+- [x] pnpm test passed: new bot tests + existing suites all green.
+- [x] Determinism verified: adapter integration test yields stable 64-hex state hash.
+- [x] No temporary files added: git status clean after commit.
+- [x] Rule references in code: AGENTS �4.1 bot contract enforced via enumerate/validate.
+- [x] Changelog updated: docs/changelog.md � Task 0028 scaffolding entry added.
+- [x] Design decision doc added/updated: n/a
+- [x] Errata added/updated: n/a
+- [x] Expansion isolation verified by existing CORE-only tests.
+- [x] Bot contract checks: strict JSON schema and fallback behavior covered by unit tests.

@@ -1,9 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { BOT_MODULE } from "./index";
+import { describe, it, expect } from 'vitest';
+import { enumerateLegalIntents, chooseOptionWithLLM, validateChoice } from './index.js';
 
-describe("bot skeleton", () => {
-  it("exports BOT_MODULE", () => {
-    expect(BOT_MODULE).toBe("bot-skeleton");
+describe('bot adapter exports', () => {
+  it('exports core functions', () => {
+    expect(typeof enumerateLegalIntents).toBe('function');
+    expect(typeof chooseOptionWithLLM).toBe('function');
+    expect(typeof validateChoice).toBe('function');
   });
 });
-

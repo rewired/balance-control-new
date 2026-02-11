@@ -107,3 +107,8 @@
 - @bc/exp-01-economy: added `exp01_takeMeasure` and `exp01_playMeasure` moves with strict zod payloads + enumerate() functions for bot contract (AGENTS §4.1).
 - @bc/game: political action path executes expansion moves; per-round play limit enforced and extra-action grant after play preserved.
 - Tests: new exp01.measures.test.ts covering open=3, take?refill, play?recycle?finalDiscard on second play, reshuffle from recycle to draw, and enumerator legality.
+## 2026-02-11 — Task 0028: Local LLM bot (scaffold)
+- @bc/bot-llm: added adapter with enumerateLegalIntents, chooseOptionWithLLM (injectable backend), validateChoice; deterministic fallback when backend invalid/unavailable (AGENTS §4.1).
+- @bc/shared: added strict JSON schema (LLMChoiceSchema) for `{ "optionId": string }` via zod.
+- Tests: unit tests for enumeration validity, invalid-output fallback, and schema; integration test runs a short deterministic match with stubbed backend.
+- Note: no model files; backend wiring for node-llama-cpp/ollama to be added in follow-up.

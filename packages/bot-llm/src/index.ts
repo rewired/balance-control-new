@@ -1,1 +1,1 @@
-export const BOT_MODULE = 'bot-skeleton';
+export * from './adapter.js';
