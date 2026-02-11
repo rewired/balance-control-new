@@ -11,6 +11,7 @@
                     "prepare":  "husky install || echo \u0027husky not installed\u0027",
                     "build":  "pnpm -r build",
                     "lint":  "pnpm -r lint",
+                    "check:mutation":  "node scripts/check-no-direct-mutation.mjs",
                     "test":  "pnpm -r test",
                     "dev":  "pnpm --filter @bc/client-web dev"
                 },
