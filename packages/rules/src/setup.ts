@@ -1,4 +1,4 @@
-﻿import { shuffleSeeded } from '@bc/shared';
+import { shuffleSeeded } from '@bc/shared';
 import type { CoreState, Resort, Tile, ResortTile, StartCommitteeTile } from './types.js';
 import { CoreResorts } from './types.js';
 
@@ -47,7 +47,7 @@ function buildNonResortTiles(): Tile[] {
   return out;
 }
 
-export function buildInitialCoreState(numPlayers: number, matchSeed: string): CoreState {
+export function buildInitialCoreState(numPlayers: number, matchSeed: string, opts?: { expansions?: import('./schemas.js').ExpansionFlags }): CoreState {
   // Gather all tiles
   const start = buildStartCommittee();
   const resortTiles = buildResortTiles();
@@ -64,7 +64,7 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string): Co
   // Setup players and starting Influence (CORE-01-03-04..06)
   const startingByPlayers: Record<number, number> = { 2: 4, 3: 3, 4: 2 };
   const starting = startingByPlayers[numPlayers as 2|3|4] ?? 0;
-  const players: Record<string, import("./types.js").PlayerState> = {};
+  const players: Record<string, import('./types.js').PlayerState> = {};
   for (let p = 0; p < numPlayers; p++) {
     const id = String(p);
     players[id] = {
@@ -76,7 +76,7 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string): Co
     };
   }
 
-  return {
+  const state: CoreState = {
     matchSeed,
     tiles: {
       drawPile,
@@ -90,6 +90,15 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string): Co
       noise: [],
     },
   };
+
+  // Apply expansion placeholders only when enabled (AGENTS §3.4, §3.8, §5.5)
+  const flags = opts?.expansions;
+  if (flags && (flags.exp01 || flags.exp02 || flags.exp03)) {
+    (state as CoreState & { exp?: import('./types.js').ExpansionsState }).exp = {} as import('./types.js').ExpansionsState;
+    if (flags.exp01) ((state as CoreState & { exp: import('./types.js').ExpansionsState }).exp!).exp01 = {};
+    if (flags.exp02) ((state as CoreState & { exp: import('./types.js').ExpansionsState }).exp!).exp02 = {};
+    if (flags.exp03) ((state as CoreState & { exp: import('./types.js').ExpansionsState }).exp!).exp03 = {};
+  }
+
+  return state;
 }
-
-
