@@ -2,7 +2,7 @@ import type { Game } from 'boardgame.io';
 import type { CoreState } from '@bc/rules';
 import { MatchConfigSchema, buildInitialCoreState, createExpansionRegistry } from '@bc/rules';
 import { CorePhases } from './core.turns.js';
-import { resolveRoundSettlement } from '@bc/rules';
+import { createResolver } from '@bc/rules';
 
 import './expansions.bootstrap.js';
 
@@ -25,7 +25,10 @@ export function createBCGame(defaultConfig?: unknown): Game<CoreState> {
         if (ctx.playOrderPos === ctx.playOrder.length - 1) {
           const flags = { exp01: !!G.exp?.exp01, exp02: !!G.exp?.exp02, exp03: !!G.exp?.exp03 } as const;
           const mods = createExpansionRegistry(flags);
-          resolveRoundSettlement(G, mods);
+          const resolve = createResolver(mods);
+          for (const p of G.tiles.board) {
+            resolve(G, { kind: 'applyProductionAt', coord: p.coord, contextCoord: p.coord });
+          }
         }
       },
     },
