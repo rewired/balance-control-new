@@ -18,7 +18,7 @@ function doAction(G: GLike, type: string, payload: any = {}) {
   move({ type, payload });
 }
 
-describe('EXP-01 Measures — Task 0027', () => {
+describe('EXP-01 Measures - Task 0027', () => {
   it('CORE-only leaves no exp01 state', () => {
     const { G } = setupGame(false);
     expect((G as any).exp?.exp01).toBeUndefined();
@@ -97,7 +97,7 @@ describe('EXP-01 Measures — Task 0027', () => {
     expect(afterOpenLen).toBeGreaterThanOrEqual(Math.min(3, beforeOpenLen));
   });
 
-  it('enumerators list legal options only (AGENTS §4.1)', async () => {
+  it('enumerators list legal options only (AGENTS -4.1)', async () => {
     const { G } = setupGame(true);
     const mods = createExpansionRegistry((G as any).cfg.expansions);
     const catalog = buildMoveCatalog(corePoliticalMoves(), mods);

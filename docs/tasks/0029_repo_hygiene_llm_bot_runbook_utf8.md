@@ -1,4 +1,4 @@
-# Task 0029 — Repo Hygiene + LLM Bot Runbook + UTF-8 Enforcement
+# Task 0029 REPLACEMENT CHARACTER (U+FFFD) Repo Hygiene + LLM Bot Runbook + UTF-8 Enforcement
 
 **Date:** 2026-02-12
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
@@ -7,24 +7,24 @@
 
 ## Goal
 
-Bring the repository to a state where “Tasks bis inkl. 0028 sind abgeschlossen” **nachweisbar stimmt** – konkret durch:
+Bring the repository to a state where REPLACEMENT CHARACTER (U+FFFD)Tasks bis inkl. 0028 sind abgeschlossenREPLACEMENT CHARACTER (U+FFFD) **nachweisbar stimmt** REPLACEMENT CHARACTER (U+FFFD) konkret durch:
 
-1. **vollständige, lauffähige Doku** für den Local-LLM-Bot (0028)
-2. **tatsächliche Integration** des `@bc/bot-llm` in eine ausführbare Runner-Option (ohne Gameplay-Änderungen)
-3. **UTF-8-Sauberkeit** im gesamten Repo inkl. automatischer Prüfung (keine stillen Encoding-Fallen mehr)
-4. **Task-Nachvollziehbarkeit**: offene Checklisten-Punkte in den relevanten Task-MDs schließen oder korrekt als “not done” markieren.
+1. **vollstREPLACEMENT CHARACTER (U+FFFD)ndige, lauffREPLACEMENT CHARACTER (U+FFFD)hige Doku** fREPLACEMENT CHARACTER (U+FFFD)r den Local-LLM-Bot (0028)
+2. **tatsREPLACEMENT CHARACTER (U+FFFD)chliche Integration** des `@bc/bot-llm` in eine ausfREPLACEMENT CHARACTER (U+FFFD)hrbare Runner-Option (ohne Gameplay-REPLACEMENT CHARACTER (U+FFFD)nderungen)
+3. **UTF-8-Sauberkeit** im gesamten Repo inkl. automatischer PrREPLACEMENT CHARACTER (U+FFFD)fung (keine stillen Encoding-Fallen mehr)
+4. **Task-Nachvollziehbarkeit**: offene Checklisten-Punkte in den relevanten Task-MDs schlieREPLACEMENT CHARACTER (U+FFFD)en oder korrekt als REPLACEMENT CHARACTER (U+FFFD)not doneREPLACEMENT CHARACTER (U+FFFD) markieren.
 
 ---
 
 ## Context / Problem Statement
 
-Im aktuellen ZIP-Stand sind harte Indikatoren vorhanden, dass “alles fertig” nicht stimmt:
+Im aktuellen ZIP-Stand sind harte Indikatoren vorhanden, dass REPLACEMENT CHARACTER (U+FFFD)alles fertigREPLACEMENT CHARACTER (U+FFFD) nicht stimmt:
 
-* `docs/tasks/0028_local_llm_bot.md` hat eine **unchecked** PR-Checklist-Position (“Clear docs on how to run with a local model”).
-* Es existiert ein Paket `@bc/bot-llm`, aber **keine** sichtbare, ausführbare Integration im Server/Game Runner (nur “later”-Text).
-* Mehrere Repo-Dateien sind **nicht valide UTF-8** (Windows-1252 / invalid bytes), inkl. Task-MDs und Quellcode, wodurch “Encoding-Fix”-Tasks faktisch nicht abgeschlossen sind.
+* `docs/tasks/0028_local_llm_bot.md` hat eine **unchecked** PR-Checklist-Position (REPLACEMENT CHARACTER (U+FFFD)Clear docs on how to run with a local modelREPLACEMENT CHARACTER (U+FFFD)).
+* Es existiert ein Paket `@bc/bot-llm`, aber **keine** sichtbare, ausfREPLACEMENT CHARACTER (U+FFFD)hrbare Integration im Server/Game Runner (nur REPLACEMENT CHARACTER (U+FFFD)laterREPLACEMENT CHARACTER (U+FFFD)-Text).
+* Mehrere Repo-Dateien sind **nicht valide UTF-8** (Windows-1252 / invalid bytes), inkl. Task-MDs und Quellcode, wodurch REPLACEMENT CHARACTER (U+FFFD)Encoding-FixREPLACEMENT CHARACTER (U+FFFD)-Tasks faktisch nicht abgeschlossen sind.
 
-Task 0029 soll diese Lücke schließen – sauber, deterministisch, ohne Mechanikänderungen.
+Task 0029 soll diese LREPLACEMENT CHARACTER (U+FFFD)cke schlieREPLACEMENT CHARACTER (U+FFFD)en REPLACEMENT CHARACTER (U+FFFD) sauber, deterministisch, ohne MechanikREPLACEMENT CHARACTER (U+FFFD)nderungen.
 
 ---
 
@@ -45,9 +45,9 @@ Task 0029 soll diese Lücke schließen – sauber, deterministisch, ohne Mechani
 
 ## Outputs
 
-### O1 — Local LLM Bot Runbook (Docs)
+### O1 REPLACEMENT CHARACTER (U+FFFD) Local LLM Bot Runbook (Docs)
 
-Create a minimal but complete “how-to run” documentation for a local model, aligned to the chosen approach (Ollama-first):
+Create a minimal but complete REPLACEMENT CHARACTER (U+FFFD)how-to runREPLACEMENT CHARACTER (U+FFFD) documentation for a local model, aligned to the chosen approach (Ollama-first):
 
 * New doc: `docs/llm/local-bot-ollama.md` (or equivalent path)
 
@@ -58,10 +58,10 @@ Create a minimal but complete “how-to run” documentation for a local model, 
   * Troubleshooting (common errors: model not running, timeout, GPU OOM)
 * Update `README.md`:
 
-  * Align pnpm version to the repo’s `packageManager` ([pnpm@10.x](mailto:pnpm@10.x))
-  * Add a short “LLM Bot (Local)” section linking to the runbook
+  * Align pnpm version to the repoREPLACEMENT CHARACTER (U+FFFD)REPLACEMENT CHARACTER (U+FFFD)s `packageManager` ([pnpm@10.x](mailto:pnpm@10.x))
+  * Add a short REPLACEMENT CHARACTER (U+FFFD)LLM Bot (Local)REPLACEMENT CHARACTER (U+FFFD) section linking to the runbook
 
-### O2 — Executable Integration Path (No UI required)
+### O2 REPLACEMENT CHARACTER (U+FFFD) Executable Integration Path (No UI required)
 
 Add a **real** integration point so the bot can actually be used in a dev run:
 
@@ -76,9 +76,9 @@ Add a **real** integration point so the bot can actually be used in a dev run:
   * return a single chosen option, validated against the same legal list
   * include a **safe fallback** if the model is unavailable (e.g., choose uniformly random from legal options)
 
-> Scope note: This task is **not** about making the LLM “smart”, only about making it **real and runnable**.
+> Scope note: This task is **not** about making the LLM REPLACEMENT CHARACTER (U+FFFD)smartREPLACEMENT CHARACTER (U+FFFD), only about making it **real and runnable**.
 
-### O3 — UTF-8 Repository Cleanup + Enforcement
+### O3 REPLACEMENT CHARACTER (U+FFFD) UTF-8 Repository Cleanup + Enforcement
 
 Make the repo deterministically UTF-8-clean and keep it that way:
 
@@ -90,19 +90,19 @@ Make the repo deterministically UTF-8-clean and keep it that way:
 * Add a *single* enforceable check:
 
   * `pnpm check:encoding` (new or existing) fails CI if any non-UTF-8 text file exists
-  * Ensure it catches common Windows-1252 bytes and also “replacement char” corruption (U+FFFD) if that’s part of your hygiene rules
+  * Ensure it catches common Windows-1252 bytes and also REPLACEMENT CHARACTER (U+FFFD)replacement charREPLACEMENT CHARACTER (U+FFFD) corruption (U+FFFD) if thatREPLACEMENT CHARACTER (U+FFFD)REPLACEMENT CHARACTER (U+FFFD)s part of your hygiene rules
 * Ensure the existing fix scripts (if kept) are themselves valid UTF-8 and documented.
 
-### O4 — Task Closure Evidence
+### O4 REPLACEMENT CHARACTER (U+FFFD) Task Closure Evidence
 
 Update relevant task docs so the completion claim is backed by the repo:
 
 * `docs/tasks/0028_local_llm_bot.md`: checklist completed + links to runbook
-* Any tasks in the 0017–0022 range that are “template-y” or incomplete:
+* Any tasks in the 0017REPLACEMENT CHARACTER (U+FFFD)0022 range that are REPLACEMENT CHARACTER (U+FFFD)template-yREPLACEMENT CHARACTER (U+FFFD) or incomplete:
 
   * either finalize their PR checklist sections
   * or explicitly mark remaining items as TODO with clear reason
-  * goal: no “looks done but isn’t” artifacts
+  * goal: no REPLACEMENT CHARACTER (U+FFFD)looks done but isnREPLACEMENT CHARACTER (U+FFFD)REPLACEMENT CHARACTER (U+FFFD)tREPLACEMENT CHARACTER (U+FFFD) artifacts
 
 ---
 
@@ -191,4 +191,4 @@ Update relevant task docs so the completion claim is backed by the repo:
 
 ---
 
-Wenn du willst, kann ich dir im nächsten Schritt direkt die **konkrete File-Liste** (Encoding-Fails + minimaler Patch-Plan pro Ordner) aus dem ZIP herausziehen und als “Implementation Plan” in 0029 ergänzen – aber als Task-Contract ist das hier bereits belastbar und Codex-fütterbar.
+Wenn du willst, kann ich dir im nREPLACEMENT CHARACTER (U+FFFD)chsten Schritt direkt die **konkrete File-Liste** (Encoding-Fails + minimaler Patch-Plan pro Ordner) aus dem ZIP herausziehen und als REPLACEMENT CHARACTER (U+FFFD)Implementation PlanREPLACEMENT CHARACTER (U+FFFD) in 0029 ergREPLACEMENT CHARACTER (U+FFFD)nzen REPLACEMENT CHARACTER (U+FFFD) aber als Task-Contract ist das hier bereits belastbar und Codex-fREPLACEMENT CHARACTER (U+FFFD)tterbar.

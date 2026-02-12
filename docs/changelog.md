@@ -55,7 +55,7 @@
 - @bc/rules: expansion registry now supports extendMoves via a typed MoveExtensionBuilder (AGENTS REPLACEMENT CHARACTER (U+FFFD)3.8). No expansion state contamination when disabled.
 - @bc/game: ExactlyOnePoliticalAction phase now routes a single `doPoliticalAction` move that validates payloads against the catalog and ends the turn after execution (CORE-01-04-09).
 - Tests: core-only vs exp01-enabled catalog presence; strict schema failure for illegal payloads.
-## 2026-02-11 — Task 0017: SAFE encoding normalization
+## 2026-02-11 REPLACEMENT CHARACTER (U+FFFD) Task 0017: SAFE encoding normalization
 - Guardrails: added .editorconfig and scripts/check-encoding.mjs (fails on BOM and U+FFFD).
 - One-time fixes: removed 41 UTF-8 BOMs; replaced U+FFFD in:
   - docs/changelog.md
@@ -63,26 +63,26 @@
   - docs/tasks/0014_canonical_effect_resolver_pipeline.md
   - docs/tasks/0015_production_hooks_integration.md
   - docs/tasks/0017_safe_encoding_normalization.md
-  - packages/rules/src/effects.ts (AGENTS § refs + em dash)
-  - packages/rules/src/moves.ts (AGENTS § refs)
+  - packages/rules/src/effects.ts (AGENTS REPLACEMENT CHARACTER (U+FFFD) refs + em dash)
+  - packages/rules/src/moves.ts (AGENTS REPLACEMENT CHARACTER (U+FFFD) refs)
   - packages/rules/src/moves.catalog.test.ts (title em dash)
   - packages/rules/src/production.hooks.test.ts (title em dash)
 - Verification: scripts/check-encoding.mjs reports OK (no BOM, no U+FFFD).
-## 2026-02-11 — Task 0018: Game factory + module bootstrap
+## 2026-02-11 REPLACEMENT CHARACTER (U+FFFD) Task 0018: Game factory + module bootstrap
 - @bc/game: added createBCGame() that builds core state from match config, loads enabled expansion modules (stubs), and runs setupExpansionState for each.
 - @bc/game: CoreGame now exported via the factory with CORE-only defaults.
 - Tests: CORE-only has no modules/exp slice and only core moves; enabling exp01 registers the module and executes its setup (sentinel asserted).
-## 2026-02-11 — Task 0019: Expansion setup ownership
+## 2026-02-11 REPLACEMENT CHARACTER (U+FFFD) Task 0019: Expansion setup ownership
 - @bc/rules: removed pre-creation of expansion slices from buildInitialCoreState; modules now own creation (AGENTS 3.8, 5.5).
 - @bc/rules: added ensureExpansionSlice(G, expId, initial) helper for modules.
 - @bc/game: stub expansion modules now create their slice in setupExpansionState using ensureExpansionSlice and set a sentinel.
 - Tests: updated rules tests to reflect module-owned slices; game factory tests assert setup hook only when enabled.
-## 2026-02-11 — Task 0020: Resolver enforcement (phase 1)
+## 2026-02-11 REPLACEMENT CHARACTER (U+FFFD) Task 0020: Resolver enforcement (phase 1)
 - @bc/game: added resolver.migration test using a stub expansion move routed through doPoliticalAction; effects go via resolveEffect (AGENTS 3.5).
 - Tests demonstrate cost increases apply on normal tiles and are ignored on Start Committee (AGENTS 3.7).
 - No behavior change to core production/placement yet; migration focuses on political move path.
 
-## 2026-02-11 — Task 0020: Resolver enforcement (phase 2)
+## 2026-02-11 REPLACEMENT CHARACTER (U+FFFD) Task 0020: Resolver enforcement (phase 2)
 - @bc/rules: expanded EffectDescriptor union: offerTile, placeTile, resolveHotspotAt, applyProductionAt, addNoise, moveInfluenceToTile; kept addResources.
 - @bc/game: Draw/Place routed via resolver (onBegin -> offerTile, placeTile move -> placeTile, hotspot resolutions -> resolveHotspotAt).
 - @bc/game: Round settlement now iterates board and calls applyProductionAt via resolver; no direct writes.
@@ -90,25 +90,25 @@
 - @bc/rules: hotspot award path issues moveInfluenceToTile via resolver; test migrated to use resolveHotspotAt.
 - Determinism & Start Committee immunity preserved in resolver pipeline.
 - Dev: added scripts/check-no-direct-mutation.mjs and root script "check:mutation" to gate direct G-writes in @bc/game.- Phase 2 follow-up: hotspot.ts is now pure (no state mutation); hotspot resolution goes exclusively through resolver (resolveHotspotAt). Golden test updated accordingly. Mutation gate tightened (rules allowlist no longer includes hotspot.ts).- Phase 2 follow-up: production planner extracted (production.plan.ts); resolveProductionForTile/resolveRoundSettlement now route through resolver (applyProductionAt). Mutation gate updated to remove production.ts from allowlist.
-## 2026-02-11 — Task 0021: Canonical match config plumbing
+## 2026-02-11 REPLACEMENT CHARACTER (U+FFFD) Task 0021: Canonical match config plumbing
 - CoreState now includes `cfg` with validated `MatchConfig` (expansion flags).
 - Added `isExpansionEnabled(cfg, id)` and `assertExpansionStateMatchesConfig(G)` in @bc/rules.
 - Game factory stores cfg at setup and runs guard; phases/moves build expansion registries strictly from `G.cfg.expansions` (no state-derived flags).
-- Tests: disabled-config ignores ghost slice; enabled-config requires slice (throws when missing). Golden hash updated due to state shape change.## 2026-02-11 — Task 0022: EXP-01 package scaffold (stub only)
+- Tests: disabled-config ignores ghost slice; enabled-config requires slice (throws when missing). Golden hash updated due to state shape change.## 2026-02-11 REPLACEMENT CHARACTER (U+FFFD) Task 0022: EXP-01 package scaffold (stub only)
 - Created @bc/exp-01-economy workspace package with stub ExpansionModule `exp01`.
 - Module registers resource ECO and creates its own `G.exp.exp01` slice via `ensureExpansionSlice` when enabled (AGENTS 1.6, 3.4, 3.8, 5.5).
 - Added stub political move `exp01_noop` with strict zod payload schema (AGENTS 4.2).
 - @bc/game bootstraps modules in `expansions.bootstrap.ts` and imports EXP-01 via alias.
 - Vitest and Vite configs updated to alias `@bc/exp-01-economy`.
 - Tests: CORE-only has no ECO/slice/move; CORE+EXP-01 shows ECO + slice and the move toggles sentinel; added strict payload validation test.
-## 2026-02-11 — Task 0027: Measures engine (EXP-01 baseline)
-- @bc/rules: extended EffectDescriptor with initMeasures/takeMeasure/playMeasure/resetMeasuresRound and implemented resolver-only pathways (AGENTS §3.5, §3.7).
+## 2026-02-11 REPLACEMENT CHARACTER (U+FFFD) Task 0027: Measures engine (EXP-01 baseline)
+- @bc/rules: extended EffectDescriptor with initMeasures/takeMeasure/playMeasure/resetMeasuresRound and implemented resolver-only pathways (AGENTS REPLACEMENT CHARACTER (U+FFFD)3.5, REPLACEMENT CHARACTER (U+FFFD)3.7).
 - @bc/rules: EXP-01 measures state adds zones DrawPile/Open/Recycle/FinalDiscard, per-player `hands`, `usedThisRound`, and `playCounts`; deterministic recycle?draw reshuffle with `cycle` seed suffix.
-- @bc/exp-01-economy: added `exp01_takeMeasure` and `exp01_playMeasure` moves with strict zod payloads + enumerate() functions for bot contract (AGENTS §4.1).
+- @bc/exp-01-economy: added `exp01_takeMeasure` and `exp01_playMeasure` moves with strict zod payloads + enumerate() functions for bot contract (AGENTS REPLACEMENT CHARACTER (U+FFFD)4.1).
 - @bc/game: political action path executes expansion moves; per-round play limit enforced and extra-action grant after play preserved.
 - Tests: new exp01.measures.test.ts covering open=3, take?refill, play?recycle?finalDiscard on second play, reshuffle from recycle to draw, and enumerator legality.
-## 2026-02-11 — Task 0028: Local LLM bot (scaffold)
-- @bc/bot-llm: added adapter with enumerateLegalIntents, chooseOptionWithLLM (injectable backend), validateChoice; deterministic fallback when backend invalid/unavailable (AGENTS §4.1).
+## 2026-02-11 REPLACEMENT CHARACTER (U+FFFD) Task 0028: Local LLM bot (scaffold)
+- @bc/bot-llm: added adapter with enumerateLegalIntents, chooseOptionWithLLM (injectable backend), validateChoice; deterministic fallback when backend invalid/unavailable (AGENTS REPLACEMENT CHARACTER (U+FFFD)4.1).
 - @bc/shared: added strict JSON schema (LLMChoiceSchema) for `{ "optionId": string }` via zod.
 - Tests: unit tests for enumeration validity, invalid-output fallback, and schema; integration test runs a short deterministic match with stubbed backend.
 - Note: no model files; backend wiring for node-llama-cpp/ollama to be added in follow-up.

@@ -16,7 +16,7 @@ export * from './production.js';
 export * from './resources.js';
 export * from './expansion-registry.js';
 
-// Canonical effect resolver (AGENTS ง3.5)
+// Canonical effect resolver (AGENTS ยง3.5)
 export * from './effects.js';
 
 export * from './moves.js';

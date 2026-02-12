@@ -8,15 +8,17 @@
                   "dist"
               ],
     "scripts":  {
-                    "dev":  "tsx watch src/index.ts",
+                    "bot:run":  "tsx src/bot.runner.ts",
                     "build":  "tsc -b",
                     "lint":  "eslint src --ext .ts",
-                    "test":  "vitest run"
+                    "test":  "vitest run",
+                    "dev":  "tsx watch src/index.ts"
                 },
     "dependencies":  {
                          "@bc/game":  "workspace:*",
                          "@bc/shared":  "workspace:*",
-                         "boardgame.io":  "^0.50.2"
+                         "boardgame.io":  "^0.50.2",
+                         "@bc/bot-llm":  "workspace:*"
                      },
     "devDependencies":  {
                             "eslint":  "^8.57.1",

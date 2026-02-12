@@ -8,7 +8,7 @@ const setupWith = (game: any, numPlayers: number, setupData?: unknown) => {
   return fn({ matchID: 't', numPlayers, setupData });
 };
 
-describe('Game factory — Task 0018', () => {
+describe('Game factory - Task 0018', () => {
   it('CORE-only: no modules, no exp slice, catalog only core', () => {
     const G = setupWith(CoreGame, 2);
     expect((G as any).exp).toBeUndefined();

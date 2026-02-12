@@ -12,7 +12,7 @@ function makeNoopModule(id: 'exp01'|'exp02'|'exp03') {
   } as any;
 }
 
-describe('Task 0021 — Config is source of truth', () => {
+describe('Task 0021 - Config is source of truth', () => {
   beforeEach(() => { __resetRegisteredExpansionsForTest(); });
 
   it('disabled config ignores present slice', () => {

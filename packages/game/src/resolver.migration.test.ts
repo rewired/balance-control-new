@@ -32,7 +32,7 @@ function makeTestModule(): ExpansionModule {
   };
 }
 
-describe('Resolver enforcement via move routing — Task 0020', () => {
+describe('Resolver enforcement via move routing - Task 0020', () => {
   beforeEach(() => { __resetRegisteredExpansionsForTest(); });
 
   it('cost increase applies on normal tile (fails), but is ignored on Start Committee', () => {

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { createBCGame } from './factory.js';
 import { buildMoveCatalog, corePoliticalMoves, createExpansionRegistry } from '@bc/rules';
 
-describe('EXP-01 scaffold — Task 0022', () => {
+describe('EXP-01 scaffold - Task 0022', () => {
   it('CORE-only: no ECO, no exp01 slice, no exp01 moves', () => {
     const Game = createBCGame({ expansions: { exp01: false } });
     const setup = Game.setup as unknown as (ctx: { matchID: string; numPlayers: number; setupData?: unknown }) => any;

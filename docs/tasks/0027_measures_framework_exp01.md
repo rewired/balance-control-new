@@ -77,7 +77,7 @@ When the implementation is finished, you MUST do all of the following before dec
 - [x] Determinism verified: golden replay test unchanged (packages/game/src/golden.test.ts).
 - [x] No temporary files added: verified via git status.
 - [x] Rule references in code: effects.ts includes EXP-01-02-E, EXP-01-06-02/03, EXP-01-07 comments.
-- [x] Changelog updated: docs/changelog.md — Task 0027 entry added.
+- [x] Changelog updated: docs/changelog.md REPLACEMENT CHARACTER (U+FFFD) Task 0027 entry added.
 - [x] Design decision doc added/updated: n/a
 - [x] Errata added/updated: n/a
 - [x] Expansion isolation verified: CORE-only test asserts no exp01 slice.

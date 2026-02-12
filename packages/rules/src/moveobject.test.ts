@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createResolver } from './effects.js';
 import type { CoreState, Tile } from './types.js';
 
-describe('MoveObject — AGENTS §3.1 Zones', () => {
+describe('MoveObject - AGENTS -3.1 Zones', () => {
   it('moves one Influence from PersonalSupply to Board tile', () => {
     const C1: Tile = { id: 'C1', kind: 'Committee' } as unknown as Tile;
     const G: CoreState = {

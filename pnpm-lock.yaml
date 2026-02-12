@@ -157,6 +157,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@bc/bot-llm':
+        specifier: workspace:*
+        version: link:../bot-llm
       '@bc/game':
         specifier: workspace:*
         version: link:../game

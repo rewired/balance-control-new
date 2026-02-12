@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { MatchConfigSchema, ExpansionFlagsSchema } from './schemas.js';
 import { buildInitialCoreState } from './setup.js';
 
-describe('Match config — Task 0010', () => {
+describe('Match config - Task 0010', () => {
   it('defaults expansions to all false when missing', () => {
     const cfg = MatchConfigSchema.parse({});
     expect(cfg.expansions).toEqual({ exp01: false, exp02: false, exp03: false });

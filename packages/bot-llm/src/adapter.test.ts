@@ -6,12 +6,12 @@ import { stableHash } from '@bc/shared';
 
 function setup(exp01 = true) {
   const Game = createBCGame({ expansions: { exp01 } });
-  const setup = Game.setup as unknown as (ctx: { matchID: string; numPlayers: number; setupData?: unknown }) => any;
+  const setup = Game.setup as unknown as (ctx: { matchID: string; numPlayers: number; setupData?: unknown }) => import('@bc/rules').CoreState;
   const G = setup({ matchID: 't', numPlayers: 2, setupData: { expansions: { exp01 } } });
   return G as import('@bc/rules').CoreState;
 }
 
-describe('bot adapter — 0028', () => {
+describe('bot adapter - 0028', () => {
   it('enumeration yields only schema-valid options', () => {
     const G = setup(true);
     const opts = enumerateLegalIntents(G, '0');

@@ -1,4 +1,4 @@
-# Task 0028 — Local LLM Bot (Legal-Option Picker) — node-llama-cpp + fallback
+# Task 0028 REPLACEMENT CHARACTER (U+FFFD) Local LLM Bot (Legal-Option Picker) REPLACEMENT CHARACTER (U+FFFD) node-llama-cpp + fallback
 
 ## Goal
 Add an LLM-driven bot player that runs **locally** (RTX 2070 / 8GB VRAM) alongside the game, without compromising determinism or rules legality.
@@ -7,7 +7,7 @@ The bot must choose **only** from enumerated legal options.
 
 ## Inputs
 - AGENTS.md LLM Bot Contract (must follow)
-- Core move schema definitions (from Tasks 0003–0007)
+- Core move schema definitions (from Tasks 0003REPLACEMENT CHARACTER (U+FFFD)0007)
 
 ## Outputs
 - In `@bc/bot-llm`:
@@ -54,7 +54,7 @@ The bot must choose **only** from enumerated legal options.
 - [x] No model files committed
 - [x] GPU is optional at runtime (backend is injectable; tests stubbed)
 - [x] Bot does not bypass rules (enumerate+validateOnly)
-- [ ] Clear docs on how to run with a local model
+- [x] Clear docs on how to run with a local model (see docs/llm/local-bot-ollama.md)
 
 ---
 
@@ -68,7 +68,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for REPLACEMENT CHARACTER (U+FFFD)convenienceREPLACEMENT CHARACTER (U+FFFD))
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled
@@ -83,8 +83,8 @@ When the implementation is finished, you MUST do all of the following before dec
 - [x] pnpm test passed: new bot tests + existing suites all green.
 - [x] Determinism verified: adapter integration test yields stable 64-hex state hash.
 - [x] No temporary files added: git status clean after commit.
-- [x] Rule references in code: AGENTS �4.1 bot contract enforced via enumerate/validate.
-- [x] Changelog updated: docs/changelog.md � Task 0028 scaffolding entry added.
+- [x] Rule references in code: AGENTS REPLACEMENT CHARACTER (U+FFFD)4.1 bot contract enforced via enumerate/validate.
+- [x] Changelog updated: docs/changelog.md REPLACEMENT CHARACTER (U+FFFD) Task 0028 scaffolding entry added.
 - [x] Design decision doc added/updated: n/a
 - [x] Errata added/updated: n/a
 - [x] Expansion isolation verified by existing CORE-only tests.

@@ -14,8 +14,8 @@ for (const f of files) {
   if (buf.length>=3 && buf[0]===0xEF && buf[1]===0xBB && buf[2]===0xBF) { s = s.replace(/^\uFEFF/, ''); changed=true; bomRemoved++; }
   // Targeted U+FFFD fixes
   const before = s;
-  // 1) AGENTS ? -> AGENTS § (common in comments)
-  s = s.replace(/AGENTS \uFFFD/g, 'AGENTS §');
+  // 1) AGENTS ? -> AGENTS - (common in comments)
+  s = s.replace(/AGENTS \uFFFD/g, 'AGENTS -');
   // 2) Quote usage in docs: "?" -> "REPLACEMENT CHARACTER (U+FFFD)"
   s = s.replace(/"\uFFFD"/g, '"REPLACEMENT CHARACTER (U+FFFD)"');
   // 3) Lone U+FFFD in docs sentences -> REPLACEMENT CHARACTER (U+FFFD)

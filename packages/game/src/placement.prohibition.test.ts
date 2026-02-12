@@ -18,7 +18,7 @@ function makeBlockingModule(): ExpansionModule {
   };
 }
 
-describe('PlaceTile prohibitions via resolver — Task 0020 Phase 2', () => {
+describe('PlaceTile prohibitions via resolver - Task 0020 Phase 2', () => {
   beforeEach(() => { __resetRegisteredExpansionsForTest(); });
 
   it('blocks placement at prohibited coord', () => {
