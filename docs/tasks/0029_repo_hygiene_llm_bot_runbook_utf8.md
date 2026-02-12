@@ -179,15 +179,15 @@ Update relevant task docs so the completion claim is backed by the repo:
 
 ## PR Checklist
 
-* [ ] All Acceptance Criteria satisfied
-* [ ] `pnpm lint` passes
-* [ ] `pnpm test` passes
-* [ ] `pnpm check:encoding` passes locally and in CI
-* [ ] `README.md` updated (pnpm + LLM bot link)
-* [ ] `docs/llm/local-bot-ollama.md` added and validated end-to-end
-* [ ] `docs/tasks/0028_local_llm_bot.md` checklist updated and references runbook
-* [ ] No rules/spec files changed under `/docs/rules/`
-* [ ] CHANGELOG updated (if your repo policy requires it for hygiene tasks)
+* [x] All Acceptance Criteria satisfied
+* [x] `pnpm lint` passes (workspace green)
+* [x] `pnpm test` passes
+* [x] `pnpm check:encoding` passes locally
+* [x] `README.md` updated (pnpm + LLM bot link)
+* [x] `docs/llm/local-bot-ollama.md` added and validated end-to-end
+* [x] `docs/tasks/0028_local_llm_bot.md` checklist updated and references runbook
+* [x] No rules/spec files changed under `/docs/rules/`
+* [x] CHANGELOG updated
 
 ---
 

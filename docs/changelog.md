@@ -112,3 +112,9 @@
 - @bc/shared: added strict JSON schema (LLMChoiceSchema) for `{ "optionId": string }` via zod.
 - Tests: unit tests for enumeration validity, invalid-output fallback, and schema; integration test runs a short deterministic match with stubbed backend.
 - Note: no model files; backend wiring for node-llama-cpp/ollama to be added in follow-up.
+## 2026-02-12 — Task 0029: Repo hygiene + LLM bot runbook + UTF-8 enforcement
+- Docs: added docs/llm/local-bot-ollama.md with install, model pull, env vars, and headless runner usage.
+- Server: added @bc/server script `bot:run` (env BOT=llm|random, OLLAMA_HOST, OLLAMA_MODEL, N) executing a legal-option picker via @bc/bot-llm.
+- Encoding: added root script `check:encoding`; cleaned files (no BOM/U+FFFD); added helper scripts under /scripts for remediation.
+- README: aligned pnpm version with packageManager and linked the runbook.
+- Tasks: completed 0028 checklist and updated 0029 with evidence.
