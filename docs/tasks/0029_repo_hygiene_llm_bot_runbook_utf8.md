@@ -190,5 +190,3 @@ Update relevant task docs so the completion claim is backed by the repo:
 * [x] CHANGELOG updated
 
 ---
-
-Wenn du willst, kann ich dir im nREPLACEMENT CHARACTER (U+FFFD)chsten Schritt direkt die **konkrete File-Liste** (Encoding-Fails + minimaler Patch-Plan pro Ordner) aus dem ZIP herausziehen und als REPLACEMENT CHARACTER (U+FFFD)Implementation PlanREPLACEMENT CHARACTER (U+FFFD) in 0029 ergREPLACEMENT CHARACTER (U+FFFD)nzen REPLACEMENT CHARACTER (U+FFFD) aber als Task-Contract ist das hier bereits belastbar und Codex-fREPLACEMENT CHARACTER (U+FFFD)tterbar.
