@@ -6,6 +6,8 @@ import {
   type BoardPlacement, type CoreState, type CostIncreasesArgs, type ExpansionHooks,
 } from '@bc/rules';
 import { createBCGame } from './factory.js';
+import { checkStartCommitteeFormalization } from './index.js';
+import { engineMoveOptions } from './legal-options.js';
 
 const committee = { tileId: 'Committee-1', coord: { q: 1, r: 0 } };
 const lobbyist = { tileId: 'Lobbyist-1', coord: { q: 2, r: 0 } };
@@ -215,6 +217,32 @@ describe('CORE political actions through boardgame.io', () => {
     influence(client, 'INF-1-1', placeDraw(client), otherGrassroots.tileId);
     placeDraw(client);
     expectRejected(client, () => formalize(client, 'StartCommittee', cost));
+  });
+
+  it.each([
+    { reason: 'starting-influence-unplaced', unplaced: true },
+    { reason: 'insufficient', unaffordable: true },
+    { reason: 'committee-unavailable', used: true },
+    { reason: 'influence-cap', atCap: true },
+    { reason: undefined },
+  ])('reports Start Committee availability and the cause $reason without spending anything', ({
+    reason, unplaced, unaffordable, used, atCap,
+  }) => {
+    const client = clientWithBoard(G => {
+      placeStartingMarkers(G, unplaced ? '1' : undefined);
+      const player = G.exp.core.players['0'];
+      Object.assign(player.personal.resources, { DOM: 2, FOR: 2, INF: unaffordable ? 0 : 1 });
+      if (used) player.usedStartCommittee = true;
+      if (atCap) player.personal.influence.push(...[1, 2, 3].map(index => ({ id: `INF-0-F${index}`, owner: '0' })));
+    });
+    placeDraw(client);
+    const { G, ctx } = client.getState()!;
+    const before = structuredClone(G);
+    const status = checkStartCommitteeFormalization(G, '0', 'StartCommittee');
+    const legal = engineMoveOptions(G, ctx, '0').filter(option => option.contextTile === 'StartCommittee');
+    expect(status).toEqual(reason ? { ok: false, reason } : { ok: true });
+    expect(legal.length > 0).toBe(status.ok);
+    expect(G).toEqual(before);
   });
 
   it('converts active resorts with virtual control and atomically charges additional costs', () => {

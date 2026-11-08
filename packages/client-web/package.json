@@ -11,6 +11,10 @@
                     "test":  "vitest run"
                 },
     "dependencies":  {
+                         "@bc/exp-00-core": "workspace:*",
+                         "@bc/exp-01-economy": "workspace:*",
+                         "@bc/exp-02-security": "workspace:*",
+                         "@bc/exp-03-climate": "workspace:*",
                          "@bc/game": "workspace:*",
                          "@bc/rules": "workspace:*",
                          "@bc/shared":  "workspace:*",

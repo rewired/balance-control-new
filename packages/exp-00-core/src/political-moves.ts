@@ -6,6 +6,7 @@ import type { MoveDefinition, MoveExtensionBuilder } from '@bc/rules';
 import { matchResourceIds } from '@bc/rules';
 import { PaymentSelectionSchema } from '@bc/rules';
 import { greenwashingResources } from '@bc/rules';
+import { formalizationPayments } from './resolver.js';
 
 function corePoliticalMove<P extends object>(
   type: PoliticalActionEffect['kind'],
@@ -25,16 +26,6 @@ function corePoliticalMove<P extends object>(
       resolve.actionQuotes(G, describe(playerID, payload))
         .map(({ payment, ...quote }) => ({ ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } }))),
   };
-}
-
-function* paymentCombinations(resources: string[], size: number, offset = 0): Generator<string[]> {
-  if (size === 0) {
-    yield [];
-    return;
-  }
-  for (let i = offset; i < resources.length; i++) {
-    for (const rest of paymentCombinations(resources, size - 1, i)) yield [resources[i], ...rest];
-  }
 }
 
 const id = z.string().min(1);
@@ -70,7 +61,7 @@ export function registerCorePoliticalMoves({ add }: MoveExtensionBuilder): void 
         for (const { tileId } of G.exp.core.tiles.board) {
           const kind = G.exp.core.allTiles[tileId].kind;
           if (kind !== 'Committee' && kind !== 'StartCommittee') continue;
-          for (const payment of paymentCombinations(resources, kind === 'Committee' ? 2 : 4)) {
+          for (const payment of formalizationPayments(resources, kind === 'StartCommittee')) {
             if (kind === 'Committee' && fees.length) {
               for (const greenwashing of fees) yield { tileId, resources: payment, payment: { greenwashing } };
             } else {

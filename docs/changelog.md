@@ -502,3 +502,13 @@
 - Der Webclient startet direkt eine CORE-Partie zu zweit. Das Hexfeld verwendet die vorhandene Plättchenvorlage, Textur und Icons. Es zeigt reale Marker, virtuellen Einfluss und die kanonisch berechnete Kontrolle.
 - Die legalen Engine-Optionen steuern Platzierungsziele und politische Aktionen. Die Ansicht zeigt Kosten, Vorräte, Endwertung und einen Neustart.
 - Ein automatisierter DOM-Durchlauf deckt 71 Züge bis zur Wertung und zum Neustart ab. Die Anleitung für den Spieltest zu zweit steht in Task 0031.
+
+## 2026-11-08 – Zug und Einfluss im Webclient
+
+- Der Zugkopf und die Spielervorräte markieren, wer als Nächstes handelt. Bei einer unterbrochenen Runde nennt der Zugkopf auch den eigentlichen Zugspieler.
+- Das Brett zeigt Kontrolle, reale Marker und virtuellen Einfluss pro Feld. Legale Ziele unterscheiden zwischen einem neuen Tile, einem Marker aus dem Vorrat und dem Verschieben eines Markers. Ein Klick auf ein Feld zeigt die Details und die verfügbaren Aktionen mit Kosten.
+- Die lokalen Clients blenden das boardgame.io-Debugpanel mit seiner separaten Spieleranzeige aus.
+- Bei der Auswahl einer Markerbewegung markiert das Brett Herkunft und Ziel und zeigt die Richtung mit einem Pfeil.
+- Das Start Committee erklärt im Feldpanel, wann eine Formalisierung möglich ist, was sie kostet und welche Voraussetzung aktuell fehlt.
+- Die Vorratstabelle zeigt pro Spieler die Anzahl je Ressort sowie Startmarker und zusätzliche Einflussmarker im Vorrat und auf dem Brett.
+- CORE, Economy, Security und Climate liefern ihre Icons im jeweiligen Workspace-Paket. Die gemeinsame Tile-Vorlage und Textur liegen im Webclient.

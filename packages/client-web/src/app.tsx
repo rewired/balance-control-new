@@ -9,7 +9,7 @@ type Env = { VITE_SERVER_URL?: string };
 const env = (import.meta as unknown as { env: Env }).env;
 const serverURL = env?.VITE_SERVER_URL ?? 'http://localhost:8000';
 
-const LocalClientCounter = BGClient({ game: CounterGame, board: CounterBoard });
+const LocalClientCounter = BGClient({ game: CounterGame, board: CounterBoard, debug: false });
 const gameComponents = [{ game: CounterGame, board: CounterBoard }, { game: CoreGame, board: CoreBoard }];
 
 export function App() {

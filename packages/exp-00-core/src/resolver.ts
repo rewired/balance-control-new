@@ -217,6 +217,27 @@ function placeSupplyMarker(G: CoreState, supply: Influence[], index: number, til
   (G.exp.core.influencesOnBoard ??= []).push({ ...marker, tileId });
 }
 
+// CORE-01-04-15 and CORE-01-08-08.
+const committeeCost = { total: 2, distinct: 2 };
+export const startCommitteeCost = { total: 4, distinct: 3 } as const;
+
+function* paymentCombinations(resources: ResourceId[], size: number, offset = 0): Generator<ResourceId[]> {
+  if (size === 0) {
+    yield [];
+    return;
+  }
+  for (let i = offset; i < resources.length; i++) {
+    for (const rest of paymentCombinations(resources, size - 1, i)) yield [resources[i], ...rest];
+  }
+}
+
+export function* formalizationPayments(resources: ResourceId[], start: boolean): Generator<ResourceId[]> {
+  const cost = start ? startCommitteeCost : committeeCost;
+  for (const payment of paymentCombinations(resources, cost.total)) {
+    if (new Set(payment).size >= cost.distinct) yield payment;
+  }
+}
+
 function planPoliticalAction(
   G: CoreState,
   requested: PoliticalActionEffect,
@@ -268,8 +289,9 @@ function planPoliticalAction(
       return { ok: false, reason: 'starting-influence-unplaced' };
     }
     // CORE-01-04-15/-16 and CORE-01-08-08/-09: pay the specified combination of active resorts.
+    const required = start ? startCommitteeCost : committeeCost;
     const distinct = new Set(effect.resources);
-    if (effect.resources.length !== (start ? 4 : 2) || distinct.size < (start ? 3 : 2)
+    if (effect.resources.length !== required.total || distinct.size < required.distinct
         || effect.resources.some(resource => !registry.has(resource))) {
       return { ok: false, reason: 'invalid-formalization-cost' };
     }
@@ -324,6 +346,19 @@ function planPoliticalAction(
   });
   if (!payout.ok) return { ok: false, reason: payout.reason };
   return { ok: true, commit: payment.transaction.commit };
+}
+
+export function checkStartCommitteeFormalization(G: CoreState, playerID: string, tileId: string): ResolveResult {
+  if (G.exp.core.allTiles[tileId]?.kind !== 'StartCommittee') return { ok: false, reason: 'invalid-target' };
+  const active = createExpansionRegistry(G.cfg.expansions);
+  const resorts = createMatchResourceRegistry(active).list();
+  for (const resources of formalizationPayments(resorts, true)) {
+    const plan = planPoliticalAction(G, { kind: 'formalizeInfluence', playerID, tileId, resources }, active);
+    if (plan.ok) return { ok: true };
+    // The Start Committee uses only the base payment. Try another combination if this one is unaffordable.
+    if (plan.reason !== 'insufficient') return plan;
+  }
+  return { ok: false, reason: 'insufficient' };
 }
 
 // CORE-01-04-05A/-05B: previews and placements share the same legality and payment check.

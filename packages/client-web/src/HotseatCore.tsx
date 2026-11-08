@@ -4,7 +4,7 @@ import { CoreGame } from '@bc/game';
 import { CoreView, submitCoreOption } from './BoardCore.js';
 
 function HotseatMatch({ onNewMatch }: { onNewMatch: () => void }) {
-  const [client] = useState(() => Client({ game: CoreGame, numPlayers: 2, playerID: '0' }));
+  const [client] = useState(() => Client({ game: CoreGame, numPlayers: 2, playerID: '0', debug: false }));
   const [state, setState] = useState(() => client.getState());
   useEffect(() => {
     const unsubscribe = client.subscribe(setState);

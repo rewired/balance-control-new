@@ -27,25 +27,41 @@ describe('CORE hotseat', () => {
     const chosenPlacement = options()[1];
     const tileId = state().G.exp.core.tiles.drawResolution!.tileId;
 
-    expect(render()).toContain('Start Committee');
-    expect(render()).toContain('Place the drawn tile');
-    expect(render().match(/aria-label="Place tile at /g)).toHaveLength(options().length);
-    expect(render('1')).not.toContain('aria-label="Place tile at ');
+    const placement = render();
+    expect(placement).toContain('Player 1 to act');
+    expect(placement).toContain('Start Committee');
+    expect(placement).toContain('Place the drawn tile');
+    expect(placement.match(/aria-label="Place tile at /g)).toHaveLength(options().length);
+    const waiting = render('1');
+    expect(waiting).toContain('Waiting for Player 1');
+    expect(waiting).not.toContain('aria-label="Place tile at ');
     submit(chosenPlacement);
     expect(state().G.exp.core.tiles.board).toContainEqual({ tileId, coord: chosenPlacement.parameters[0] });
 
-    expect(render()).toContain('Choose a political action');
-    expect(render()).toContain('from your supply on');
-    expect(render()).toContain('Cost: Free');
-    expect(render()).not.toContain('placeOrMoveInfluence');
-    expect(render()).not.toContain('aria-label="Place tile at ');
+    const politics = render();
+    expect(politics).toContain('Choose a political action');
+    expect(politics).toContain('Legal action: Place');
+    expect(politics).toContain('from your supply on');
+    expect(politics).toContain('Cost: Free');
+    expect(politics).not.toContain('placeOrMoveInfluence');
+    expect(politics).not.toContain('aria-label="Place tile at ');
+    expect(render('1')).not.toContain('Legal action: Place');
     const chosenAction = options()[1];
     const { markerId } = (chosenAction.parameters[0] as { payload: { markerId: string } }).payload;
     submit(chosenAction);
     expect(state().G.exp.core.influencesOnBoard).toContainEqual(expect.objectContaining({ id: markerId, tileId, owner: '0' }));
     expect(state().ctx.currentPlayer).toBe('1');
-    expect(render()).toContain('Player 2');
-    expect(render()).toContain('Controlled by Player 1');
+    const nextTurn = render();
+    expect(nextTurn).toContain('Player 2 to act');
+    expect(nextTurn).toContain('Controlled by Player 1. Player 1 has 1 marker');
+
+    submit(options()[0]);
+    submit(options()[0]);
+    submit(options()[0]);
+    const withMoves = render();
+    expect(withMoves).toContain('Player 1 to act');
+    expect(withMoves).toContain('Legal action: Place / Move');
+    expect(withMoves).toMatch(/Move .* from .* to /);
   });
 
   it('reaches the engine result using only offered options and shows the shared win', () => {
@@ -68,9 +84,11 @@ describe('CORE hotseat', () => {
     }
     expect(state().ctx.gameover).toEqual({ winners: ['0', '1'] });
     expect(state().G.lastTurnHash).toBe('06033bb8ff0535ed345c7adb61bbfd1b4f62458376d42dfc43914a1c76442ad5');
-    expect(render()).toContain('Shared win · Player 1 and Player 2');
-    expect(render()).toContain('4 on board');
-    expect(render()).toContain('Start a new match');
-    expect(render()).not.toContain('<select');
+    const end = render();
+    expect(end).toContain('Shared win · Player 1 and Player 2');
+    expect(end).toContain('On board');
+    expect(end.match(/4 starting · 0 additional/g)).toHaveLength(2);
+    expect(end).toContain('Start a new match');
+    expect(end).not.toContain('<select');
   });
 });

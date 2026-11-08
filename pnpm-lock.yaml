@@ -59,6 +59,18 @@ importers:
 
   packages/client-web:
     dependencies:
+      '@bc/exp-00-core':
+        specifier: workspace:*
+        version: link:../exp-00-core
+      '@bc/exp-01-economy':
+        specifier: workspace:*
+        version: link:../exp-01-economy
+      '@bc/exp-02-security':
+        specifier: workspace:*
+        version: link:../exp-02-security
+      '@bc/exp-03-climate':
+        specifier: workspace:*
+        version: link:../exp-03-climate
       '@bc/game':
         specifier: workspace:*
         version: link:../game

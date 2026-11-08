@@ -1,43 +1,35 @@
 import type { CSSProperties } from 'react';
+import type { EngineMoveOption } from '@bc/game';
 import type { AxialCoord, CoreState, Tile } from '@bc/rules';
-import { computeMajority } from '@bc/rules';
-import domIcon from './assets/tile-icons/dom.svg';
-import foreignIcon from './assets/tile-icons/for.svg';
-import infIcon from './assets/tile-icons/inf.svg';
-import ecoIcon from './assets/tile-icons/eco.svg';
-import secIcon from './assets/tile-icons/sec.svg';
-import clmIcon from './assets/tile-icons/clm.svg';
-import committeeIcon from './assets/tile-icons/committee.svg';
-import lobbyistIcon from './assets/tile-icons/lobbyist.svg';
-import grassrootsIcon from './assets/tile-icons/grassroots.svg';
-import hotspotIcon from './assets/tile-icons/hotspot.svg';
-import startCommitteeIcon from './assets/tile-icons/start-committee.svg';
-import { coordLabel, playerLabel, tileLabel } from './core-board-labels.js';
+import committeeIcon from '@bc/exp-00-core/assets/tile-icons/committee.svg';
+import lobbyistIcon from '@bc/exp-00-core/assets/tile-icons/lobbyist.svg';
+import grassrootsIcon from '@bc/exp-00-core/assets/tile-icons/grassroots.svg';
+import hotspotIcon from '@bc/exp-00-core/assets/tile-icons/hotspot.svg';
+import startCommitteeIcon from '@bc/exp-00-core/assets/tile-icons/start-committee.svg';
+import { playerColor, resortVisuals } from './core-board-visuals.js';
+import {
+  coordLabel, influenceLabel, playerShortLabel, tileActionLabel, tileLabel, tileOccupation, type MovePreview,
+} from './core-board-labels.js';
 
-const playerColors = ['#E11D48', '#22C55E', '#2B42D6', '#FACC15', '#D946EF', '#22D3EE'];
-export const playerColor = (id: string) => playerColors[Number(id)];
-
-const colors: Record<string, string> = {
-  DOM: '#3A5A78', FOR: '#2E7D6E', INF: '#6A4C93', ECO: '#8A6E2F', SEC: '#4E5B63', CLM: '#3F7F4C',
-  StartCommittee: '#5C4B3B', Committee: '#5C4B3B', Lobbyist: '#7A5C3A', Grassroots: '#4A6A5E', Hotspot: '#8B2E2E',
+const tileVisuals: Record<string, { color: string; icon: string } | undefined> = {
+  StartCommittee: { color: '#5C4B3B', icon: startCommitteeIcon },
+  Committee: { color: '#5C4B3B', icon: committeeIcon },
+  Lobbyist: { color: '#7A5C3A', icon: lobbyistIcon },
+  Grassroots: { color: '#4A6A5E', icon: grassrootsIcon },
+  Hotspot: { color: '#8B2E2E', icon: hotspotIcon },
 };
-const icons: Record<string, string> = {
-  DOM: domIcon, FOR: foreignIcon, INF: infIcon, ECO: ecoIcon, SEC: secIcon, CLM: clmIcon,
-  Committee: committeeIcon, StartCommittee: startCommitteeIcon, Lobbyist: lobbyistIcon,
-  Grassroots: grassrootsIcon, Hotspot: hotspotIcon,
-};
-const tileWidth = 100;
-const tileHeight = 116;
+const tileWidth = 144;
+const tileHeight = 166;
+const fieldPadding = 8;
 
 export function TileFace({ tile, controller }: { tile: Tile; controller?: string | null }) {
-  const key = tile.kind === 'ResortTile' ? tile.resort : tile.kind;
-  const iconURL = icons[key];
+  const visual = tile.kind === 'ResortTile' ? resortVisuals[tile.resort] : tileVisuals[tile.kind];
   return (
     <span className="tile-face" style={{
-      '--tile-color': colors[key] ?? '#435063',
+      '--tile-color': visual?.color ?? '#435063',
       '--tile-rim': controller == null ? '#94a3b8' : playerColor(controller),
     } as CSSProperties}>
-      {iconURL && <img src={iconURL} alt="" />}
+      {visual && <img src={visual.icon} alt="" />}
       <span>{tileLabel(tile)}</span>
     </span>
   );
@@ -48,15 +40,37 @@ function pixel({ q, r }: AxialCoord, topology: CoreState['cfg']['topology']) {
   return { x: (tileWidth + 4) * (q + r / 2), y: (tileHeight * 0.75 + 4) * r };
 }
 
+function MoveArrow({ source, destination, viewBox }: {
+  source: { x: number; y: number };
+  destination: { x: number; y: number };
+  viewBox: string;
+}) {
+  const dx = destination.x - source.x;
+  const dy = destination.y - source.y;
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  const inset = tileWidth / 3;
+  const tip = Math.hypot(dx, dy) - inset;
+  const head = tip - 14;
+  return (
+    <svg className="hex-move-arrow" viewBox={viewBox} aria-hidden="true">
+      <path transform={`translate(${source.x + tileWidth / 2} ${source.y + tileHeight / 2}) rotate(${angle})`}
+        d={`M ${inset} -2 H ${head} V -7 L ${tip} 0 L ${head} 7 V 2 H ${inset} Z`} />
+    </svg>
+  );
+}
+
 interface Props {
   G: CoreState;
   legalCoords: AxialCoord[];
+  tileActions: ReadonlyMap<string, EngineMoveOption[]>;
   selectedTile?: string;
+  selectedCoord?: string;
+  preview?: MovePreview;
   onPlace: (coord: AxialCoord) => void;
   onInspect: (tileId: string) => void;
 }
 
-export default function CoreHexBoard({ G, legalCoords, selectedTile, onPlace, onInspect }: Props) {
+export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile, selectedCoord, preview, onPlace, onInspect }: Props) {
   const core = G.exp.core;
   const tiles = core.tiles.board.map(placement => ({
     ...placement, ...pixel(placement.coord, G.cfg.topology),
@@ -65,44 +79,58 @@ export default function CoreHexBoard({ G, legalCoords, selectedTile, onPlace, on
   const locations = [...tiles, ...targets];
   const left = Math.min(...locations.map(({ x }) => x));
   const top = Math.min(...locations.map(({ y }) => y));
-  const width = Math.max(...locations.map(({ x }) => x)) - left + tileWidth + 16;
-  const height = Math.max(...locations.map(({ y }) => y)) - top + tileHeight + 16;
+  const width = Math.max(...locations.map(({ x }) => x)) - left + tileWidth + 2 * fieldPadding;
+  const height = Math.max(...locations.map(({ y }) => y)) - top + tileHeight + 2 * fieldPadding;
+  const source = preview && tiles.find(({ tileId }) => tileId === preview.sourceTileId);
+  const destination = preview && tiles.find(({ tileId }) => tileId === preview.targetTileId);
 
   return (
     <section className="hex-board" aria-label="Game board">
       <div className="hex-field" style={{ width, height }}>
-        {tiles.map(({ tileId, coord, x, y }) => {
+        {tiles.map(placement => {
+          const { tileId, coord, x, y } = placement;
           const tile = core.allTiles[tileId];
-          const { controller, leaders, scores } = computeMajority(G, coord, 'details');
-          const influence = Object.keys(core.players).map(id => ({
-            id, count: (core.influencesOnBoard ?? []).filter(marker => marker.tileId === tileId && marker.owner === id).length,
-          }));
-          const control = controller !== null ? `Controlled by ${playerLabel(controller)}`
-            : leaders.length > 1 ? 'Tied majority' : 'Uncontrolled';
-          const summary = `${control}. ${influence.filter(({ count }) => count > 0)
-            .map(({ id, count }) => `${playerLabel(id)}: ${count} influence`).join(', ')}`;
-          const label = `${tileLabel(tile)} (${coordLabel(coord)}). ${summary}`;
+          const { controller, leaders, influence, control } = tileOccupation(G, placement);
+          const action = tileActionLabel(tileActions.get(tileId) ?? []);
+          const endpoint = preview?.sourceTileId === tileId ? 'source'
+            : preview?.targetTileId === tileId ? 'destination' : undefined;
+          const label = [
+            `${tileLabel(tile)} (${coordLabel(coord)})`, control,
+            influence.length ? influence.map(influenceLabel).join(', ') : 'No influence',
+            action && `Legal action: ${action}`,
+            endpoint && `Move preview: ${endpoint}`,
+          ].filter(Boolean).join('. ');
           return (
-            <button key={tileId} className="hex-cell" type="button"
-              style={{ left: x - left + 8, top: y - top + 8 }} aria-pressed={selectedTile === tileId}
+            <button key={tileId} className="hex-cell" type="button" data-move-endpoint={endpoint}
+              style={{ left: x - left + fieldPadding, top: y - top + fieldPadding }} aria-pressed={selectedTile === tileId}
               title={label} aria-label={label} onClick={() => onInspect(tileId)}>
               <TileFace tile={tile} controller={controller} />
-              <span className="tile-control">{controller !== null ? `P${Number(controller) + 1}` : leaders.length ? 'Tie' : ''}</span>
-              <span className="tile-influence">
-                {influence.filter(({ id, count }) => count > 0 || scores[id] > 0).map(({ id, count }) => (
+              <span className="tile-control" style={{
+                '--controller-color': controller === null ? '#94a3b8' : playerColor(controller),
+              } as CSSProperties}>{controller !== null ? `${playerShortLabel(controller)} controls` : leaders.length ? 'Tied' : 'No control'}</span>
+              <span className="tile-influence" data-dense={influence.length > 4}>
+                {influence.map(({ id, count, virtual }) => (
                   <span key={id} style={{ '--player-color': playerColor(id) } as CSSProperties}>
-                    P{Number(id) + 1} {count}{scores[id] > count ? `+${scores[id] - count}` : ''}
+                    {playerShortLabel(id)} <b>{count}</b>{virtual > 0 && <span className="virtual-influence"> +{virtual}</span>}
                   </span>
                 ))}
+                {!influence.length && <span className="empty-influence">No influence</span>}
               </span>
+              {endpoint ? <span className="tile-action tile-move-endpoint">{endpoint === 'source' ? 'From →' : '→ To'}</span>
+                : action && <span className="tile-action">{action}</span>}
             </button>
           );
         })}
         {targets.map(({ coord, x, y }) => (
           <button key={coordLabel(coord)} className="hex-cell hex-target" type="button"
-            style={{ left: x - left + 8, top: y - top + 8 }}
-            aria-label={`Place tile at ${coordLabel(coord)}`} onClick={() => onPlace(coord)}>+</button>
+            style={{ left: x - left + fieldPadding, top: y - top + fieldPadding }}
+            aria-pressed={selectedCoord === coordLabel(coord)}
+            aria-label={`Place tile at ${coordLabel(coord)}`} onClick={() => onPlace(coord)}>
+            <span aria-hidden="true">+</span>Place tile
+          </button>
         ))}
+        {source && destination && <MoveArrow source={source} destination={destination}
+          viewBox={`${left - fieldPadding} ${top - fieldPadding} ${width} ${height}`} />}
       </div>
     </section>
   );

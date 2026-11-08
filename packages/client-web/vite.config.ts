@@ -3,14 +3,15 @@ import path from 'node:path';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@bc/game': path.resolve(__dirname, '../game/src/index.ts'),
-      '@bc/shared': path.resolve(__dirname, '../shared/src/index.ts'),
-      '@bc/rules': path.resolve(__dirname, '../rules/src/index.ts'),
-      '@bc/exp-01-economy': path.resolve(__dirname, '../exp-01-economy/src/index.ts'),
-      '@bc/exp-00-core': path.resolve(__dirname, '../exp-00-core/src/index.ts'),
-      '@bc/exp-02-security': path.resolve(__dirname, '../exp-02-security/src/index.ts'),
-      '@bc/exp-03-climate': path.resolve(__dirname, '../exp-03-climate/src/index.ts'),
-    },
+    alias: [
+      { find: '@bc/game', replacement: path.resolve(__dirname, '../game/src/index.ts') },
+      { find: '@bc/shared', replacement: path.resolve(__dirname, '../shared/src/index.ts') },
+      { find: '@bc/rules', replacement: path.resolve(__dirname, '../rules/src/index.ts') },
+      // Alias only the code entry points so asset subpaths resolve from the packages.
+      { find: /^@bc\/exp-00-core$/, replacement: path.resolve(__dirname, '../exp-00-core/src/index.ts') },
+      { find: /^@bc\/exp-01-economy$/, replacement: path.resolve(__dirname, '../exp-01-economy/src/index.ts') },
+      { find: /^@bc\/exp-02-security$/, replacement: path.resolve(__dirname, '../exp-02-security/src/index.ts') },
+      { find: /^@bc\/exp-03-climate$/, replacement: path.resolve(__dirname, '../exp-03-climate/src/index.ts') },
+    ],
   },
 });

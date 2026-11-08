@@ -1,7 +1,8 @@
-import type { AxialCoord, CoreExpansionState, Tile } from '@bc/rules';
+import { computeMajority, type AxialCoord, type BoardPlacement, type CoreExpansionState, type CoreState, type Tile } from '@bc/rules';
 import type { EngineMoveOption } from '@bc/game';
 
 export const playerLabel = (id: string) => `Player ${Number(id) + 1}`;
+export const playerShortLabel = (id: string) => `P${Number(id) + 1}`;
 export const coordLabel = ({ q, r }: AxialCoord) => `${q}, ${r}`;
 
 export function words(value: string): string {
@@ -23,6 +24,23 @@ export function optionCost(option: EngineMoveOption): string {
     `${playerID === option.playerID ? '' : `${playerLabel(playerID)} pays `}${amount} ${resource}`).join(' + ') || 'Free';
 }
 
+export function tileOccupation(G: CoreState, { tileId, coord }: BoardPlacement) {
+  const core = G.exp.core;
+  const { controller, leaders, scores } = computeMajority(G, coord, 'details');
+  const influence = Object.keys(core.players).map(id => {
+    const count = (core.influencesOnBoard ?? []).filter(marker => marker.tileId === tileId && marker.owner === id).length;
+    return { id, count, virtual: Math.max(0, scores[id] - count) };
+  }).filter(({ count, virtual }) => count > 0 || virtual > 0);
+  const control = controller !== null ? `Controlled by ${playerLabel(controller)}`
+    : leaders.length > 1 ? `Tied majority (${leaders.map(playerShortLabel).join(', ')})`
+      : core.allTiles[tileId].kind === 'StartCommittee' ? 'Cannot be controlled' : 'Uncontrolled';
+  return { controller, leaders, influence, control };
+}
+
+export function influenceLabel({ id, count, virtual }: ReturnType<typeof tileOccupation>['influence'][number]): string {
+  return `${playerLabel(id)} has ${count} ${count === 1 ? 'marker' : 'markers'}${virtual ? ` and ${virtual} virtual influence` : ''}`;
+}
+
 type PoliticalOption = {
   type: string;
   payload: {
@@ -34,6 +52,31 @@ type PoliticalOption = {
     output?: string;
   };
 };
+
+export function isFormalization(option: EngineMoveOption): boolean {
+  return option.moveType === 'doPoliticalAction' && (option.parameters[0] as PoliticalOption).type === 'formalizeInfluence';
+}
+
+export interface MovePreview {
+  sourceTileId: string;
+  targetTileId: string;
+}
+
+export function movePreview(option?: EngineMoveOption): MovePreview | undefined {
+  if (option?.moveType !== 'doPoliticalAction') return;
+  const { type, payload: { sourceTileId, targetTileId } } = option.parameters[0] as PoliticalOption;
+  if (type === 'placeOrMoveInfluence' && sourceTileId && targetTileId) return { sourceTileId, targetTileId };
+}
+
+export function tileActionLabel(options: EngineMoveOption[]): string {
+  const influenceActions = options.flatMap(option => {
+    if (option.moveType !== 'doPoliticalAction') return [];
+    const { type, payload } = option.parameters[0] as PoliticalOption;
+    if (type !== 'placeOrMoveInfluence') return [];
+    return [payload.sourceTileId ? 'Move' : 'Place'];
+  });
+  return [...new Set(influenceActions)].join(' / ') || (options.length ? 'Action' : '');
+}
 
 export function describeOption(core: CoreExpansionState, option: EngineMoveOption): string {
   if (option.moveType === 'placeTile') return `Place tile at ${coordLabel(option.parameters[0] as AxialCoord)}`;
@@ -52,7 +95,7 @@ export function describeOption(core: CoreExpansionState, option: EngineMoveOptio
         : `Place ${marker} from your supply on ${target}`;
     }
     if (type === 'formalizeInfluence' && payload.tileId) {
-      return `Formalize influence on ${boardTileLabel(core, payload.tileId)}`;
+      return `Formalize influence via ${boardTileLabel(core, payload.tileId)}`;
     }
     if (type === 'convertResources' && payload.tileId) {
       return `Convert ${payload.input} to ${payload.output} at ${boardTileLabel(core, payload.tileId)}`;
