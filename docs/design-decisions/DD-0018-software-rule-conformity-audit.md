@@ -19,6 +19,8 @@ Investment Freeze und Supply Chain Disruption greifen bei registrierten Produkti
 
 S11/S12 verwenden getrennte Deckzonen und drei stabile Marktslots mit gemeinsamem Hand- und Spiellimit. T10 prüft den mittleren Slot, T18 die ResortTile-Reihenfolge im Settlement. Die Prüfung der vollständigen Kartenauflösung in T11/T12 folgt bei Collective Bargaining. [DD-0027](DD-0027-shared-measure-lifecycle.md)
 
+T11 bis T14 sind jetzt über das tatsächliche Engine-Setup und bezahltes Collective Bargaining abgedeckt. Alle acht Setup-Kombinationen und die ECO-/CLM-Ergänzungen für fünf und sechs Spieler sind geprüft. Investment Program, Investment Freeze und Supply Chain Disruption sind an ihre regulären Aktionspfade angebunden. [Setup-Tests](../../packages/game/src/expansion.material.engine.test.ts), [Kartentests](../../packages/game/src/measure-play.engine.test.ts)
+
 Der CORE-Teil von S03 und das Add-on-Cap aus S18 sind umgesetzt. Engine-Tests prüfen Markeridentität, Committee-Formalisierung, Grassroots-Konvertierung und den automatischen Abschluss leerer politischer Slots. [DD-0023](DD-0023-core-political-actions.md)
 
 Der CORE-Teil von S08 ist umgesetzt. T04 prüft den persistenten Abschluss nach Erfolg oder unterbliebener Auszahlung sowie gleichzeitige Einschließungen über boardgame.io. [DD-0024](DD-0024-hotspot-enclosure-events.md)

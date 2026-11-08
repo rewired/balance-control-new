@@ -19,7 +19,7 @@ export function resolveRoundSettlement(state: CoreState, modules?: readonly Expa
     resolve(state, { kind: 'applyProductionAt', coord: placement.coord });
   }
   // CORE-01-07-17: expiring effects remain active through all production in this Settlement.
-  resolve(state, { kind: 'expireProductionEffects', boundary: 'settlementEnd' });
+  resolve(state, { kind: 'expireMeasureEffects', boundary: 'settlementEnd' });
 }
 
 export { planProductionForTile };

@@ -23,19 +23,19 @@ const counts = {
   Hotspots: 8,    // CORE-01-02-16
 };
 
+export function createResortTiles(resort: ResourceId, counts: Partial<Record<ResortTile['w'], number>>): ResortTile[] {
+  return ([1, 2, 3, 4, 5] as const).flatMap(w => Array.from({ length: counts[w] ?? 0 }, (_, i) => ({
+    id: makeId(`${resort}-W${w}`, i + 1), kind: 'ResortTile', resort, w,
+  })));
+}
+
 function buildResortTiles(addOn56: boolean): ResortTile[] {
-  const tiles: ResortTile[] = [];
-  for (const resort of CoreResorts) {
-    const c = resortCounts[resort];
-    ([1,2,3,4,5] as const).forEach((w) => {
-      // ADD56-01-01-02 through -10: one additional W2, W3 and W4 per CORE resort.
-      const count = c[w] + (addOn56 && w >= 2 && w <= 4 ? 1 : 0);
-      for (let i = 0; i < count; i++) {
-        tiles.push({ id: makeId(`${resort}-W${w}`, i+1), kind: 'ResortTile', resort, w: Number(w) as 1|2|3|4|5 });
-      }
-    });
-  }
-  return tiles;
+  return CoreResorts.flatMap(resort => {
+    const counts = { ...resortCounts[resort] };
+    // ADD56-01-01-02 through -10: one additional W2, W3 and W4 per CORE resort.
+    if (addOn56) { counts[2]++; counts[3]++; counts[4]++; }
+    return createResortTiles(resort, counts);
+  });
 }
 
 function buildStartCommittee(): StartCommitteeTile {
@@ -58,19 +58,21 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string, con
   const cfg = MatchConfigSchema.parse(config);
   const invalidCount = validateMatchPlayerCount(numPlayers, cfg.addOn56);
   if (invalidCount) throw new RangeError(invalidCount);
-  const registry = createMatchResourceRegistry(createExpansionRegistry(cfg.expansions));
+  const expansions = createExpansionRegistry(cfg.expansions);
+  const registry = createMatchResourceRegistry(expansions);
 
   // Gather all tiles
   const start = buildStartCommittee();
   const resortTiles = buildResortTiles(cfg.addOn56);
   const others = buildNonResortTiles(cfg.addOn56);
-  const allTilesArr: Tile[] = [start, ...resortTiles, ...others];
+  const drawTiles = [...resortTiles, ...others, ...expansions.flatMap(module => module.tiles?.(cfg) ?? [])];
+  const allTilesArr: Tile[] = [start, ...drawTiles];
 
   // Index tiles
   const allTiles: Record<string, Tile> = Object.fromEntries(allTilesArr.map(t => [t.id, t]));
 
   // Shuffle draw pile deterministically (excluding Start Committee)
-  const drawPool = [...resortTiles, ...others].map(t => t.id);
+  const drawPool = drawTiles.map(t => t.id);
   const drawPile = shuffleSeeded(drawPool, matchSeed);
 
   // Setup players and starting Influence (CORE-01-03-04..06)

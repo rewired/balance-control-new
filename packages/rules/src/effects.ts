@@ -1,5 +1,5 @@
 import { shuffleSeeded, stableHash } from '@bc/shared';
-import type { ActiveProductionEffect, AxialCoord, CoreState, Influence, MeasureDeckState, ResourceId, ExpansionId } from './types.js';
+import type { ActiveMeasureEffect, AxialCoord, CoreState, Influence, MeasureDeckState, ResourceId, ExpansionId } from './types.js';
 import { createMatchResourceRegistry, type ResourceAmounts, type ResourceRegistry } from './resources.js';
 import { createExpansionRegistry, ensureExpansionSlice, type ExpansionHooks, type ExpansionModule } from './expansion-registry.js';
 import { isFullySurrounded } from './hotspot.js';
@@ -14,8 +14,8 @@ export type EffectKind =
   | 'placeTile'
   | 'resolveHotspotAt'
   | 'applyProductionAt'
-  | 'registerProductionEffect'
-  | 'expireProductionEffects'
+  | 'registerMeasureEffect'
+  | 'expireMeasureEffects'
   | 'addNoise'
   | PoliticalActionEffect['kind']
   | 'initMeasures'
@@ -59,12 +59,12 @@ export interface ApplyProductionAtEffect extends BaseEffect {
   coord: AxialCoord;
 }
 
-interface RegisterProductionEffect extends BaseEffect {
-  kind: 'registerProductionEffect';
-  instance: Omit<ActiveProductionEffect, 'id'>;
+interface RegisterMeasureEffect extends BaseEffect {
+  kind: 'registerMeasureEffect';
+  instance: Omit<ActiveMeasureEffect, 'id'>;
 }
 
-type ExpireProductionEffects = BaseEffect & { kind: 'expireProductionEffects' } & (
+type ExpireMeasureEffects = BaseEffect & { kind: 'expireMeasureEffects' } & (
   { boundary: 'settlementEnd' } | { boundary: 'turnStart'; playerID: string }
 );
 
@@ -77,7 +77,7 @@ export interface AddNoiseEffect extends BaseEffect {
 export type PoliticalActionEffect = BaseEffect & { playerID: string } & (
   | { kind: 'placeOrMoveInfluence'; markerId: string; targetTileId: string; sourceTileId?: string }
   | { kind: 'formalizeInfluence'; tileId: string; resources: ResourceId[] }
-  | { kind: 'convertResources'; tileId: string; input: ResourceId; output: ResourceId }
+  | { kind: 'convertResources'; tileId: string; input: ResourceId; output: ResourceId; alternative?: string }
 );
 
 export interface InitMeasuresEffect extends BaseEffect {
@@ -96,6 +96,7 @@ export interface PlayMeasureEffect extends BaseEffect {
   expansion: ExpansionId;
   playerID: string;
   measureId: string; // must be in hand
+  targetPlayerID?: string;
 }
 export interface ResetMeasuresRoundEffect extends BaseEffect {
   kind: 'resetMeasuresRound';
@@ -113,8 +114,8 @@ export type EffectDescriptor =
   | PlaceTileEffect
   | ResolveHotspotAtEffect
   | ApplyProductionAtEffect
-  | RegisterProductionEffect
-  | ExpireProductionEffects
+  | RegisterMeasureEffect
+  | ExpireMeasureEffects
   | AddNoiseEffect
   | PoliticalActionEffect
   | InitMeasuresEffect
@@ -241,9 +242,10 @@ function placeSupplyMarker(G: CoreState, supply: Influence[], index: number, til
 function planPoliticalAction(
   G: CoreState,
   requested: PoliticalActionEffect,
-  registry: ResourceRegistry,
-  hooks: readonly ExpansionHooks[],
+  active: readonly ExpansionModule[],
 ): { ok: true; commit: () => void } | { ok: false; reason?: string } {
+  const registry = createMatchResourceRegistry(active);
+  const hooks = active.flatMap(module => module.hooks ?? []);
   if (!Object.hasOwn(G.players, requested.playerID)) return { ok: false, reason: 'no-player' };
   const player = G.players[requested.playerID];
   const supply = player.personal.influence;
@@ -320,7 +322,12 @@ function planPoliticalAction(
   if (effect.input === effect.output || !registry.has(effect.input) || !registry.has(effect.output)) {
     return { ok: false, reason: 'invalid-conversion-resorts' };
   }
-  const payment = planPayment(G, registry, effect, localHooks, { [effect.input]: 3 });
+  // EXP-01-05-02/-06/-07: an eligible alternative replaces only the base exchange.
+  const alternative = effect.alternative === undefined ? undefined : active
+    .flatMap(module => module.conversionAlternatives?.(G, player.id) ?? [])
+    .find(option => option.id === effect.alternative && option.input === effect.input);
+  if (effect.alternative !== undefined && !alternative) return { ok: false, reason: 'conversion-alternative-unavailable' };
+  const payment = planPayment(G, registry, effect, localHooks, { [effect.input]: alternative?.cost ?? 3 });
   if (!payment.ok) return payment;
   const amount = modifyOutput(G, effect, localHooks, 1);
   const payout = payment.transaction.transfer({
@@ -376,6 +383,23 @@ function drawTile(G: CoreState, effect: DrawTileEffect, registry: ResourceRegist
 
 type MeasureAction = TakeMeasureEffect | PlayMeasureEffect;
 
+function planMeasureRegistration(
+  G: CoreState,
+  instance: Omit<ActiveMeasureEffect, 'id'>,
+): { ok: true; commit: () => void } | { ok: false; reason: string } {
+  // EXP-01-07-08/-09 and EXP-03-03-02A: keep an eligible card play independent of its card zone.
+  const climate = instance.sourceCardId === 'CLM_M11';
+  if (!G.cfg.expansions.exp01 || (climate && !G.cfg.expansions.exp03)) return { ok: false, reason: 'inactive-measure' };
+  const target = instance.targetPlayerID;
+  // EXP-01-08-M09-03 and EXP-03-08-M11-03.
+  if (!Object.hasOwn(G.players, instance.owner)
+      || (instance.sourceCardId === 'ECO_M03' ? target !== undefined : target === undefined || !Object.hasOwn(G.players, target))
+      || (instance.sourceCardId === 'ECO_M09' && instance.owner === target)) return { ok: false, reason: 'invalid-target' };
+  const id = `${instance.sourceCardId}:${instance.playNumber}`;
+  if (G.activeMeasureEffects?.some(registered => registered.id === id)) return { ok: false, reason: 'duplicate-effect' };
+  return { ok: true, commit: () => { (G.activeMeasureEffects ??= []).push({ ...instance, id }); } };
+}
+
 function measureUsage(G: CoreState): Record<string, boolean> {
   const legacy = G.exp?.exp01?.measures;
   const flags = G.playedMeasureThisRound ??= legacy?.usedThisRound ?? Object.fromEntries(
@@ -417,23 +441,38 @@ function planMeasureAction(
   if (take && enabled.reduce((sum, id) => sum + (G.exp?.[id]?.measures?.hands[playerID]?.length ?? 0), 0) >= 2) {
     return { ok: false, reason: 'hand-full' };
   }
+  const rules = active.find(module => module.id === expansion)?.measureRules;
+  const rule = effect.kind === 'playMeasure' ? rules?.[measureId] : undefined;
+  const playNumber = (deck.playCounts[measureId] ?? 0) + 1;
+  if (!take && playNumber > 2) return { ok: false, reason: 'play-limit' };
+  if (!take && rules && !rule) return { ok: false, reason: 'measure-unavailable' };
+  const target = effect.kind === 'playMeasure' ? effect.targetPlayerID : undefined;
+  if (rule?.targetPlayer
+    ? target === undefined || !Object.hasOwn(G.players, target) || (rule.targetPlayer === 'opponent' && target === playerID)
+    : target !== undefined) return { ok: false, reason: 'invalid-target' };
+  const registration = rule?.continuingEffect && planMeasureRegistration(G, {
+    sourceCardId: rule.continuingEffect, owner: playerID, playNumber: playNumber === 1 ? 1 : 2,
+    ...(target === undefined ? {} : { targetPlayerID: target }),
+  });
+  if (registration && !registration.ok) return registration;
+
   // EXP-01-06-04C and CORE-01-06-00-07/-11: plan the complete payment before moving cards.
   const hooks = active.flatMap(module => module.hooks ?? []);
   if (isProhibited(G, effect, hooks)) return { ok: false, reason: 'prohibited' };
-  const payment = planPayment(G, createMatchResourceRegistry(active), effect, hooks);
+  const payment = planPayment(G, createMatchResourceRegistry(active), effect, hooks, rule?.cost);
   if (!payment.ok) return payment;
 
   return { ok: true, commit: () => {
     payment.transaction.commit();
+    registration?.commit();
     if (take) {
       deck.open[index] = null;
       (deck.hands[playerID] ??= []).push(measureId);
     } else {
       // EXP-01-07-01..04: preserve counters through all zone transfers.
       hand.splice(index, 1);
-      const count = (deck.playCounts[measureId] ?? 0) + 1;
-      deck.playCounts[measureId] = count;
-      (count === 1 ? deck.recycle : deck.finalDiscard).push(measureId);
+      deck.playCounts[measureId] = playNumber;
+      (playNumber === 1 ? deck.recycle : deck.finalDiscard).push(measureId);
       measureUsage(G)[playerID] = true;
     }
     refillMeasureMarket(G, expansion, deck);
@@ -446,8 +485,7 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
   }
 
   function previewPoliticalAction(G: CoreState, effect: PoliticalActionEffect): boolean {
-    const active = activeModules(G);
-    return planPoliticalAction(G, effect, createMatchResourceRegistry(active), active.flatMap(module => module.hooks ?? [])).ok;
+    return planPoliticalAction(G, effect, activeModules(G)).ok;
   }
   function previewMeasureAction(G: CoreState, effect: MeasureAction): boolean {
     return planMeasureAction(G, effect, activeModules(G)).ok;
@@ -462,31 +500,22 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
       return { ok: true };
     }
 
-    if (effect.kind === 'registerProductionEffect') {
-      // EXP-01-07-08/-09 and EXP-03-03-02A: record an eligible completed card play independently of its card zone.
-      const instance = effect.instance;
-      const freeze = instance.sourceCardId === 'ECO_M09';
-      if (!G.cfg.expansions.exp01 || (!freeze && !G.cfg.expansions.exp03)) {
-        return { ok: false, reason: 'inactive-measure' };
-      }
-      // EXP-01-08-M09-03 and EXP-03-08-M11-03.
-      if (!Object.hasOwn(G.players, instance.owner) || !Object.hasOwn(G.players, instance.targetPlayerID)
-          || (freeze && instance.owner === instance.targetPlayerID)) return { ok: false, reason: 'invalid-target' };
-      const id = `${instance.sourceCardId}:${instance.playNumber}`;
-      if (G.productionEffects?.some(registered => registered.id === id)) return { ok: false, reason: 'duplicate-effect' };
-      (G.productionEffects ??= []).push({ ...instance, id });
+    if (effect.kind === 'registerMeasureEffect') {
+      const registration = planMeasureRegistration(G, effect.instance);
+      if (!registration.ok) return registration;
+      registration.commit();
       return { ok: true };
     }
 
-    if (effect.kind === 'expireProductionEffects') {
-      // CORE-01-07-11/-14/-17, EXP-01-08-M09-04/-07 and EXP-03-08-M11-04.
-      const previous = G.productionEffects;
+    if (effect.kind === 'expireMeasureEffects') {
+      // CORE-01-07-10/-11/-14/-17, EXP-01-08-M03-03, EXP-01-08-M09-04/-07 and EXP-03-08-M11-04.
+      const previous = G.activeMeasureEffects;
       if (!previous) return { ok: true };
       const remaining = previous.filter(instance => effect.boundary === 'settlementEnd'
-        ? instance.sourceCardId !== 'ECO_M09'
+        ? instance.sourceCardId === 'CLM_M11'
         : instance.sourceCardId !== 'CLM_M11' || instance.owner !== effect.playerID);
-      if (remaining.length === 0) delete G.productionEffects;
-      else if (remaining.length !== previous.length) G.productionEffects = remaining;
+      if (remaining.length === 0) delete G.activeMeasureEffects;
+      else if (remaining.length !== previous.length) G.activeMeasureEffects = remaining;
       return { ok: true };
     }
 
@@ -553,14 +582,16 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
 
     if (effect.kind === 'resolveHotspotAt') {
       const placement = G.tiles.board.find(p => p.coord.q === effect.coord.q && p.coord.r === effect.coord.r);
+      const hotspot = placement && G.allTiles[placement.tileId];
       // CORE-01-06-01/-02A: check geometry and the persisted guard before evaluating the event.
-      if (!placement || placement.enclosureProcessed || G.allTiles[placement.tileId]?.kind !== 'Hotspot'
+      if (!placement || placement.enclosureProcessed || hotspot?.kind !== 'Hotspot'
           || !isFullySurrounded(G, placement.coord)) return { ok: true };
 
       // CORE-01-06-00-05(d) and CORE-01-06-04(b)/(c): bind the Hotspot, then check its majority and outcome.
       const outcome = { ...effect, contextCoord: placement.coord };
       const winner = computeMajority(G, placement.coord);
-      if (winner !== null && !isProhibited(G, outcome, hooks)) {
+      // EXP-02-02-G-07: the special Inner Order outcome never awards Influence.
+      if (winner !== null && hotspot.hotspotOutcome !== 'regulation' && !isProhibited(G, outcome, hooks)) {
         // CORE-01-06-05/-06/-07 and CORE-01-06-00-07(a): transfer one existing marker without a payer.
         const supply = G.players[winner].personal.influence;
         const amount = modifyOutput(G, outcome, hooks, 1);
@@ -572,7 +603,7 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     }
 
     if (effect.kind === 'placeOrMoveInfluence' || effect.kind === 'formalizeInfluence' || effect.kind === 'convertResources') {
-      const plan = planPoliticalAction(G, effect, createMatchResourceRegistry(active), hooks);
+      const plan = planPoliticalAction(G, effect, active);
       if (!plan.ok) return plan;
       plan.commit();
       return { ok: true };
@@ -606,7 +637,7 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
         if (!plan) return { ok: true };
         const transaction = createBankTransaction(G, createMatchResourceRegistry(active));
         // EXP-03-08-M11-05..09: cap each applicable receipt after the regular split.
-        const limits = G.cfg.expansions.exp01 && G.cfg.expansions.exp03 ? G.productionEffects : undefined;
+        const limits = G.cfg.expansions.exp01 && G.cfg.expansions.exp03 ? G.activeMeasureEffects : undefined;
         for (const pid of plan.winners) {
           const limited = limits?.some(instance => instance.sourceCardId === 'CLM_M11' && instance.targetPlayerID === pid);
           const amount = limited ? Math.min(plan.share, 1) : plan.share;

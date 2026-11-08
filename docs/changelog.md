@@ -444,3 +444,9 @@
 - Handlimit und PlayMeasure-Nutzung gelten deckübergreifend. Die Vorschau prüft dieselben Zonen, Verbote und generischen Zahlungsschritte wie die Ausführung.
 - T10 prüft über boardgame.io den mittleren Marktslot. T18 prüft die ordinale ResortTile-Reihenfolge. Weitere Engine-Tests decken deckübergreifende Limits und Play-Refill aus Recycle ab.
 - 126 Workspace-Tests, Lint, Mutation-Check und Game-TypeScript-Build bestehen unter Node 22.22.2. Der EXP-01-Replay-Hash berücksichtigt die gemeinsame Nutzungsmarke und die expliziten Karten-Zähler.
+
+## 2026-11-08 — Task 0030 — Erweiterungsmaterial und erste Kartenauflösung
+
+- Alle acht Erweiterungskombinationen erhalten nur ihre aktiven Ressourcen, Tiles und Decks. Setup-Tests prüfen die zehn EXP-01-Karten, SEC, den CLM-Deckfilter und das größere Material für fünf und sechs Spieler.
+- Investment Program bietet den 2-ECO-Tausch am kontrollierten Grassroots an. Collective Bargaining, Investment Freeze und Supply Chain Disruption nutzen ihre regulären Decks, Preise und Ziele. T11/T12 prüfen fehlgeschlagene und erfolgreiche Zahlungen sowie Refill.
+- 140 Workspace-Tests, Lint, Mutation-Check und Game-TypeScript-Build bestehen unter Node 22.22.2.

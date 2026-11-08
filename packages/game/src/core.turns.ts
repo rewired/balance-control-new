@@ -97,7 +97,7 @@ export const CoreTurn: NonNullable<Game<CoreState>['turn']> = {
     const resolve = createResolver();
 
     // CORE-01-07-14/-17: expire effects of the player whose next turn actually begins.
-    resolve(G, { kind: 'expireProductionEffects', boundary: 'turnStart', playerID: ctx.currentPlayer });
+    resolve(G, { kind: 'expireMeasureEffects', boundary: 'turnStart', playerID: ctx.currentPlayer });
 
     // CORE-01-07-17 and EXP-01-07-07: reset usage at the start of the next round.
     if (ctx.turn > 1 && ctx.playOrderPos === 0) {

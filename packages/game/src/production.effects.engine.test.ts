@@ -28,7 +28,7 @@ function installModule(id: ExpansionId, hooks: ExpansionHooks): void {
       isPlayMeasure: true,
       payloadSchema: registerPayload,
       execute: (G, owner, payload: RegisterPayload) => createResolver()(G, {
-        kind: 'registerProductionEffect', instance: { ...payload, owner },
+        kind: 'registerMeasureEffect', instance: { ...payload, owner },
       }),
     }) : undefined,
   });
@@ -97,7 +97,7 @@ describe('Production effects through boardgame.io', () => {
     register(client, 'ECO_M09', '1');
     const armed = client.getState()!;
     expect(armed.ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
-    expect(armed.G.productionEffects).toEqual([
+    expect(armed.G.activeMeasureEffects).toEqual([
       { id: 'ECO_M09:1', sourceCardId: 'ECO_M09', playNumber: 1, owner: '0', targetPlayerID: '1' },
     ]);
     expect(getControl(armed.G, dom.coord)).toBeNull();
@@ -110,7 +110,7 @@ describe('Production effects through boardgame.io', () => {
     expect(getControl(firstSettlement.G, dom.coord)).toBe('1');
     expect(firstSettlement.G.players['1'].personal.resources).toMatchObject({ DOM: 4, FOR: 3 });
     expect(firstSettlement.G.players['0'].personal.resources).toMatchObject({ FOR: 3, INF: 10 });
-    expect(firstSettlement.G.productionEffects).toBeUndefined();
+    expect(firstSettlement.G.activeMeasureEffects).toBeUndefined();
 
     placeMarker(client, placeTile(client));
     placeMarker(client, placeTile(client));
@@ -135,7 +135,7 @@ describe('Production effects through boardgame.io', () => {
     placeMarker(client, second);
     const third = placeTile(client);
     register(client, 'ECO_M09', '1');
-    expect(client.getState()!.G.productionEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1', 'CLM_M11:2', 'ECO_M09:1']);
+    expect(client.getState()!.G.activeMeasureEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1', 'CLM_M11:2', 'ECO_M09:1']);
     placeMarker(client, third);
 
     const { G, ctx } = client.getState()!;
@@ -145,7 +145,7 @@ describe('Production effects through boardgame.io', () => {
     expect(G.players['2'].personal.resources).toEqual({ DOM: 0, FOR: 2, INF: 0 });
     expect(G.resources.noise).toEqual({ DOM: 0, FOR: 1, INF: 1 });
     expect(G.resources.bank).toEqual({ DOM: 4, FOR: 3, INF: 0 });
-    expect(G.productionEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1', 'CLM_M11:2']);
+    expect(G.activeMeasureEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1', 'CLM_M11:2']);
   });
 
   it('expires the cap immediately before its owner actually begins the next turn', () => {
@@ -158,11 +158,11 @@ describe('Production effects through boardgame.io', () => {
     register(client, 'CLM_M11', '0');
     placeMarker(client, second);
     expect(client.getState()!.G.players['0'].personal.resources.DOM).toBe(1);
-    expect(client.getState()!.G.productionEffects?.[0].owner).toBe('1');
+    expect(client.getState()!.G.activeMeasureEffects?.[0].owner).toBe('1');
 
     placeMarker(client, placeTile(client));
     expect(client.getState()!.ctx.currentPlayer).toBe('1');
-    expect(client.getState()!.G.productionEffects).toBeUndefined();
+    expect(client.getState()!.G.activeMeasureEffects).toBeUndefined();
     placeMarker(client, placeTile(client));
     expect(client.getState()!.G.players['0'].personal.resources.DOM).toBe(6);
   });
@@ -176,6 +176,6 @@ describe('Production effects through boardgame.io', () => {
     register(client, 'CLM_M11', '1');
     expect(client.getState()!._stateID).toBe(before._stateID);
     expect(client.getState()!.G).toEqual(before.G);
-    expect(client.getState()!.G).not.toHaveProperty('productionEffects');
+    expect(client.getState()!.G).not.toHaveProperty('activeMeasureEffects');
   });
 });

@@ -273,7 +273,7 @@ describe('CORE political actions through boardgame.io', () => {
   });
 
   it('automatically completes an empty additional slot after preserving the played Measure', () => {
-    registerExpansion(exp01Economy());
+    registerExpansion({ ...exp01Economy(), measureRules: undefined });
     enableHooks({ prohibitions: ({ effect }) => effect.kind === 'placeOrMoveInfluence' });
     const client = clientWithBoard(G => {
       const measures = G.exp!.exp01!.measures!;

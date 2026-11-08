@@ -45,27 +45,29 @@ Norm: CORE-01-04 bis -09; VAR-01; ADD56-01.
 ## 3. Gemeinsame Auflösung, Spieluhr und Maßnahmen
 
 - [x] S07/S13, Berechnung pro ResortTile: Verbot am produzierenden Tile prüfen, zulässige Verdopplungen auf den Druckwert anwenden, additive Modifikatoren aktiver Quellen summieren und den Minimum-0-Floor einmal anwenden. Danach folgen kanonische Mehrheit, reguläre Anteile und ursprünglicher Noise-Rest. [DD-0025](../design-decisions/DD-0025-canonical-production-pipeline.md)
-- [x] S07/S13, Erweiterungswirkungen: Investment Freeze filtert Measure-Modifikatoren bei aktueller Kontrolle durch das Ziel. Supply Chain Disruption begrenzt den regulären Anteil je Tile und Empfänger und lässt den ursprünglichen Noise-Rest bestehen. Engine-Tests prüfen die Wirkung registrierter Instanzen und ihren Ablauf. Das reguläre Ausspielen und Bezahlen der Karten gehört zur Maßnahmenanbindung in Stufe 4. [DD-0026](../design-decisions/DD-0026-production-source-and-receipt.md)
+- [x] S07/S13, Erweiterungswirkungen: Investment Freeze filtert Measure-Modifikatoren bei aktueller Kontrolle durch das Ziel. Supply Chain Disruption begrenzt den regulären Anteil je Tile und Empfänger und lässt den ursprünglichen Noise-Rest bestehen. Engine-Tests prüfen Ablauf, registrierte Wirkung sowie reguläres Ausspielen und Bezahlen beider Karten. [DD-0026](../design-decisions/DD-0026-production-source-and-receipt.md)
 - [x] ResortTiles in ordinaler Tile-ID-Reihenfolge auflösen. T18 prüft die Reihenfolge unabhängig von der Board-Einfügung. Refill und Zusatzaktion gehören zum selben vollständigen Zug.
 - [ ] Registrierte Settlement-Operationen in vorgeschriebener Reihenfolge vor oder nach Produktion auflösen.
 - [ ] Aktive Effektinstanzen unabhängig von Karten mit stabiler ID, Quelle, Eigentümer, Zielen, Registrierung, Triggern, Dauer und Verbrauch modellieren.
 - [ ] Gemeinsame ereignisbasierte Uhr, nicht rückwirkende Trigger, Turn-/Settlement-/Round-Grenzen und ausbleibende Folgerunden nach Spielende implementieren.
-- [x] S11/S12, gemeinsamer Kartenlebenszyklus: getrennte Deckzonen, drei stabile Marktslots und Refill nach Take und Play. T10 ist über die Engine abgedeckt. Das T12-Szenario mit der echten Karte Collective Bargaining folgt bei der Kartenanbindung. [DD-0027](../design-decisions/DD-0027-shared-measure-lifecycle.md)
+- [x] S11/S12, gemeinsamer Kartenlebenszyklus: getrennte Deckzonen, drei stabile Marktslots und Refill nach Take und Play. T10/T12 sind über die Engine abgedeckt. [DD-0027](../design-decisions/DD-0027-shared-measure-lifecycle.md)
 - [x] Globale Limits von zwei Handkarten und einem PlayMeasure je Spieler/Runde für beliebige aktive Deckkombinationen umsetzen. Die gemeinsamen Flags sind auch ohne EXP-01 verfügbar, wenn ein anderes Deck aktiv ist.
 - [ ] Vollständigen atomaren Zahlungsplan einschließlich Ersetzungen, Herkunft, Payern, Gebrauch und ausdrücklich geregelten Fehlschlagsausnahmen implementieren.
 - [x] T07: Über boardgame.io prüfen, dass ein kontrolliertes DOM-W3 bei leerem PersonalSupply trotz aktivem Kosten-Hook 3 DOM liefert. Engine-Tests decken auch Verbot, Verdopplung, aktiven Modifikatorstapel, Floor und Noise-Rest ab. [Engine-Tests](../../packages/game/src/production.engine.test.ts)
-- [ ] T11/T12 mit vollständigem Karten-Play sowie Kartenrezirkulation bei fortbestehender Wirkung, mehrere Instanzen, gleichzeitige Trigger und fehlgeschlagene Zahlungen dauerhaft testen.
+- [x] T11/T12 und Kartenrezirkulation bei fortbestehender Wirkung mit Collective Bargaining über boardgame.io prüfen. [Engine-Tests](../../packages/game/src/measure-play.engine.test.ts)
+- [ ] Mehrere unabhängige Instanzen, gleichzeitige Trigger und ausdrücklich geregelte Folgen fehlgeschlagener Zahlungen dauerhaft testen.
 
 Norm: CORE-01-06-00-07 bis -12; CORE-01-06-16/-16A/-17; CORE-01-07-04 bis -18; EXP-01-06 und EXP-01-07.
 
 ## 4. Vollständige Erweiterungen
 
-- [ ] S10: EXP-01-Tiles und alle zehn Karten mit Preisen/Zielen/Wirkungen; Investment Program ausschließlich als kontrollabhängige Grassroots-Alternative umsetzen.
+- [x] S10, Material: EXP-01-Tiles und zehn Karten im Deck. Investment Program ist als kontrollabhängige Grassroots-Alternative über boardgame.io geprüft.
+- [ ] Alle Preise, Ziele und Wirkungen der verbleibenden EXP-01-Karten umsetzen. Collective Bargaining und Investment Freeze sind über den regulären Spielweg abgedeckt.
 - [ ] S14: EXP-02 mit SEC, Material, eigenen Maßnahmen, Regulationszonen/-typen, Authority Apparatus und Inner Order umsetzen.
 - [ ] ContextTile, explizite Objektsperren, Blockade vor Kosten/Output, SecurityLevel-Klassen und bezahlten Nulloutput testen.
-- [ ] EXP-03 mit CLM-Material, Transformationsdruck und Setup-Eligibility umsetzen: zehn Karten ohne EXP-01, dreizehn mit EXP-01; M14/M15 und Countdown-State immer ausgeschlossen.
-- [ ] Greenwashing/Protest, statische Climate-Herkunft, Schutzumfang, Waiver vor Supplemental Budget vor Intergenerational Pact und das reguläre Ausspielen von Supply Chain Disruption umsetzen.
-- [ ] T13/T14 und alle acht Setup-Konfigurationen aus DD-0018 dauerhaft prüfen; 5–6-Spieler-Ergänzungen separat testen.
+- [x] EXP-03 mit CLM-Material, Transformationsdruck und Setup-Eligibility: zehn Karten ohne EXP-01, dreizehn mit EXP-01. M14/M15 und Countdown-State bleiben ausgeschlossen.
+- [ ] Greenwashing/Protest, statische Climate-Herkunft, Schutzumfang und Waiver vor Supplemental Budget vor Intergenerational Pact umsetzen.
+- [x] T13/T14 und alle acht Setup-Konfigurationen aus DD-0018 dauerhaft prüfen. 5–6-Spieler-Ergänzungen sind separat abgedeckt. [Materialtests](../../packages/game/src/expansion.material.engine.test.ts)
 
 Norm: EXP-01 bis EXP-03 in konsolidierter Fassung; vollständige R-Zuordnung in DD-0018. Kein Countdown-Effekt wird aus reserviertem Kartentext abgeleitet.
 

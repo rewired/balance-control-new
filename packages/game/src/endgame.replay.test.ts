@@ -203,7 +203,10 @@ function replayUnsuccessfulFinalDraw() {
 describe('S09: endgame replays through boardgame.io', () => {
   beforeEach(() => {
     __resetRegisteredExpansionsForTest();
-    registerExpansion(exp01Economy());
+    // The shortened replay isolates the final action sequence with a fixture deck.
+    registerExpansion({ ...exp01Economy(), measureRules: undefined, tiles: undefined,
+      measureDeck: () => ['ECO_M01', 'ECO_M02', 'ECO_M03', 'ECO_M04', 'ECO_M05', 'ECO_M06', 'ECO_M07', 'ECO_M08'],
+    });
   });
 
   it('replays the entire seeded CORE deck, settles the shortened final round once and shares victory', () => {

@@ -5,7 +5,7 @@ import type { ExpansionModule, ProductionModifier } from './expansion-registry.j
 // CORE-01-06-16-00: collect modifiers from active sources before applying any.
 export function collectProductionModifiers(G: CoreState, coord: AxialCoord, tile: ResortTile, modules: readonly ExpansionModule[]): ProductionModifier[] {
   // EXP-01-08-M09-05/-06: only current sole control by the target suppresses Measure modifiers.
-  const freezes = G.cfg.expansions.exp01 ? G.productionEffects?.filter(effect => effect.sourceCardId === 'ECO_M09') : undefined;
+  const freezes = G.cfg.expansions.exp01 ? G.activeMeasureEffects?.filter(effect => effect.sourceCardId === 'ECO_M09') : undefined;
   const controller = freezes?.length ? getControl(G, coord) : null;
   const suppressMeasures = controller !== null && freezes?.some(effect => effect.targetPlayerID === controller);
 

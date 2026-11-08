@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { Client } from 'boardgame.io/client';
+import { exp01Economy } from '@bc/exp-01-economy';
 import { createBCGame, setupCoreMatch } from './factory.js';
-import { buildMoveCatalog, corePoliticalMoves, createExpansionRegistry, createResolver, type CoreState } from '@bc/rules';
+import { __resetRegisteredExpansionsForTest, buildMoveCatalog, corePoliticalMoves, createExpansionRegistry, createResolver, registerExpansion, type CoreState } from '@bc/rules';
 
 function setupGame(exp01 = true) {
   const G = setupCoreMatch(2, { matchSeed: 't', expansions: { exp01 } });
@@ -16,6 +17,11 @@ function doAction(G: CoreState, type: string, payload: unknown = {}) {
 }
 
 describe('EXP-01 Measures - Task 0027', () => {
+  beforeEach(() => {
+    __resetRegisteredExpansionsForTest();
+    // These tests isolate the shared lifecycle; paid card rules have their own engine suite.
+    registerExpansion({ ...exp01Economy(), measureRules: undefined });
+  });
   it('CORE-only leaves no exp01 state', () => {
     const { G } = setupGame(false);
     expect((G as any).exp?.exp01).toBeUndefined();

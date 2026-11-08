@@ -25,6 +25,8 @@ export type TileKind =
   | 'Grassroots'
   | 'Lobbyist'
   | 'Hotspot'
+  | 'InvestmentProgram'
+  | 'AuthorityApparatus'
   | 'StartCommittee';
 
 export interface BaseTile {
@@ -45,6 +47,7 @@ export interface StartCommitteeTile extends BaseTile {
 export type NonResortTileKind = Exclude<TileKind, 'ResortTile' | 'StartCommittee'>;
 export interface NonResortTile extends BaseTile {
   kind: NonResortTileKind;
+  hotspotOutcome?: 'regulation';
 }
 
 export type Tile = ResortTile | NonResortTile | StartCommitteeTile;
@@ -105,15 +108,15 @@ export interface Exp01State { measures?: MeasureDeckState }
 export interface Exp02State { measures?: MeasureDeckState }
 export interface Exp03State { measures?: MeasureDeckState }
 
-export type ProductionMeasureId = 'ECO_M09' | 'CLM_M11';
+export type ContinuingMeasureId = 'ECO_M03' | 'ECO_M09' | 'CLM_M11';
 
 // EXP-01-07-08: the production effect survives the card's transfer or recycling.
-export interface ActiveProductionEffect {
+export interface ActiveMeasureEffect {
   id: string;
-  sourceCardId: ProductionMeasureId;
+  sourceCardId: ContinuingMeasureId;
   playNumber: 1 | 2;
   owner: string;
-  targetPlayerID: string;
+  targetPlayerID?: string;
 }
 
 export interface CoreState {
@@ -125,7 +128,7 @@ export interface CoreState {
   resources: ResourceZonesState;
   lastTurnHash?: string; // AGENTS 5.3: SHA-256 at the most recent completed turn
   influencesOnBoard?: InfluenceOnBoard[];
-  productionEffects?: ActiveProductionEffect[];
+  activeMeasureEffects?: ActiveMeasureEffect[];
   playedMeasureThisRound?: Record<string, boolean>;
   exp?: ExpansionsState;
 }

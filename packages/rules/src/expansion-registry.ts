@@ -1,4 +1,4 @@
-import type { AxialCoord, CoreState, ExpansionId, ResortTile } from './types.js';
+import type { AxialCoord, ContinuingMeasureId, CoreState, ExpansionId, ResourceId, ResortTile, Tile } from './types.js';
 import type { ResourceRegistry, ResourceAmounts } from './resources.js';
 import type { EffectDescriptor } from './effects.js';
 import type { ExpansionFlags, MatchConfig } from './schemas.js';
@@ -10,6 +10,18 @@ export interface ProductionModifiersArgs { G: CoreState; coord: AxialCoord; tile
 export type ProductionModifier = { source: 'measure' | 'regulation' | 'other' } & (
   { kind: 'double' } | { kind: 'additive'; delta: number }
 );
+
+export interface MeasureRule {
+  cost: Readonly<Partial<ResourceAmounts>>;
+  targetPlayer?: 'any' | 'opponent';
+  continuingEffect?: ContinuingMeasureId;
+}
+
+export interface ConversionAlternative {
+  id: string;
+  input: ResourceId;
+  cost: number;
+}
 
 export interface ExpansionHooks {
   prohibitions?: (args: ProhibitionsArgs) => boolean;
@@ -23,7 +35,10 @@ export interface ExpansionModule {
   id: ExpansionId;
   registerResources(registry: ResourceRegistry): void;
   setupExpansionState(G: CoreState, ctx: { numPlayers: number; seed: string }): void;
+  tiles?: (config: MatchConfig) => readonly Tile[];
   measureDeck?: (config: MatchConfig) => readonly string[];
+  measureRules?: Readonly<Record<string, MeasureRule | undefined>>;
+  conversionAlternatives?: (G: CoreState, playerID: string) => readonly ConversionAlternative[];
   extendMoves?: (builder: import('./moves.js').MoveExtensionBuilder) => void;
   hooks?: ExpansionHooks;
 }
