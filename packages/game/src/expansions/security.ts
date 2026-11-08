@@ -102,8 +102,9 @@ export function exp02Security(): ExpansionModule {
         type: 'activateAuthorityApparatus',
         payloadSchema: AuthorityPayload,
         execute: (G, playerID, payload) => resolve(G, { kind: 'activateAuthorityApparatus', playerID, ...payload }),
-        enumerate: (G, playerID) => [...regulationOperations(G, 'move'), ...regulationOperations(G, 'remove')]
-          .flatMap(regulation => resolve.previewRegulationAction(G, { kind: 'activateAuthorityApparatus', playerID, regulation }) ? [{ regulation }] : []),
+        quotes: (G, playerID) => [...regulationOperations(G, 'move'), ...regulationOperations(G, 'remove')]
+          .flatMap(regulation => resolve.actionQuotes(G, { kind: 'activateAuthorityApparatus', playerID, regulation })
+            .map(({ payment, ...quote }) => ({ ...quote, payload: { regulation, ...(payment ? { payment } : {}) } }))),
       });
     },
   };

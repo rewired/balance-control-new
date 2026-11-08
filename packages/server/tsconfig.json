@@ -9,6 +9,9 @@
                        },
                        {
                            "path":  "../game"
+                       },
+                       {
+                           "path":  "../bot-llm"
                        }
                    ],
     "include":  [

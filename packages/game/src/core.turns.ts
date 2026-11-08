@@ -1,5 +1,5 @@
 import type { FnContext, Game, Move } from 'boardgame.io';
-import { INVALID_MOVE } from 'boardgame.io/core';
+import { INVALID_MOVE } from '#boardgame-core';
 import type { AxialCoord, CoreState, DecisionContinuation } from '@bc/rules';
 import {
   assertExpansionStateMatchesConfig, buildMoveCatalog, corePoliticalMoves,

@@ -45,20 +45,23 @@ export interface PlannedPayment {
   transfers: { playerID: string; resource: ResourceId; amount: number }[];
   consumeEffects: string[];
   useCouncil?: string;
+  selection?: PaymentSelection;
 }
 
 // CORE-01-06-00-10 and EXP-03-02-D-03/-07/-08: plan only final payments for each assigned payer.
-export function planSelectedPayment(
+export function* paymentPlans(
   G: CoreState,
   registry: ResourceRegistry,
   effect: EffectDescriptor & { playerID: string },
   base: Partial<ResourceAmounts>,
   raw: readonly Surcharge[],
   immune: boolean,
-): PlannedPayment | undefined {
+  explore = false,
+): Generator<PlannedPayment> {
   const original = effect.playerID;
-  const selected = effect.payment;
-  if (selected?.greenwashing && effect.kind !== 'formalizeInfluence') return;
+  const selected = explore ? undefined : effect.payment ?? {};
+  const greenwashing = effect.payment?.greenwashing;
+  if (greenwashing && effect.kind !== 'formalizeInfluence') return;
   const resources = registry.list();
   const effects = immune ? [] : G.activeMeasureEffects ?? [];
   const owned = effects.filter(instance => instance.owner === original);
@@ -126,12 +129,13 @@ export function planSelectedPayment(
             && amount <= (G.players[payer].personal.resources[resource] ?? 0));
         if (!affordable(original, accounts.get(original)!)) continue;
 
-        const allocate = (index: number): boolean => {
+        const allocate = function* (index: number, chosen: Record<string, ResourceId>): Generator<Record<string, ResourceId>> {
           if (index === units.length) {
             const cost = accounts.get(original)!;
             // CORE-01-06-00-10: a Resource created by one substitution cannot satisfy the other.
-            return (!council || cost.ECO >= 0) && (!partnership || cost[partnership.replacedResource]
-              >= (council?.resource === partnership.replacedResource ? 1 : 0));
+            if ((!council || cost.ECO >= 0) && (!partnership || cost[partnership.replacedResource]
+              >= (council?.resource === partnership.replacedResource ? 1 : 0))) yield { ...chosen };
+            return;
           }
           const unit = units[index];
           const options = unit.resources ?? resources;
@@ -142,17 +146,31 @@ export function planSelectedPayment(
             if (!registry.has(resource)) continue;
             const before = amount[resource] ?? 0;
             amount[resource] = before + 1;
-            if (affordable(unit.payer, amount) && allocate(index + 1)) return true;
+            if (affordable(unit.payer, amount)) {
+              if (options.length > 1) chosen[unit.id] = resource;
+              yield* allocate(index + 1, chosen);
+              delete chosen[unit.id];
+            }
             amount[resource] = before;
           }
-          return false;
         };
-        if (!allocate(0)) continue;
-
-        const transfers = [...accounts].flatMap(([playerID, amounts]) => Object.entries(amounts)
-          .filter(([, amount]) => amount !== 0)
-          .map(([resource, amount]) => ({ playerID, resource, amount })));
-        return { transfers, consumeEffects: [...consumed], ...(council ? { useCouncil: council.effectId } : {}) };
+        for (const surcharges of allocate(0, Object.create(null))) {
+          const transfers = [...accounts].flatMap(([playerID, amounts]) => Object.entries(amounts)
+            .filter(([, amount]) => amount !== 0)
+            .map(([resource, amount]) => ({ playerID, resource, amount })));
+          const selection: PaymentSelection = {
+            ...(Object.keys(surcharges).length ? { surcharges } : {}),
+            ...(replacement ? { replacement } : {}),
+            ...(transfer.length ? { transfers: transfer } : {}),
+            ...(council ? { council } : {}),
+            ...(partnership ? { partnership } : {}),
+            ...(greenwashing ? { greenwashing } : {}),
+          };
+          yield {
+            transfers, consumeEffects: [...consumed], ...(council ? { useCouncil: council.effectId } : {}),
+            ...(Object.keys(selection).length ? { selection } : {}),
+          };
+        }
       }
     }
   }

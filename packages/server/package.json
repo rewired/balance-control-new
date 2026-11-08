@@ -4,6 +4,18 @@
     "type":  "module",
     "main":  "dist/index.js",
     "types":  "dist/index.d.ts",
+    "imports": {
+        "#boardgame-client": {
+            "types": "boardgame.io/dist/types/packages/client.js",
+            "node": "boardgame.io/dist/cjs/client.js",
+            "default": "boardgame.io/client"
+        },
+        "#boardgame-server": {
+            "types": "boardgame.io/dist/types/packages/server.js",
+            "node": "boardgame.io/dist/cjs/server.js",
+            "default": "boardgame.io/server"
+        }
+    },
     "files":  [
                   "dist"
               ],

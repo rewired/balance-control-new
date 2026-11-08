@@ -40,6 +40,9 @@
                                           "@bc/game/*":  [
                                                              "packages/game/src/*"
                                                          ],
+                                          "@bc/bot-llm":  [
+                                                              "packages/bot-llm/src/index.ts"
+                                                          ],
                                           "@bc/exp-01-economy":  [
                                                                      "packages/exp-01-economy/src/index.ts"
                                                                  ],

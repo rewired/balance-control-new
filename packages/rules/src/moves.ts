@@ -1,19 +1,22 @@
 import { z, ZodFirstPartyTypeKind, type ZodTypeAny } from 'zod';
 import type { CoreState } from './types.js';
 import { createExpansionRegistry, type ExpansionModule } from './expansion-registry.js';
-import { createResolver, type PoliticalActionEffect, type ResolveResult } from './effects.js';
+import { createResolver, type PaymentQuote, type PoliticalActionEffect, type ResolveResult } from './effects.js';
 import { createMatchResourceRegistry } from './resources.js';
 import { PaymentSelectionSchema, RegulationOperationSchema } from './schemas.js';
 import { regulationOperations } from './regulations.js';
 import { isGreenwashingActive } from './payment.js';
 
 // MoveDefinition is rules-only (no boardgame.io types here per AGENTS §1.2)
+export type MoveQuote<P> = Omit<PaymentQuote, 'payment'> & { payload: P };
+
 export interface MoveDefinition<P> {
   type: string; // canonical move id (stable)
   payloadSchema: ZodTypeAny; // strict schema per AGENTS §4.2
   execute: (G: CoreState, playerID: string, payload: P) => ResolveResult;
   isPlayMeasure?: true;
   enumerate?: (G: CoreState, playerID: string) => P[]; // optional deterministic enumerator (AGENTS §4.1)
+  quotes?: (G: CoreState, playerID: string) => MoveQuote<P>[];
 }
 
 export interface MoveCatalog {
@@ -41,6 +44,7 @@ export function buildMoveCatalog(coreMoves: MoveDefinition<unknown>[], modules: 
     }
     defs[def.type] = {
       ...def,
+      enumerate: def.quotes ? (G, playerID) => def.quotes!(G, playerID).map(quote => quote.payload) : def.enumerate,
       // The router supplies the output of the registered payload schema.
       execute: (G, playerID, payload) => def.execute(G, playerID, payload as P),
     };
@@ -81,7 +85,7 @@ function measureMove(module: ExpansionModule, kind: 'takeMeasure' | 'playMeasure
     payloadSchema: kind === 'playMeasure' ? PlayMeasurePayload : MeasurePayload,
     ...(kind === 'playMeasure' ? { isPlayMeasure: true } : {}),
     execute: (G, playerID, payload) => resolve(G, { kind, expansion, playerID, ...payload }),
-    enumerate: (G, playerID) => {
+    quotes: (G, playerID) => {
       const deck = G.exp?.[expansion]?.measures;
       const cards = kind === 'takeMeasure' ? deck?.open : deck?.hands[playerID];
       return (cards ?? []).flatMap(measureId => {
@@ -101,13 +105,14 @@ function measureMove(module: ExpansionModule, kind: 'takeMeasure' | 'playMeasure
           ...(targetRegulationId === undefined ? {} : { targetRegulationId }),
           ...(regulation === undefined ? {} : { regulation }),
         }))))));
-        return choices.filter(payload => resolve.previewMeasureAction(G, { kind, expansion, playerID, ...payload }));
+        return choices.flatMap(payload => resolve.actionQuotes(G, { kind, expansion, playerID, ...payload })
+          .map(({ payment, ...quote }) => ({ ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } })));
       });
     },
   };
 }
 
-function corePoliticalMove<P>(
+function corePoliticalMove<P extends object>(
   type: PoliticalActionEffect['kind'],
   payloadSchema: z.ZodType<P>,
   describe: (playerID: string, payload: P) => PoliticalActionEffect,
@@ -121,8 +126,9 @@ function corePoliticalMove<P>(
       const parsed = payloadSchema.safeParse(input);
       return parsed.success ? resolve(G, describe(playerID, parsed.data)) : { ok: false, reason: 'invalid-payload' };
     },
-    enumerate: (G, playerID) => Array.from(candidates(G, playerID))
-      .filter(payload => resolve.previewPoliticalAction(G, describe(playerID, payload))),
+    quotes: (G, playerID) => Array.from(candidates(G, playerID)).flatMap(payload =>
+      resolve.actionQuotes(G, describe(playerID, payload))
+        .map(({ payment, ...quote }) => ({ ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } }))),
   };
 }
 
@@ -209,12 +215,21 @@ export function corePoliticalMoves(): MoveDefinition<unknown>[] {
   ];
 }
 
-export function* politicalMoveOptions(G: CoreState, playerID: string, additional = false) {
+export function* politicalMoveQuotes(G: CoreState, playerID: string, additional = false) {
   const catalog = buildMoveCatalog(corePoliticalMoves(), createExpansionRegistry(G.cfg.expansions));
   for (const type of catalog.types) {
     const definition = catalog.definitions[type];
     if (additional && definition.isPlayMeasure) continue;
-    for (const payload of definition.enumerate?.(G, playerID) ?? []) yield { type, payload };
+    const options = definition.quotes?.(G, playerID)
+      ?? definition.enumerate?.(G, playerID).map(payload => ({ payload, costBreakdown: [], contextTile: null }))
+      ?? [];
+    for (const option of options) yield { type, ...option };
+  }
+}
+
+export function* politicalMoveOptions(G: CoreState, playerID: string, additional = false) {
+  for (const { type, payload } of politicalMoveQuotes(G, playerID, additional)) {
+    yield { type, payload };
   }
 }
 

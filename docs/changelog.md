@@ -463,3 +463,9 @@
 - Die Engine bietet Inner Order und Greenwashing dem Mehrheitsinhaber an und setzt die Einschließungssequenz nach dessen Wahl fort.
 - Deployment Order und Competence Conflict warten auf die Wahl des ursprünglichen Maßnahmeneigentümers. Auch ein begonnenes Settlement kann nach einer Folgeentscheidung ohne erneute Zahlung fortgesetzt werden.
 - Projektstandard ist Node.js 24 LTS mit 24.22.2 in .nvmrc. Die vollständige Testsuite, Lint und der Game-TypeScript-Build laufen auf dieser Version.
+
+## 2026-11-08 — Task 0030 — Legale Engine-Optionen und Bot-Replay
+
+- Die Optionsliste enthält alternative Zahlungen mit Payer, Ressource und Betrag. Derselbe Resolver prüft Optionen für Platzierung, Politik, Hotspot und Regulation.
+- Der Bot erhält die realen Optionen mit ContextTile und Vorschauhash. Der Runner führt die per Index gewählte Option über boardgame.io aus und vergleicht den Vorschauhash mit dem Ergebnis.
+- Encoding-Prüfung und Bereinigung erfassen ungültiges UTF-8, Mojibake und überflüssige ASCII-Escapes in JSON. Die geparsten JSON-Werte bleiben erhalten.

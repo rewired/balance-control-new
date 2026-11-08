@@ -1,4 +1,4 @@
-import { Server } from 'boardgame.io/server';
+import { Server } from '#boardgame-server';
 import { CounterGame } from '@bc/game';
 
 const PORT = Number(process.env.PORT) || 8000;

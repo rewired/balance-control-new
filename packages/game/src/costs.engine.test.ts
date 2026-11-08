@@ -2,6 +2,7 @@ import { Client } from 'boardgame.io/client';
 import { createResolver, type CoreState } from '@bc/rules';
 import { describe, expect, it } from 'vitest';
 import { createBCGame } from './factory.js';
+import { engineMoveOptions, hashEngineState, legalMoveOptions } from './legal-options.js';
 
 type CoreClient = ReturnType<typeof Client<CoreState>>;
 const grass = { tileId: 'Grassroots-1', coord: { q: 0, r: 1 } };
@@ -78,6 +79,18 @@ describe('Cost interactions through boardgame.io', () => {
     });
     client.moves.placeTile({ q: 1, r: 0 });
     const before = client.getState()!;
+    const options = engineMoveOptions(before.G, before.ctx, '0');
+    expect(engineMoveOptions(before.G, before.ctx, '1')).toEqual([]);
+    const conversion = options.find(option => JSON.stringify(option.parameters).includes('convertResources'));
+    if (dom === 0) expect(conversion).toBeUndefined();
+    else expect(conversion).toMatchObject({
+      contextTile: grass.tileId,
+      costBreakdown: [{ playerID: '0', resource: 'FOR', amount: 3 }, { playerID: '1', resource: 'DOM', amount: 1 }],
+      parameters: [{ type: 'convertResources', payload: {
+        tileId: grass.tileId, input: 'FOR', output: 'DOM',
+        payment: { transfers: [{ costId: 'CLM_M06:1', effectId: 'CLM_M13:1', playerID: '1' }] },
+      } }],
+    });
     convert(client, { transfers: [{ costId: 'CLM_M06:1', effectId: 'CLM_M13:1', playerID: '1' }] });
     const after = client.getState()!;
     if (dom === 0) {
@@ -145,8 +158,19 @@ describe('Cost interactions through boardgame.io', () => {
     client.moves.placeTile({ q: 2, r: 0 });
     if (!protest) {
       expect(client.getState()!.ctx.activePlayers).toEqual({ '1': 'ResolveHotspot' });
+      const before = client.store.getState();
+      const beforeHash = hashEngineState(before);
+      expect(engineMoveOptions(before.G, before.ctx, '0')).toEqual([]);
+      const [pay] = legalMoveOptions(createBCGame(), before, '1');
+      expect(hashEngineState(client.store.getState())).toBe(beforeHash);
+      expect(pay).toMatchObject({
+        playerID: '1', moveType: 'chooseHotspotOutcome', contextTile: 'Hotspot-1',
+        parameters: [{ kind: 'greenwashing', resource: 'CLM' }],
+        costBreakdown: [{ playerID: '1', resource: 'CLM', amount: 1 }],
+      });
       client.updatePlayerID('1');
       client.moves.chooseHotspotOutcome({ kind: 'greenwashing', resource: 'CLM' });
+      expect(hashEngineState(client.store.getState())).toBe(pay.resultingStateHashPreview);
     }
     const { G, ctx } = client.getState()!;
     expect(ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });

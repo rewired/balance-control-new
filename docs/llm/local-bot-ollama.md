@@ -3,7 +3,7 @@
 This guide runs the LLM bot locally using Ollama. The bot never constructs moves: it picks from enumerated legal options only (AGENTS §4.1) and falls back deterministically if the model is unavailable.
 
 ## Prereqs
-- Node.js 20.11+ and pnpm 10 (repo uses `packageManager: pnpm@10.18.0`)
+- Node.js 24 LTS (see `.nvmrc`) and pnpm 10.18.0
 - Ollama installed:
   - Windows: https://ollama.com/download
   - Linux/macOS: `curl -fsSL https://ollama.com/install.sh | sh`
@@ -36,7 +36,7 @@ Environment variables:
 
 Behavior:
 - Enumerates legal political actions for the current player.
-- Sends only the list of option IDs to the model and expects strict JSON `{ "optionId": "..." }`.
+- Sends the actual engine options with parameters, costs, context tile, and result hash. Expects strict JSON `{ "index": 0 }` using a zero-based index.
 - If validation fails or Ollama is unreachable, falls back to the first legal option.
 
 ## Troubleshooting

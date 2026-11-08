@@ -74,9 +74,9 @@ Norm: EXP-01 bis EXP-03 in konsolidierter Fassung; vollständige R-Zuordnung in 
 
 ## 5. Bots, UI und Durchsetzung
 
-- [ ] S15: Engine liefert deterministisch alle legalen Optionen mit Parametern, Kostenaufschlüsselung, ContextTile und Vorschauhash; LLM wählt ausschließlich validierten Index.
-- [ ] Ziel-, Kosten-, Prohibition-, Timing- und Zusatzaktionslegalität prüfen. Ungültiger Index/JSON/Backend-Ausfall fällt deterministisch auf eine wirklich legale Option zurück; leere Auswahl folgt dem Pflichtslotverfahren.
-- [ ] Runner verwendet denselben kanonischen Engine-Ablauf einschließlich Zusatzaktion/Settlement; duplizierte Regelabläufe entfernen und dem LLM reale Optionen übermitteln.
+- [x] S15: Engine liefert deterministisch legale Optionen mit Parametern, Kostenaufschlüsselung, ContextTile und Vorschauhash. Das LLM wählt ausschließlich einen validierten Index. [DD-0030](../design-decisions/DD-0030-engine-option-previews.md)
+- [x] Ziele, Kosten, Verbote, Timing und Zusatzaktionen über dieselbe Engine prüfen. Ungültiger Index, ungültiges JSON und Backend-Ausfall fallen deterministisch auf die erste legale Option zurück. Leere Pflichtslots verarbeitet die Engine selbst.
+- [x] Runner nutzt den tatsächlichen boardgame.io-Zugablauf einschließlich Zusatzaktion und finalem Settlement. Ein Test wiederholt denselben Ablauf mit einem simulierten Modell und vergleicht den Endhash.
 - [ ] S20: Web-Client an tatsächliche politische API anbinden; Phasen- und Aktionsauswahl testen.
 - [ ] S19: Normanker, direkte Mutationen außerhalb des Resolvers, unerreichbaren TakeMeasure-Block und produktive Sentinels/Noops bereinigen; Enforcement anhand tatsächlicher Schreibpfade prüfen.
 

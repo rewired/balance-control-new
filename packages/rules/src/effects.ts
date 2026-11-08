@@ -7,7 +7,7 @@ import { planProductionForTile } from './production.plan.js';
 import { computeMajority, getControl } from './majority.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
 import { getTopology } from './topology/index.js';
-import { isGreenwashingActive, planSelectedPayment } from './payment.js';
+import { isGreenwashingActive, paymentPlans, type PlannedPayment } from './payment.js';
 import type { HotspotChoice, PaymentSelection } from './schemas.js';
 import { mayAttachRegulation, regulationContext, regulationOperations } from './regulations.js';
 
@@ -255,12 +255,21 @@ function createBankTransaction(G: CoreState, registry: ResourceRegistry) {
 }
 
 // CORE-01-06-00-07(b) and -11: build the complete payment without mutating game zones.
+export interface PaymentQuote {
+  payment?: PaymentSelection;
+  costBreakdown: PlannedPayment['transfers'];
+  contextTile: string | null;
+}
+type PaymentPreview = true | ((quote: PaymentQuote) => void);
+type DecisionQuote = Omit<PaymentQuote, 'payment'> & { choice: HotspotChoice };
+
 function planPayment(
   G: CoreState,
   registry: ResourceRegistry,
   effect: EffectDescriptor & { playerID: string },
   hooks: readonly ExpansionHooks[],
   baseCost?: Partial<ResourceAmounts>,
+  preview?: PaymentPreview,
 ): { ok: true; transaction: ReturnType<typeof createBankTransaction> } | { ok: false; reason?: string } {
   const cost: Partial<ResourceAmounts> = Object.assign(Object.create(null), baseCost);
   const units: Surcharge[] = [];
@@ -274,23 +283,32 @@ function planPayment(
     if (!registry.has(resource)) return { ok: false, reason: 'inactive-resource' };
     if (!isResourceCount(amount ?? 0)) return { ok: false, reason: 'invalid-resource-amount' };
   }
-  const selected = planSelectedPayment(G, registry, effect, cost, units, isStartCommitteeContext(G, effect.contextCoord));
-  if (!selected) return { ok: false, reason: effect.payment ? 'invalid-or-unpayable-cost' : 'insufficient' };
-  const transaction = createBankTransaction(G, registry);
-  for (const { playerID, resource, amount } of selected.transfers) {
-    const result = transaction.transfer({ from: 'PersonalSupply', to: 'Bank', playerID, resource, amount });
-    if (!result.ok) return { ok: false, reason: result.reason };
-  }
-  return { ok: true, transaction: { ...transaction, commit: () => {
-    transaction.commit();
-    // CORE-01-06-00-11, EXP-01-08-M08-05 and EXP-03-08-M13-09: usage follows successful payment.
-    const council = G.activeMeasureEffects?.find(instance => instance.id === selected.useCouncil);
-    if (council) council.used = true;
-    if (selected.consumeEffects.length && G.activeMeasureEffects) {
-      G.activeMeasureEffects = G.activeMeasureEffects.filter(instance => !selected.consumeEffects.includes(instance.id));
-      if (!G.activeMeasureEffects.length) delete G.activeMeasureEffects;
+  let first: ReturnType<typeof createBankTransaction> | undefined;
+  let reason = effect.payment ? 'invalid-or-unpayable-cost' : 'insufficient';
+  const plans = paymentPlans(G, registry, effect, cost, units, isStartCommitteeContext(G, effect.contextCoord), Boolean(preview));
+  for (const selected of plans) {
+    const transaction = createBankTransaction(G, registry);
+    const result = selected.transfers.map(route => transaction.transfer({ from: 'PersonalSupply', to: 'Bank', ...route }))
+      .find(transfer => !transfer.ok);
+    if (result) {
+      reason = result.reason ?? reason;
+      continue;
     }
-  } } };
+    first ??= { ...transaction, commit: () => {
+      transaction.commit();
+      // CORE-01-06-00-11, EXP-01-08-M08-05 and EXP-03-08-M13-09: usage follows successful payment.
+      const council = G.activeMeasureEffects?.find(instance => instance.id === selected.useCouncil);
+      if (council) council.used = true;
+      consumeMeasureEffects(G, selected.consumeEffects);
+    } };
+    if (typeof preview !== 'function') break;
+    preview({
+      ...(selected.selection ? { payment: selected.selection } : {}),
+      costBreakdown: selected.transfers,
+      contextTile: effect.kind === 'placeTile' ? effect.tileId : findTileAt(G, effect.contextCoord)?.tileId ?? null,
+    });
+  }
+  return first ? { ok: true, transaction: first } : { ok: false, reason };
 }
 
 function isProhibited(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[]): boolean {
@@ -374,7 +392,7 @@ function commitRegulationDiscount(G: CoreState, discountId?: string): void {
   if (discount) discount.used = true;
 }
 
-function planRegulationAction(G: CoreState, requested: ResolveRegulationEffect, active: readonly ExpansionModule[]) {
+function planRegulationAction(G: CoreState, requested: ResolveRegulationEffect, active: readonly ExpansionModule[], preview?: PaymentPreview) {
   if (!Object.hasOwn(G.players, requested.playerID)) return { ok: false, reason: 'no-player' } as const;
   const authority = requested.kind === 'activateAuthorityApparatus'
     ? G.tiles.board.find(tile => G.allTiles[tile.tileId]?.kind === 'AuthorityApparatus') : undefined;
@@ -393,7 +411,7 @@ function planRegulationAction(G: CoreState, requested: ResolveRegulationEffect, 
   const mutate = planRegulationMutation(G, requested.regulation);
   if (!mutate) return { ok: false, reason: 'invalid-regulation-operation' } as const;
   const { amount, discountId } = regulationPrice(G, requested.regulation, requested.playerID);
-  const payment = planPayment(G, createMatchResourceRegistry(active), effect, hooks, amount ? { SEC: amount } : undefined);
+  const payment = planPayment(G, createMatchResourceRegistry(active), effect, hooks, amount ? { SEC: amount } : undefined, preview);
   if (!payment.ok) return payment;
   return { ok: true, commit: () => {
     payment.transaction.commit();
@@ -413,6 +431,7 @@ function planPoliticalAction(
   G: CoreState,
   requested: PoliticalActionEffect,
   active: readonly ExpansionModule[],
+  preview?: PaymentPreview,
 ): { ok: true; commit: () => void } | { ok: false; reason?: string } {
   const registry = createMatchResourceRegistry(active);
   const hooks = active.flatMap(module => module.hooks ?? []);
@@ -440,7 +459,7 @@ function planPoliticalAction(
     if (index < 0) return { ok: false, reason: 'marker-not-in-source' };
 
     // CORE-01-06-00-07(b) and EXP-02-02-B-02B: cost increases apply; the marker is not output.
-    const payment = planPayment(G, registry, effect, localHooks);
+    const payment = planPayment(G, registry, effect, localHooks, undefined, preview);
     if (!payment.ok) return payment;
     return { ok: true, commit: () => {
       payment.transaction.commit();
@@ -474,7 +493,7 @@ function planPoliticalAction(
     } else if (fee !== undefined) {
       return { ok: false, reason: 'invalid-greenwashing-payment' };
     }
-    const payment = planPayment(G, registry, effect, localHooks, cost);
+    const payment = planPayment(G, registry, effect, localHooks, cost, preview);
     if (!payment.ok) return payment;
 
     // CORE-01-04-17..19, CORE-01-08-10 and CORE-01-06-00-11: one new marker, or a paid zero output.
@@ -505,7 +524,7 @@ function planPoliticalAction(
     .flatMap(module => module.conversionAlternatives?.(G, player.id) ?? [])
     .find(option => option.id === effect.alternative && option.input === effect.input);
   if (effect.alternative !== undefined && !alternative) return { ok: false, reason: 'conversion-alternative-unavailable' };
-  const payment = planPayment(G, registry, effect, localHooks, { [effect.input]: alternative?.cost ?? 3 });
+  const payment = planPayment(G, registry, effect, localHooks, { [effect.input]: alternative?.cost ?? 3 }, preview);
   if (!payment.ok) return payment;
   const amount = modifyOutput(G, effect, localHooks, 1);
   const payout = payment.transaction.transfer({
@@ -516,7 +535,7 @@ function planPoliticalAction(
 }
 
 // CORE-01-04-05A/-05B: previews and placements share the same legality and payment check.
-function planTilePlacement(G: CoreState, effect: PlaceTileEffect, registry: ResourceRegistry, hooks: readonly ExpansionHooks[]) {
+function planTilePlacement(G: CoreState, effect: PlaceTileEffect, registry: ResourceRegistry, hooks: readonly ExpansionHooks[], preview?: PaymentPreview) {
   if (G.tiles.drawResolution?.tileId !== effect.tileId) return { ok: false, reason: 'tile-not-drawn' } as const;
   if (!Object.hasOwn(G.players, effect.playerID)) return { ok: false, reason: 'no-player' } as const;
   if (!isLegalPlacement(G.tiles.board, effect.coord, getTopology(G.cfg.topology))) {
@@ -524,7 +543,7 @@ function planTilePlacement(G: CoreState, effect: PlaceTileEffect, registry: Reso
   }
   const placement = { ...effect, contextCoord: effect.coord };
   if (isProhibited(G, placement, hooks)) return { ok: false, reason: 'prohibited' } as const;
-  return planPayment(G, registry, placement, hooks);
+  return planPayment(G, registry, placement, hooks, undefined, preview);
 }
 
 // CORE-01-04-04/-06/-07 and VAR-01-01-04 through -08: resolve attempts in the current draw phase.
@@ -545,7 +564,7 @@ function drawTile(G: CoreState, effect: DrawTileEffect, registry: ResourceRegist
 
     drawn.legalCoords = geometry.filter(coord => planTilePlacement(G, {
       kind: 'placeTile', tileId, coord, playerID: effect.playerID,
-    }, registry, hooks).ok);
+    }, registry, hooks, true).ok);
     if (drawn.legalCoords.length > 0) return { ok: true };
 
     G.tiles.drawResolution = null;
@@ -627,6 +646,7 @@ function planMeasureAction(
   G: CoreState,
   requested: MeasureAction,
   active: readonly ExpansionModule[],
+  preview?: PaymentPreview,
 ): { ok: true; commit: () => void } | { ok: false; reason?: string } {
   const { expansion, playerID, measureId } = requested;
   const deck = G.cfg.expansions[expansion] ? G.exp?.[expansion]?.measures : undefined;
@@ -693,7 +713,7 @@ function planMeasureAction(
   const immediateRegulation = regulation && rule?.regulation?.timing === 'immediate';
   const price = immediateRegulation ? regulationPrice(G, regulation, playerID) : undefined;
   const cost = price?.amount ? { ...rule?.cost, SEC: (rule?.cost.SEC ?? 0) + price.amount } : rule?.cost;
-  const payment = planPayment(G, registry, effect, hooks, cost);
+  const payment = planPayment(G, registry, effect, hooks, cost, preview);
   if (!payment.ok) return payment;
   if (rule?.gainTargetResort && placement) {
     const tile = G.allTiles[placement.tileId];
@@ -732,48 +752,70 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     return modules?.filter(module => G.cfg.expansions[module.id]) ?? createExpansionRegistry(G.cfg.expansions);
   }
 
-  function previewPoliticalAction(G: CoreState, effect: PoliticalActionEffect): boolean {
-    return planPoliticalAction(G, effect, activeModules(G)).ok;
-  }
-  function previewMeasureAction(G: CoreState, effect: MeasureAction): boolean {
-    return planMeasureAction(G, effect, activeModules(G)).ok;
-  }
-  function previewRegulationAction(G: CoreState, effect: ResolveRegulationEffect): boolean {
-    return planRegulationAction(G, effect, activeModules(G)).ok;
+  function actionQuotes(G: CoreState, requested: PoliticalActionEffect | MeasureAction | ResolveRegulationEffect | PlaceTileEffect): PaymentQuote[] {
+    const active = activeModules(G);
+    const quote = (effect: typeof requested, preview?: PaymentPreview) => {
+      switch (effect.kind) {
+        case 'takeMeasure':
+        case 'playMeasure':
+          return planMeasureAction(G, effect, active, preview);
+        case 'activateAuthorityApparatus':
+        case 'regulationOperation':
+          return planRegulationAction(G, effect, active, preview);
+        case 'placeTile':
+          return planTilePlacement(G, effect, createMatchResourceRegistry(active), active.flatMap(module => module.hooks ?? []), preview);
+        default:
+          return planPoliticalAction(G, effect, active, preview);
+      }
+    };
+    const options: PaymentQuote[] = [];
+    quote(requested, option => options.push(option));
+    return options.filter(option => quote({ ...requested, payment: option.payment }).ok);
   }
 
-  function hotspotChoices(G: CoreState, pending = G.pendingHotspot): HotspotChoice[] {
+  function hotspotQuotes(G: CoreState, pending = G.pendingHotspot): DecisionQuote[] {
     if (!pending) return [];
-    const choices: HotspotChoice[] = [];
+    const choices: DecisionQuote[] = [];
     if (pending.outcome === 'greenwashing') {
       const supply = G.players[pending.playerID].personal;
       if (supply.influence.length > 0) {
         for (const resource of ['CLM', 'INF'] as const) {
-          if ((supply.resources[resource] ?? 0) >= 1) choices.push({ kind: 'greenwashing', resource });
+          if ((supply.resources[resource] ?? 0) >= 1) choices.push({
+            choice: { kind: 'greenwashing', resource },
+            contextTile: pending.tileId,
+            costBreakdown: [{ playerID: pending.playerID, resource, amount: 1 }],
+          });
         }
       }
     } else {
       for (const regulation of [...regulationOperations(G, 'place'), ...regulationOperations(G, 'move')]) {
-        if (previewRegulationAction(G, {
+        for (const { payment, ...quote } of actionQuotes(G, {
           kind: 'regulationOperation', playerID: pending.playerID, regulation, contextTileId: pending.tileId,
-        })) choices.push({ kind: 'regulation', regulation });
+        })) choices.push({ ...quote, choice: { kind: 'regulation', regulation, ...(payment ? { payment } : {}) } });
       }
     }
-    if (choices.length > 0) choices.push({ kind: 'decline' });
+    if (choices.length > 0) choices.push({ choice: { kind: 'decline' }, contextTile: pending.tileId, costBreakdown: [] });
     return choices;
   }
 
-  function regulationFollowUpChoices(G: CoreState): HotspotChoice[] {
+  function regulationFollowUpQuotes(G: CoreState): DecisionQuote[] {
     const pending = G.pendingRegulationChoices?.[0];
     if (!pending) return [];
     const operations: RegulationOperation[] = pending.kind === 'deploymentOrder'
       ? [...regulationOperations(G, 'move')].filter(operation => operation.operation === 'move' && operation.regulationId === pending.regulationId)
       : [{ operation: 'place', regulationKind: 'Control', tileId: pending.tileId }];
     return [
-      ...operations.flatMap(regulation => previewRegulationAction(G, {
+      ...operations.flatMap(regulation => actionQuotes(G, {
         kind: 'regulationOperation', playerID: pending.playerID, regulation,
-      }) ? [{ kind: 'regulation' as const, regulation }] : []),
-      { kind: 'decline' },
+      }).map(({ payment, ...quote }): DecisionQuote => ({
+        ...quote, choice: { kind: 'regulation', regulation, ...(payment ? { payment } : {}) },
+      }))),
+      {
+        choice: { kind: 'decline' },
+        contextTile: pending.kind === 'competenceConflict' ? pending.tileId
+          : G.exp?.exp02?.regulations?.attached.find(regulation => regulation.id === pending.regulationId)?.tileId ?? null,
+        costBreakdown: [],
+      },
     ];
   }
 
@@ -784,7 +826,7 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
   }
 
   function continueRegisteredDecisions(G: CoreState): void {
-    while (G.pendingRegulationChoices?.length && regulationFollowUpChoices(G).length === 1) {
+    while (G.pendingRegulationChoices?.length && regulationFollowUpQuotes(G).length === 1) {
       removeRegulationFollowUp(G, G.pendingRegulationChoices[0]);
     }
     if (!G.pendingRegulationChoices && !G.pendingHotspot && G.remainingHotspots) {
@@ -1050,7 +1092,7 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
           : isGreenwashingActive(G) ? 'greenwashing' : undefined;
         if (choice) {
           const pending: PendingHotspot = { tileId: placement.tileId, playerID: winner, outcome: choice };
-          if (hotspotChoices(G, pending).length) {
+          if (hotspotQuotes(G, pending).length) {
             G.pendingHotspot = pending;
             return { ok: true };
           }
@@ -1125,5 +1167,7 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     }
   }
 
-  return Object.assign(resolveEffect, { previewPoliticalAction, previewMeasureAction, previewRegulationAction, hotspotChoices, regulationFollowUpChoices });
+  return Object.assign(resolveEffect, {
+    actionQuotes, hotspotQuotes, regulationFollowUpQuotes,
+  });
 }

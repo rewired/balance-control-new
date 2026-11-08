@@ -1,6 +1,7 @@
 import { Client } from 'boardgame.io/client';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createBCGame } from './factory.js';
+import { engineMoveOptions } from './legal-options.js';
 import { registerExpansion, __resetRegisteredExpansionsForTest, type ExpansionModule, ensureExpansionSlice } from '@bc/rules';
 
 function makeBlockingModule(): ExpansionModule {
@@ -21,6 +22,9 @@ describe('PlaceTile prohibitions via the engine', () => {
     registerExpansion(makeBlockingModule());
     const client = Client({ game: createBCGame({ expansions: { exp01: true } }), numPlayers: 2 });
     const before = client.getState()!;
+    const options = engineMoveOptions(before.G, before.ctx, '0');
+    expect(options.every(option => option.moveType === 'placeTile')).toBe(true);
+    expect(options.map(option => option.parameters[0])).not.toContainEqual({ q: 1, r: 0 });
 
     client.moves.doPoliticalAction({
       type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-1', targetTileId: before.G.tiles.drawResolution!.tileId },
