@@ -4,7 +4,7 @@ export * from './setup.js';
 
 export * from './topology/hex.js';
 export * from './topology/index.js';
-export { computeMajority, getControl, isFullySurrounded, regulationOperations, type MajorityBreakdown, type MajorityResult } from './rule-services.js';
+export { computeMajority, getControl, isFullySurrounded, type MajorityBreakdown, type MajorityResult } from './rule-services.js';
 
 export * from './resources.js';
 export * from './expansion-registry.js';
@@ -14,7 +14,7 @@ export * from './effects.js';
 
 export * from './moves.js';
 export * from './config.js';
-export { budgetDeficitIds, greenwashingResources, isPoliticalEffect, paymentPlans, type PlannedPayment } from './payment.js';
+export { isPoliticalEffect, paymentPlans, type PlannedPayment } from './payment.js';
 
 export { z } from 'zod';
 export type { ZodTypeAny } from 'zod';

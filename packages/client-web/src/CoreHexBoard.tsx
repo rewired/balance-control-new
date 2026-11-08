@@ -1,14 +1,15 @@
-import type { CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import type { EngineMoveOption } from '@bc/game';
-import type { AxialCoord, CoreState, Tile } from '@bc/rules';
+import type { AxialCoord, CoreState, RegulationKind, Tile } from '@bc/rules';
 import committeeIcon from '@bc/exp-00-core/assets/tile-icons/committee.svg';
 import lobbyistIcon from '@bc/exp-00-core/assets/tile-icons/lobbyist.svg';
 import grassrootsIcon from '@bc/exp-00-core/assets/tile-icons/grassroots.svg';
 import hotspotIcon from '@bc/exp-00-core/assets/tile-icons/hotspot.svg';
 import startCommitteeIcon from '@bc/exp-00-core/assets/tile-icons/start-committee.svg';
 import { playerColor, resortVisuals } from './core-board-visuals.js';
+import { PlayerMarker, RegulationBadge } from './CoreSymbols.js';
 import {
-  coordLabel, influenceLabel, playerShortLabel, tileActionLabel, tileLabel, tileOccupation, type MovePreview,
+  coordLabel, influenceLabel, playerShortLabel, regulationLabel, tileActionLabel, tileLabel, tileOccupation, type MovePreview,
 } from './core-board-labels.js';
 
 const tileVisuals: Record<string, { color: string; icon: string } | undefined> = {
@@ -17,20 +18,23 @@ const tileVisuals: Record<string, { color: string; icon: string } | undefined> =
   Lobbyist: { color: '#7A5C3A', icon: lobbyistIcon },
   Grassroots: { color: '#4A6A5E', icon: grassrootsIcon },
   Hotspot: { color: '#8B2E2E', icon: hotspotIcon },
+  InvestmentProgram: resortVisuals.ECO,
+  AuthorityApparatus: resortVisuals.SEC,
 };
 const tileWidth = 144;
 const tileHeight = 166;
-const fieldPadding = 8;
+const fieldPadding = 16;
 
 export function TileFace({ tile, controller }: { tile: Tile; controller?: string | null }) {
   const visual = tile.kind === 'ResortTile' ? resortVisuals[tile.resort] : tileVisuals[tile.kind];
   return (
-    <span className="tile-face" style={{
+    <span className="tile-face" aria-hidden="true" style={{
       '--tile-color': visual?.color ?? '#435063',
-      '--tile-rim': controller == null ? '#94a3b8' : playerColor(controller),
+      '--tile-rim': controller == null ? '#677789' : playerColor(controller),
     } as CSSProperties}>
-      {visual && <img src={visual.icon} alt="" />}
-      <span>{tileLabel(tile)}</span>
+      <span className="tile-art" />
+      {visual && <img className="tile-glyph" src={visual.icon} alt="" />}
+      <span className="tile-name">{tile.kind === 'ResortTile' ? tile.resort : tileLabel(tile)}</span>
     </span>
   );
 }
@@ -71,6 +75,8 @@ interface Props {
 }
 
 export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile, selectedCoord, preview, onPlace, onInspect }: Props) {
+  const [zoom, setZoom] = useState(100);
+  const viewport = useRef<HTMLDivElement>(null);
   const core = G.exp.core;
   const tiles = core.tiles.board.map(placement => ({
     ...placement, ...pixel(placement.coord, G.cfg.topology),
@@ -85,53 +91,83 @@ export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile
   const destination = preview && tiles.find(({ tileId }) => tileId === preview.targetTileId);
 
   return (
-    <section className="hex-board" aria-label="Game board">
-      <div className="hex-field" style={{ width, height }}>
-        {tiles.map(placement => {
-          const { tileId, coord, x, y } = placement;
-          const tile = core.allTiles[tileId];
-          const { controller, leaders, influence, control } = tileOccupation(G, placement);
-          const action = tileActionLabel(tileActions.get(tileId) ?? []);
-          const endpoint = preview?.sourceTileId === tileId ? 'source'
-            : preview?.targetTileId === tileId ? 'destination' : undefined;
-          const label = [
-            `${tileLabel(tile)} (${coordLabel(coord)})`, control,
-            influence.length ? influence.map(influenceLabel).join(', ') : 'No influence',
-            action && `Legal action: ${action}`,
-            endpoint && `Move preview: ${endpoint}`,
-          ].filter(Boolean).join('. ');
-          return (
-            <button key={tileId} className="hex-cell" type="button" data-move-endpoint={endpoint}
-              style={{ left: x - left + fieldPadding, top: y - top + fieldPadding }} aria-pressed={selectedTile === tileId}
-              title={label} aria-label={label} onClick={() => onInspect(tileId)}>
-              <TileFace tile={tile} controller={controller} />
-              <span className="tile-control" style={{
-                '--controller-color': controller === null ? '#94a3b8' : playerColor(controller),
-              } as CSSProperties}>{controller !== null ? `${playerShortLabel(controller)} controls` : leaders.length ? 'Tied' : 'No control'}</span>
-              <span className="tile-influence" data-dense={influence.length > 4}>
-                {influence.map(({ id, count, virtual }) => (
-                  <span key={id} style={{ '--player-color': playerColor(id) } as CSSProperties}>
-                    {playerShortLabel(id)} <b>{count}</b>{virtual > 0 && <span className="virtual-influence"> +{virtual}</span>}
-                  </span>
-                ))}
-                {!influence.length && <span className="empty-influence">No influence</span>}
-              </span>
-              {endpoint ? <span className="tile-action tile-move-endpoint">{endpoint === 'source' ? 'From →' : '→ To'}</span>
-                : action && <span className="tile-action">{action}</span>}
+    <section className="core-board core-panel" aria-label="Game board">
+      <header className="core-board-heading">
+        <div><p className="core-kicker">Match overview</p><h3>Board</h3></div>
+        <span className="core-tile-total">{tiles.length} {tiles.length === 1 ? 'tile' : 'tiles'}</span>
+        <div className="board-tools" role="group" aria-label="Board controls">
+          <button type="button" aria-label="Zoom out" disabled={zoom <= 75} onClick={() => setZoom(zoom - 25)}>−</button>
+          <output aria-label="Board zoom">{zoom}%</output>
+          <button type="button" aria-label="Zoom in" disabled={zoom >= 125} onClick={() => setZoom(zoom + 25)}>+</button>
+          <button type="button" onClick={() => {
+            const board = viewport.current;
+            if (board) board.scrollTo((board.scrollWidth - board.clientWidth) / 2, (board.scrollHeight - board.clientHeight) / 2);
+          }}>Center</button>
+        </div>
+      </header>
+      <div className="hex-board" ref={viewport} tabIndex={0} role="region" aria-label="Scrollable hex field">
+        <div className="hex-field" style={{ width, height, zoom: zoom / 100 }}>
+          {tiles.map(placement => {
+            const { tileId, coord, x, y } = placement;
+            const tile = core.allTiles[tileId];
+            const regulations = G.exp.exp02?.regulations?.attached.filter(item => item.tileId === tileId) ?? [];
+            const regulationCounts = new Map<RegulationKind, number>();
+            for (const { kind } of regulations) regulationCounts.set(kind, (regulationCounts.get(kind) ?? 0) + 1);
+            const { controller, leaders, influence, control } = tileOccupation(G, placement);
+            const action = tileActionLabel(tileActions.get(tileId) ?? []);
+            const endpoint = preview?.sourceTileId === tileId ? 'source'
+              : preview?.targetTileId === tileId ? 'destination' : undefined;
+            const label = [
+              `${tileLabel(tile)} (${coordLabel(coord)})`, control,
+              influence.length ? influence.map(influenceLabel).join(', ') : 'No influence',
+              action && `Legal action: ${action}`,
+              endpoint && `Move preview: ${endpoint}`,
+              regulations.length > 0 && `Regulations: ${regulations.map(regulationLabel).join(', ')}`,
+            ].filter(Boolean).join('. ');
+            return (
+              <button key={tileId} className="hex-cell" type="button" data-move-endpoint={endpoint}
+                style={{ left: x - left + fieldPadding, top: y - top + fieldPadding }} aria-pressed={selectedTile === tileId}
+                title={label} aria-label={label} onClick={() => onInspect(tileId)}>
+                <TileFace tile={tile} controller={controller} />
+                <span className="tile-status" aria-hidden="true">
+                  {tile.kind === 'ResortTile' && <span className="tile-yield">{tile.w}</span>}
+                  {controller !== null ? <span className="tile-control"><PlayerMarker id={controller} />{playerShortLabel(controller)}</span>
+                    : leaders.length > 1 && <span className="tile-control">Tied</span>}
+                </span>
+                {regulations.length > 0 && <span className="tile-regulations" aria-hidden="true">
+                  {[...regulationCounts].map(([kind, count]) => <RegulationBadge key={kind} kind={kind} count={count} />)}
+                </span>}
+                <span className="tile-influence" aria-hidden="true">
+                  {influence.map(({ id, count, virtual }) => (
+                    <span key={id} className="influence-chip">
+                      <span className="influence-player"><PlayerMarker id={id} />{playerShortLabel(id)}</span>
+                      <span className="influence-count"><b>{count}</b>{virtual > 0 && <span className="virtual-influence">+{virtual}</span>}</span>
+                    </span>
+                  ))}
+                </span>
+                {endpoint ? <span className="tile-action tile-move-endpoint">{endpoint === 'source' ? 'From →' : '→ To'}</span>
+                  : action && <span className="tile-action">{action}</span>}
+              </button>
+            );
+          })}
+          {targets.map(({ coord, x, y }) => (
+            <button key={coordLabel(coord)} className="hex-cell hex-target" type="button"
+              style={{ left: x - left + fieldPadding, top: y - top + fieldPadding }}
+              aria-pressed={selectedCoord === coordLabel(coord)}
+              aria-label={`Place tile at ${coordLabel(coord)}`} onClick={() => onPlace(coord)}>
+              <span aria-hidden="true">+</span>Place tile
             </button>
-          );
-        })}
-        {targets.map(({ coord, x, y }) => (
-          <button key={coordLabel(coord)} className="hex-cell hex-target" type="button"
-            style={{ left: x - left + fieldPadding, top: y - top + fieldPadding }}
-            aria-pressed={selectedCoord === coordLabel(coord)}
-            aria-label={`Place tile at ${coordLabel(coord)}`} onClick={() => onPlace(coord)}>
-            <span aria-hidden="true">+</span>Place tile
-          </button>
-        ))}
-        {source && destination && <MoveArrow source={source} destination={destination}
-          viewBox={`${left - fieldPadding} ${top - fieldPadding} ${width} ${height}`} />}
+          ))}
+          {source && destination && <MoveArrow source={source} destination={destination}
+            viewBox={`${left - fieldPadding} ${top - fieldPadding} ${width} ${height}`} />}
+        </div>
       </div>
+      <footer className="core-map-key">
+        <span><PlayerMarker id="0" /> Influence <span className="virtual-influence">+ virtual</span></span>
+        {G.exp.exp02?.regulations && <span><RegulationBadge kind="Administration" /> Regulation</span>}
+        {legalCoords.length > 0 && <span><b>+</b> Legal tile placement</span>}
+        {tileActions.size > 0 && <span><b>Place / Move</b> Marker action</span>}
+      </footer>
     </section>
   );
 }

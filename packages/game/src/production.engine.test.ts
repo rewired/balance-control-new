@@ -107,7 +107,7 @@ describe('Canonical Resort Production through boardgame.io', () => {
     const otherProhibitions = vi.fn(({ effect }: CostIncreasesArgs) => effect.kind === 'applyProductionAt');
     registerHooks('exp01', { prohibitions: otherProhibitions });
     registerHooks('exp02', {
-      blockade: ({ effect }) => effect.kind === 'applyProductionAt'
+      priorityProhibition: ({ effect }) => effect.kind === 'applyProductionAt'
         && effect.contextCoord?.q === resort.coord.q && effect.contextCoord?.r === resort.coord.r,
       productionModifiers,
     });

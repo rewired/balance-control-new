@@ -7,5 +7,6 @@ it('supplies Security material and the Regulation rules', () => {
   const resources = createResourceRegistry();
   module.registerResources(resources);
   expect(resources.list()).toEqual(['SEC']);
-  expect(module.regulations).toBeDefined();
+  expect(Object.keys(module.actions ?? {})).toEqual(['regulationOperation', 'activateAuthorityApparatus']);
+  expect(module.hooks?.hotspotDecision).toBeTypeOf('function');
 });

@@ -5,7 +5,6 @@ import { createResolver, type PoliticalActionEffect } from '@bc/rules';
 import type { MoveDefinition, MoveExtensionBuilder } from '@bc/rules';
 import { matchResourceIds } from '@bc/rules';
 import { PaymentSelectionSchema } from '@bc/rules';
-import { greenwashingResources } from '@bc/rules';
 import { formalizationPayments } from './resolver.js';
 
 function corePoliticalMove<P extends object>(
@@ -57,17 +56,10 @@ export function registerCorePoliticalMoves({ add }: MoveExtensionBuilder): void 
       (playerID, payload) => ({ kind: 'formalizeInfluence', playerID, ...payload }),
       function* (G) {
         const resources = matchResourceIds(G);
-        const fees = greenwashingResources(G);
         for (const { tileId } of G.exp.core.tiles.board) {
           const kind = G.exp.core.allTiles[tileId].kind;
           if (kind !== 'Committee' && kind !== 'StartCommittee') continue;
-          for (const payment of formalizationPayments(resources, kind === 'StartCommittee')) {
-            if (kind === 'Committee' && fees.length) {
-              for (const greenwashing of fees) yield { tileId, resources: payment, payment: { greenwashing } };
-            } else {
-              yield { tileId, resources: payment };
-            }
-          }
+          for (const payment of formalizationPayments(resources, kind === 'StartCommittee')) yield { tileId, resources: payment };
         }
       },
     ),

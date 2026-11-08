@@ -512,3 +512,21 @@
 - Das Start Committee erklärt im Feldpanel, wann eine Formalisierung möglich ist, was sie kostet und welche Voraussetzung aktuell fehlt.
 - Die Vorratstabelle zeigt pro Spieler die Anzahl je Ressort sowie Startmarker und zusätzliche Einflussmarker im Vorrat und auf dem Brett.
 - CORE, Economy, Security und Climate liefern ihre Icons im jeweiligen Workspace-Paket. Die gemeinsame Tile-Vorlage und Textur liegen im Webclient.
+
+## 2026-11-08 – Erweiterungen im Desktop-Webclient
+
+- Beim Hotseat-Start und beim Erstellen einer konfigurierten Netzwerkpartie lassen sich Spielerzahl und Erweiterungen auswählen.
+- Die Maßnahmenansicht zeigt Markt, Hände, aktive Effekte und Kartentexte aus den Regeldateien. Nehmen und Ausspielen verwenden legale Engine-Optionen mit Ziel und Kosten.
+- Die Regulationsansicht zeigt betroffene Tiles. Brett und Feldpanel zeigen die angehängten Regulationsmarker, und der Aktionswähler benennt Regulationsoperationen und Folgeentscheidungen.
+- Climate liefert Auslöser und feste Ersatzzahlungen für Greenwashing. Der gemeinsame Resolver prüft und verbucht die angebotenen Zahlungen.
+
+## 2026-11-08 – Lesbare Spieloberfläche für den Vollausbau
+
+- Die gemeinsame Matchansicht für Hotseat und Netzwerk zeigt Brett und Feldinspektor gleichzeitig. Darunter stehen die Spielervorräte und die Märkte der aktiven Erweiterungen.
+- Die Hexfelder verwenden die Originalgrafiken. Spielerkennung, physische Marker, virtueller Einfluss und angehängte Regulierungen haben eigene Darstellungen. Das Brett lässt sich zoomen und zentrieren.
+- Die Vorratstabelle zeigt alle aktiven Ressorts mit ihren Originalsymbolen und hält beim horizontalen Scrollen auf schmalen Displays die Spielernamen sichtbar.
+
+## 2026-11-08 – Erweiterungsregeln in ihren Paketen
+
+- Economy, Security und Climate liefern ihre Zahlungsoptionen, Kartenziele, Effekte und Ausnahmen über registrierte Schnittstellen. Security besitzt die Regeln für Inner Order, Authority Apparatus und Regulationsfolgeentscheidungen.
+- Der gemeinsame Resolver verarbeitet diese Beiträge in der bisherigen Reihenfolge. Zugpayloads, Spielstände und deterministische Replays behalten ihre Formate.

@@ -5,14 +5,13 @@ import { createExpansionRegistry, type ProductionModifier, type RulesModule } fr
 // CORE-01-06-16-00: collect modifiers from active sources before applying any.
 export function collectProductionModifiers(G: CoreState, coord: AxialCoord, tile: ResortTile, modules: readonly RulesModule[]): ProductionModifier[] {
   const active = createExpansionRegistry(G.cfg.expansions, modules);
-  const suppressMeasures = active.some(module => module.hooks?.suppressMeasureProduction?.(G, coord));
-
+  const args = { G, coord, tile, amount: tile.w };
   const out: ProductionModifier[] = [];
   for (const module of active) {
-    const modifiers = module.hooks?.productionModifiers?.({ G, coord, tile, amount: tile.w });
+    const modifiers = module.hooks?.productionModifiers?.(args);
     if (!modifiers) continue;
     for (const modifier of modifiers) {
-      if (!suppressMeasures || modifier.source !== 'measure') out.push(modifier);
+      if (!active.some(source => source.hooks?.excludeProductionModifier?.(args, modifier))) out.push(modifier);
     }
   }
   return out;

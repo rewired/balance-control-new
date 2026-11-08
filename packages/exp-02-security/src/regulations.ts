@@ -1,5 +1,6 @@
 import { ensureExpansionSlice, getControl, RegulationKinds, type BoardPlacement, type BoardRegulation, type CoreState,
-  type Exp02State, type PendingRegulationChoice, type RegulationKind, type RegulationOperation, type RegulationRules, type Tile } from '@bc/rules';
+  type EffectDecision, type Exp02State, type ExtensionAction, type ExpansionModule, type MeasureRule,
+  type PendingRegulationChoice, type RegulationKind, type RegulationOperation, type ResolveRegulationEffect, type Tile } from '@bc/rules';
 
 // EXP-02-02-B-04/-06 and CORE-01-08-06: validate the attachment independently of the ContextTile.
 export function mayAttachRegulation(tile: Tile, kind: RegulationKind): boolean {
@@ -114,43 +115,139 @@ function permitsFollowUp(pending: PendingRegulationChoice, operation: Regulation
     : operation.operation === 'place' && operation.regulationKind === 'Control' && operation.tileId === pending.tileId;
 }
 
-export const regulationRules: RegulationRules = {
-  // EXP-02-02-A-03/-08: an unbounded supply with no initial attachments.
-  initialize(G) {
-    const slice = ensureExpansionSlice<Exp02State>(G, 'exp02', {});
-    slice.regulations ??= { attached: [], supply: [], serial: 0 };
+// EXP-02-02-A-03/-08: an unbounded supply with no initial attachments.
+export function initializeRegulations(G: CoreState): void {
+  const slice = ensureExpansionSlice<Exp02State>(G, 'exp02', {});
+  slice.regulations ??= { attached: [], supply: [], serial: 0 };
+}
+
+function planOperation(G: CoreState, operation: RegulationOperation, playerID: string, authorityTileId?: string) {
+  const mutate = planRegulationMutation(G, operation);
+  if (!mutate) return;
+  const { amount, discounts } = regulationPrice(G, operation);
+  return {
+    cost: amount ? { SEC: amount } : undefined,
+    commit: () => {
+      const placed = mutate();
+      commitRegulationDiscounts(G, discounts);
+      queueRegulationFollowUps(G, playerID, placed, authorityTileId);
+    },
+  };
+}
+
+const regulationAction: ExtensionAction = {
+  // EXP-02-04-A-05 and EXP-02-02-G-05B: an enclosing effect can supply the context.
+  context(G, effect) {
+    const placement = effect.contextTileId === undefined ? regulationContext(G, effect.regulation)
+      : G.exp.core.tiles.board.find(tile => tile.tileId === effect.contextTileId);
+    return placement ? { placement } : { reason: 'regulation-unavailable' };
   },
-  attached: G => G.exp.exp02?.regulations?.attached ?? [],
-  mayAttach: mayAttachRegulation,
-  context: regulationContext,
-  operations: regulationOperations,
-  // EXP-02-05-02/-04: the controlled Apparatus is the sole context of its embedded operation.
-  authorityContext(G, request) {
-    if (request.regulation.operation !== 'move' && request.regulation.operation !== 'remove') return;
-    const authority = G.exp.core.tiles.board.find(tile => G.exp.core.allTiles[tile.tileId]?.kind === 'AuthorityApparatus');
-    if (authority && getControl(G, authority.coord) === request.playerID) return authority;
+  plan: (G, effect) => planOperation(G, effect.regulation, effect.playerID),
+};
+
+const authorityAction: ExtensionAction = {
+  political: true,
+  // EXP-02-05-02/-04: a controlled Apparatus is the sole context of its move or removal.
+  context(G, effect) {
+    const placement = G.exp.core.tiles.board.find(tile => G.exp.core.allTiles[tile.tileId]?.kind === 'AuthorityApparatus');
+    return (effect.regulation.operation === 'move' || effect.regulation.operation === 'remove') && placement
+      && getControl(G, placement.coord) === effect.playerID ? { placement } : { reason: 'apparatus-unavailable' };
   },
-  plan(G, operation, playerID, authorityTileId) {
-    const mutate = planRegulationMutation(G, operation);
-    if (!mutate) return;
-    const { amount, discounts } = regulationPrice(G, operation);
+  plan: (G, effect, placement) => planOperation(G, effect.regulation, effect.playerID, placement.tileId),
+};
+
+export const regulationActions = {
+  regulationOperation: regulationAction,
+  activateAuthorityApparatus: authorityAction,
+} satisfies NonNullable<ExpansionModule['actions']>;
+
+// EXP-02-08-M01/-M04/-M07/-M08/-M12: a card can resolve an operation now or register it for Settlement.
+export function operationTarget(kind: RegulationOperation['operation'], timing: 'immediate' | 'settlement', hotspotOnly = false):
+  NonNullable<MeasureRule['extensionTarget']> {
+  return {
+    options: function* (G) {
+      for (const regulation of regulationOperations(G, kind)) yield { regulation };
+    },
+    plan(G, effect) {
+      if (effect.targetRegulationId !== undefined) return { ok: false, reason: 'invalid-target' };
+      const { regulation } = effect;
+      const placement = regulation && regulationContext(G, regulation);
+      if (!regulation || regulation.operation !== kind || !placement) return { ok: false, reason: 'invalid-regulation-operation' };
+      const tile = G.exp.core.allTiles[placement.tileId];
+      if ((hotspotOnly && tile.kind !== 'Hotspot')
+        || (regulation.operation === 'place' && !mayAttachRegulation(tile, regulation.regulationKind))) {
+        return { ok: false, reason: 'invalid-regulation-operation' };
+      }
+      const operation = timing === 'immediate' ? planOperation(G, regulation, effect.playerID) : undefined;
+      if (timing === 'immediate' && !operation) return { ok: false, reason: 'invalid-regulation-operation' };
+      return { ok: true, placement, operation, registration: { regulation } };
+    },
+  };
+}
+
+// EXP-02-08-M14-02/-03: target the selected attachment and remember its tile.
+export const attachedRegulationTarget: NonNullable<MeasureRule['extensionTarget']> = {
+  options: G => (G.exp.exp02?.regulations?.attached ?? []).map(({ id }) => ({ targetRegulationId: id })),
+  plan(G, effect) {
+    const regulation = G.exp.exp02?.regulations?.attached.find(item => item.id === effect.targetRegulationId);
+    if (!regulation) return { ok: false, reason: 'invalid-target' };
+    if (effect.regulation !== undefined) return { ok: false, reason: 'invalid-regulation-operation' };
     return {
-      cost: amount ? { SEC: amount } : undefined,
-      commit: () => {
-        const placed = mutate();
-        commitRegulationDiscounts(G, discounts);
-        queueRegulationFollowUps(G, playerID, placed, authorityTileId);
-      },
+      ok: true, placement: G.exp.core.tiles.board.find(tile => tile.tileId === regulation.tileId),
+      registration: { targetRegulationId: regulation.id, targetTileId: regulation.tileId },
     };
   },
-  permitsFollowUp,
-  followUpOperations(G, pending) {
-    return pending.kind === 'deploymentOrder'
-      ? [...regulationOperations(G, 'move')].filter(operation => permitsFollowUp(pending, operation))
-      : [{ operation: 'place', regulationKind: 'Control', tileId: pending.tileId }];
-  },
-  followUpContext(G, pending) {
-    return pending.kind === 'competenceConflict' ? pending.tileId
-      : G.exp.exp02?.regulations?.attached.find(regulation => regulation.id === pending.regulationId)?.tileId ?? null;
-  },
 };
+
+function operationDecision(
+  playerID: string,
+  contextTile: string | null,
+  operations: Iterable<RegulationOperation>,
+  permits: (operation: RegulationOperation) => boolean,
+  contextTileId?: string,
+): EffectDecision {
+  const makeEffect = (regulation: RegulationOperation): ResolveRegulationEffect =>
+    ({ kind: 'regulationOperation', playerID, regulation, ...(contextTileId === undefined ? {} : { contextTileId }) });
+  return {
+    contextTile,
+    options: {
+      *[Symbol.iterator]() {
+        for (const regulation of operations) yield {
+          effect: makeEffect(regulation),
+          choice: payment => ({ kind: 'regulation', regulation, ...(payment ? { payment } : {}) }),
+        };
+      },
+    },
+    select: choice => choice.kind === 'regulation' && permits(choice.regulation)
+      ? { ...makeEffect(choice.regulation), payment: choice.payment } : undefined,
+  };
+}
+
+function* innerOrderOperations(G: CoreState): Generator<RegulationOperation> {
+  yield* regulationOperations(G, 'place');
+  yield* regulationOperations(G, 'move');
+}
+
+// EXP-02-02-G-04..05B/-07: replace the marker payout with a paid operation in Inner Order.
+export function innerOrderDecision(G: CoreState, tileId: string, playerID: string): (EffectDecision & { outcome: 'regulation' }) | undefined {
+  const tile = G.exp.core.allTiles[tileId];
+  if (tile?.kind !== 'Hotspot' || tile.hotspotOutcome !== 'regulation') return;
+  return {
+    outcome: 'regulation',
+    ...operationDecision(playerID, tileId, innerOrderOperations(G),
+      operation => operation.operation === 'place' || operation.operation === 'move', tileId),
+  };
+}
+
+// EXP-02-08-M03-03/-04 and EXP-02-08-M05-03..05: offer the operation tied to the triggering object.
+export function regulationFollowUp(G: CoreState, pending: PendingRegulationChoice): EffectDecision {
+  const context = pending.kind === 'competenceConflict' ? pending.tileId
+    : G.exp.exp02?.regulations?.attached.find(regulation => regulation.id === pending.regulationId)?.tileId ?? null;
+  const operations: RegulationOperation[] = pending.kind === 'deploymentOrder'
+    ? [...regulationOperations(G, 'move')].filter(operation => permitsFollowUp(pending, operation))
+    : [{ operation: 'place', regulationKind: 'Control', tileId: pending.tileId }];
+  return {
+    ...operationDecision(pending.playerID, context, operations, operation => permitsFollowUp(pending, operation)),
+    consumeOnCompletion: [pending.instanceId],
+  };
+}

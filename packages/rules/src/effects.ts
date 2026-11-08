@@ -15,11 +15,9 @@ export type EffectKind =
   | 'applyProductionAt'
   | 'registerMeasureEffect'
   | 'expireMeasureEffects'
-  | 'consumeBudgetDeficits'
-  | 'initRegulations'
-  | 'regulationOperation'
+  | 'completeEmptyPoliticalSlot'
   | 'beforeSettlementProduction'
-  | 'activateAuthorityApparatus'
+  | ResolveRegulationEffect['kind']
   | 'addNoise'
   | PoliticalActionEffect['kind']
   | 'initMeasures'
@@ -31,6 +29,7 @@ export type EffectKind =
 export interface BaseEffect {
   contextCoord?: AxialCoord; // ContextTile binding (AGENTS §3.5 step 1)
   payment?: PaymentSelection;
+  political?: true; // Set by the resolver for a registered political action.
 }
 
 export interface AddResourcesEffect extends BaseEffect {
@@ -86,19 +85,24 @@ export type ExpireMeasureEffects = BaseEffect & { kind: 'expireMeasureEffects' }
   | { boundary: 'turnStart'; playerID: string; nextRound?: boolean }
 );
 
-interface ConsumeBudgetDeficits extends BaseEffect {
-  kind: 'consumeBudgetDeficits';
-  ids: readonly string[];
+interface CompleteEmptyPoliticalSlot extends BaseEffect {
+  kind: 'completeEmptyPoliticalSlot';
+  playerID: string;
 }
 
-interface InitRegulationsEffect extends BaseEffect { kind: 'initRegulations' }
 interface BeforeSettlementProductionEffect extends BaseEffect { kind: 'beforeSettlementProduction' }
 
+const registeredActionKinds = ['regulationOperation', 'activateAuthorityApparatus'] as const;
+
 export interface ResolveRegulationEffect extends BaseEffect {
-  kind: 'regulationOperation' | 'activateAuthorityApparatus';
+  kind: typeof registeredActionKinds[number];
   playerID: string;
   regulation: RegulationOperation;
   contextTileId?: string;
+}
+
+export function isRegisteredAction(effect: EffectDescriptor): effect is ResolveRegulationEffect {
+  return registeredActionKinds.some(kind => kind === effect.kind);
 }
 
 export interface AddNoiseEffect extends BaseEffect {
@@ -134,7 +138,7 @@ export interface PlayMeasureEffect extends BaseEffect {
   targetResort?: ResourceId;
   targetRegulationId?: string;
   regulation?: RegulationOperation;
-  gainTargetResort?: true; // Set by the resolver from the registered Measure rule.
+  resourceOutputs?: readonly AddResourcesEffect[]; // Set by the resolver from the registered Measure rule.
 }
 export interface ResetMeasuresRoundEffect extends BaseEffect {
   kind: 'resetMeasuresRound';
@@ -157,8 +161,7 @@ export type EffectDescriptor =
   | ApplyProductionAtEffect
   | RegisterMeasureEffect
   | ExpireMeasureEffects
-  | ConsumeBudgetDeficits
-  | InitRegulationsEffect
+  | CompleteEmptyPoliticalSlot
   | BeforeSettlementProductionEffect
   | ResolveRegulationEffect
   | AddNoiseEffect
@@ -169,7 +172,7 @@ export type EffectDescriptor =
   | ResetMeasuresRoundEffect
   | RecordTurnHashEffect;
 
-export interface ResolveResult { ok: boolean; reason?: string; budgetDeficitConsumed?: true }
+export interface ResolveResult { ok: boolean; reason?: string; attemptEffectsConsumed?: true }
 
 // EXP-01-06-00A/-00B and EXP-02-02-A-03: create each expansion zone at its setup effect.
 export function ensureExpansionSlice<T extends object>(G: CoreState, id: ExpansionId, initial: T): T {

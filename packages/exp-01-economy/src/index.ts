@@ -36,32 +36,42 @@ export function exp01Economy(): ExpansionModule {
       // EXP-01-08-M05-02..05.
       ECO_M05: { cost: { ECO: 1, INF: 1 }, targetTile: (_G, _player, tile) => tile.kind === 'ResortTile', duration: 'thisRound' },
       // EXP-01-08-M06-02..07A.
-      ECO_M06: { cost: { ECO: 2 }, targetPlayer: 'any', duration: 'untilConsumed' },
+      ECO_M06: { cost: { ECO: 2 }, targetPlayer: () => true, duration: 'untilConsumed' },
       // EXP-01-08-M07-02..04.
       ECO_M07: { cost: { DOM: 1, ECO: 2 }, duration: 'nextRound' },
       // EXP-01-08-M08-02..05.
       ECO_M08: { cost: { ECO: 3 }, duration: 'thisRound' },
       // EXP-01-08-M09-02..07.
-      ECO_M09: { cost: { ECO: 2, INF: 1 }, targetPlayer: 'opponent', duration: 'thisRound' },
+      ECO_M09: { cost: { ECO: 2, INF: 1 }, targetPlayer: (_G, owner, target) => owner !== target, duration: 'thisRound' },
       // EXP-01-08-M10-02..08.
       ECO_M10: { cost: { ECO: 1 }, duration: 'thisTurn' },
     },
     hooks: {
       // EXP-01-08-M06-05..07A: consume only the targeted player's pending Deficits.
-      budgetDeficits: (G, playerID) => G.exp.core.activeMeasureEffects?.filter(instance =>
-        instance.sourceCardId === 'ECO_M06' && (playerID === undefined || instance.targetPlayerID === playerID))
-        .map(instance => instance.id) ?? [],
+      politicalAttempt: (G, playerID) => {
+        const consume = G.exp.core.activeMeasureEffects?.filter(instance =>
+          instance.sourceCardId === 'ECO_M06' && instance.targetPlayerID === playerID).map(instance => instance.id);
+        if (consume?.length) return {
+          consume, consumeOnEmptySlot: true,
+          consumeOnFailure: (reason, isPayableWithout) =>
+            (reason === 'insufficient' || reason === 'invalid-or-unpayable-cost') && isPayableWithout(consume),
+        };
+      },
       // EXP-01-08-M08-04/-05 and EXP-01-08-M10-04..07.
-      paymentModifiers: (G, effect) => {
+      paymentRules: (G, effect, resources) => {
         const owned = G.exp.core.activeMeasureEffects?.filter(instance => instance.owner === effect.playerID) ?? [];
         return {
-          councils: owned.filter(instance => instance.sourceCardId === 'ECO_M08' && !instance.used)
-            .map(instance => ({ id: instance.id, resource: 'ECO' })),
-          replaceSurcharge: isPoliticalEffect(effect) && owned.some(instance => instance.sourceCardId === 'ECO_M10'),
+          substitutions: [{ key: 'council', options: owned.filter(instance => instance.sourceCardId === 'ECO_M08' && !instance.used)
+            .flatMap(instance => resources.filter(resource => resource !== 'ECO').map(resource => ({
+              choice: { effectId: instance.id, resource }, from: 'ECO', to: resource, markUsed: instance.id,
+            }))) }],
+          replacements: isPoliticalEffect(effect) && owned.some(instance => instance.sourceCardId === 'ECO_M10')
+            ? () => resources.map(resource => ({ resource, amount: 1 })) : undefined,
         };
       },
       // EXP-01-08-M09-05/-06: only current sole control by the target suppresses Measure modifiers.
-      suppressMeasureProduction: (G, coord) => {
+      excludeProductionModifier: ({ G, coord }, modifier) => {
+        if (modifier.source !== 'measure') return false;
         const freezes = G.exp.core.activeMeasureEffects?.filter(effect => effect.sourceCardId === 'ECO_M09');
         const controller = freezes?.length ? getControl(G, coord) : null;
         return controller !== null && Boolean(freezes?.some(effect => effect.targetPlayerID === controller));

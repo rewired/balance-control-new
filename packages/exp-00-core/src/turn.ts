@@ -2,7 +2,7 @@ import type { FnContext, Game, Move } from 'boardgame.io';
 import { INVALID_MOVE } from '#boardgame-core';
 import type { AxialCoord, CoreState, DecisionContinuation } from '@bc/rules';
 import {
-  assertExpansionStateMatchesConfig, budgetDeficitIds, buildMoveCatalog,
+  assertExpansionStateMatchesConfig, buildMoveCatalog,
   createExpansionRegistry, createResolver, HotspotChoiceSchema, PaymentSelectionSchema, politicalMoveOptions, z,
 } from '@bc/rules';
 import { resolveRoundSettlement } from './production.js';
@@ -114,7 +114,7 @@ function completePoliticalSequence({ G, ctx, events }: TurnContext): void {
 function beginPoliticalSlot(turn: TurnContext, additional: boolean): void {
   // CORE-01-04-09A..09C: skip an empty slot automatically, after placement or Measure resolution.
   if (politicalMoveOptions(turn.G, turn.ctx.currentPlayer, additional).next().done) {
-    createResolver()(turn.G, { kind: 'consumeBudgetDeficits', ids: budgetDeficitIds(turn.G, turn.ctx.currentPlayer) });
+    createResolver()(turn.G, { kind: 'completeEmptyPoliticalSlot', playerID: turn.ctx.currentPlayer });
     completePoliticalSequence(turn);
     return;
   }
@@ -141,7 +141,7 @@ const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown)
   if (!payload.success) return INVALID_MOVE;
   const result = definition.execute(G, ctx.currentPlayer, payload.data);
   if (!result.ok) {
-    if (!result.budgetDeficitConsumed) return INVALID_MOVE;
+    if (!result.attemptEffectsConsumed) return INVALID_MOVE;
     beginPoliticalSlot({ G, ctx, events }, additional);
     return;
   }

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Client } from 'boardgame.io/client';
-import { CoreGame } from '@bc/game';
+import { createBCGame } from '@bc/game';
 import { CoreView, submitCoreOption } from './BoardCore.js';
+import CoreMatchSetup, { type CoreMatchSettings } from './CoreMatchSetup.js';
 
-function HotseatMatch({ onNewMatch }: { onNewMatch: () => void }) {
-  const [client] = useState(() => Client({ game: CoreGame, numPlayers: 2, playerID: '0', debug: false }));
+function HotseatMatch({ settings, onNewMatch }: { settings: CoreMatchSettings; onNewMatch: () => void }) {
+  const [client] = useState(() => Client({
+    game: createBCGame(settings.setupData), numPlayers: settings.numPlayers, playerID: '0', debug: false,
+  }));
   const [state, setState] = useState(() => client.getState());
   useEffect(() => {
     const unsubscribe = client.subscribe(setState);
@@ -26,6 +29,12 @@ function HotseatMatch({ onNewMatch }: { onNewMatch: () => void }) {
 }
 
 export default function HotseatCore() {
-  const [match, setMatch] = useState(0);
-  return <HotseatMatch key={match} onNewMatch={() => setMatch(previous => previous + 1)} />;
+  const [settings, setSettings] = useState<CoreMatchSettings>();
+  const [playing, setPlaying] = useState(false);
+  return playing && settings
+    ? <HotseatMatch settings={settings} onNewMatch={() => setPlaying(false)} />
+    : <CoreMatchSetup title="New hotseat match" buttonLabel="Start match" initial={settings} onStart={configuration => {
+      setSettings(configuration);
+      setPlaying(true);
+    }} />;
 }

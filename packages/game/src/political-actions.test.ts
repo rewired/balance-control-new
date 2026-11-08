@@ -1,9 +1,10 @@
 import { Client } from 'boardgame.io/client';
 import { exp01Economy } from '@bc/exp-01-economy';
+import { exp03Climate } from '@bc/exp-03-climate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  __resetRegisteredExpansionsForTest, ensureExpansionSlice, politicalMoveOptions, registerExpansion,
-  type BoardPlacement, type CoreState, type CostIncreasesArgs, type ExpansionHooks,
+  __resetRegisteredExpansionsForTest, createResolver, ensureExpansionSlice, politicalMoveOptions, registerExpansion,
+  type BoardPlacement, type CoreState, type CostIncreasesArgs, type ExpansionHooks, type PaymentSelection,
 } from '@bc/rules';
 import { createBCGame } from './factory.js';
 import { checkStartCommitteeFormalization } from './index.js';
@@ -46,8 +47,8 @@ function influence(client: TestClient, markerId: string, targetTileId: string, s
   client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId, sourceTileId } });
 }
 
-function formalize(client: TestClient, tileId: string, resources: string[]): void {
-  client.moves.doPoliticalAction({ type: 'formalizeInfluence', payload: { tileId, resources } });
+function formalize(client: TestClient, tileId: string, resources: string[], payment?: PaymentSelection): void {
+  client.moves.doPoliticalAction({ type: 'formalizeInfluence', payload: { tileId, resources, ...(payment ? { payment } : {}) } });
 }
 
 function convert(client: TestClient, tileId: string, input: string, output: string): void {
@@ -190,6 +191,44 @@ describe('CORE political actions through boardgame.io', () => {
     for (let i = 1; i < numPlayers; i++) influence(client, `INF-${i}-1`, placeDraw(client), otherGrassroots.tileId);
     placeDraw(client);
     expectRejected(client, () => formalize(client, committee.tileId, ['DOM', 'FOR']));
+  });
+
+  it.each([false, true])('requires a single fixed Greenwashing fee for standard formalization only when Climate=%s', climate => {
+    if (climate) registerExpansion(exp03Climate());
+    const client = clientWithBoard(G => {
+      placeStartingMarkers(G);
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 2, FOR: 1, INF: 1, ...(climate ? { CLM: 1 } : {}) });
+      if (climate) for (const [index, owner] of ['0', '1'].entries()) {
+        expect(createResolver()(G, { kind: 'registerMeasureEffect', instance: {
+          sourceCardId: 'CLM_M05', owner, playNumber: index + 1, duration: 'ownerNextTurn',
+        } }).ok).toBe(true);
+      }
+    }, { expansions: { exp03: climate } });
+    placeDraw(client);
+    const { G, ctx } = client.getState()!;
+    const options = engineMoveOptions(G, ctx, '0');
+    const startOptions = options.filter(option => option.contextTile === 'StartCommittee');
+    expect(startOptions.length).toBeGreaterThan(0);
+    expect(startOptions.every(option => !JSON.stringify(option.parameters).includes('greenwashing'))).toBe(true);
+    expectRejected(client, () => formalize(client, 'StartCommittee', ['DOM', 'FOR', 'INF', 'DOM'], { greenwashing: 'INF' }));
+    const resources = ['DOM', 'FOR'];
+    const alternatives = options.filter(option => option.contextTile === committee.tileId
+      && JSON.stringify(option.parameters).includes('"resources":["DOM","FOR"]'));
+    if (climate) {
+      expect(alternatives.map(option => option.costBreakdown)).toEqual(['CLM', 'INF'].map(resource => [
+        { playerID: '0', resource: 'DOM', amount: 1 }, { playerID: '0', resource: 'FOR', amount: 1 },
+        { playerID: '0', resource, amount: 1 },
+      ]));
+      expectRejected(client, () => formalize(client, committee.tileId, resources));
+      formalize(client, committee.tileId, resources, { greenwashing: 'CLM' });
+      expect(client.getState()!.G.exp.core.resources.bank).toMatchObject({ DOM: 1, FOR: 1, CLM: 1, INF: 0 });
+    } else {
+      expect(alternatives).toHaveLength(1);
+      expectRejected(client, () => formalize(client, committee.tileId, resources, { greenwashing: 'INF' }));
+      formalize(client, committee.tileId, resources);
+      expect(client.getState()!.G.exp.core.resources.bank).toEqual({ DOM: 1, FOR: 1, INF: 0 });
+    }
+    expect(client.getState()!.G.exp.core.players['0'].personal.influence).toEqual([{ id: 'INF-0-F1', owner: '0' }]);
   });
 
   it('formalizes through Start Committee without control or modifiers, at most once per player', () => {

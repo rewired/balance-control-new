@@ -70,6 +70,41 @@ describe('Cost interactions through boardgame.io', () => {
     expect(G.exp.core.activeMeasureEffects?.map(instance => instance.id)).toEqual(['CLM_M13:1']);
   });
 
+  it('quotes and commits the two registered substitutions without chaining their outputs', () => {
+    const client = setupCosts(['Committee-7', 'Committee-8'], G => {
+      giveMeasure(G, 'exp03', 'CLM_M06');
+      Object.assign(G.exp.core.players['0'].personal.resources, { CLM: 1, DOM: 1, SEC: 1 });
+      for (const [sourceCardId, owner] of [['ECO_M08', '0'], ['SEC_M06', '1']]) {
+        expect(createResolver()(G, { kind: 'registerMeasureEffect', instance: {
+          sourceCardId, owner, playNumber: 1, duration: 'thisRound',
+        } }).ok).toBe(true);
+      }
+    });
+    client.moves.placeTile({ q: 1, r: 0 });
+    const before = client.store.getState();
+    const council = { effectId: 'ECO_M08:1', resource: 'DOM' };
+    const partnership = { effectId: 'SEC_M06:1', replacedResource: 'CLM' };
+    const move = (payment: { council: typeof council; partnership: typeof partnership }) => ({
+      type: 'exp03_playMeasure', payload: { measureId: 'CLM_M06', payment },
+    });
+    const valid = move({ council, partnership });
+    const chained = move({ council, partnership: { ...partnership, replacedResource: 'DOM' } });
+    const options = legalMoveOptions(createBCGame(), before, '0');
+    const quote = options.find(option => JSON.stringify(option.parameters[0]) === JSON.stringify(valid));
+    expect(quote?.costBreakdown).toEqual([
+      { playerID: '0', resource: 'DOM', amount: 1 }, { playerID: '0', resource: 'SEC', amount: 1 },
+    ]);
+    expect(options.some(option => JSON.stringify(option.parameters[0]) === JSON.stringify(chained))).toBe(false);
+    client.moves.doPoliticalAction(chained);
+    expect(hashEngineState(client.store.getState())).toBe(hashEngineState(before));
+    client.moves.doPoliticalAction(valid);
+    expect(hashEngineState(client.store.getState())).toBe(quote?.resultingStateHashPreview);
+    const { G } = client.getState()!;
+    expect(G.exp.core.players['0'].personal.resources).toMatchObject({ CLM: 1, DOM: 0, SEC: 0 });
+    expect(G.exp.core.activeMeasureEffects?.find(instance => instance.id === council.effectId)?.used).toBe(true);
+    expect(G.exp.core.activeMeasureEffects?.find(instance => instance.id === partnership.effectId)?.used).toBeUndefined();
+  });
+
   it.each([0, 1])('commits the transferred surcharge only when the assigned payer can pay with %i DOM', dom => {
     const client = setupCosts(['Committee-7', 'Committee-8'], G => {
       G.exp.core.players['0'].personal.resources.FOR = 3;

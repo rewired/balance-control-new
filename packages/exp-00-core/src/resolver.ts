@@ -1,9 +1,9 @@
 import { shuffleSeeded, stableHash } from '@bc/shared';
 import {
-  budgetDeficitIds, createExpansionRegistry, createMatchResourceRegistry, ensureExpansionSlice,
-  getRegulationRules, getTopology, greenwashingResources, paymentPlans,
-  type ActiveMeasureEffect, type AddResourcesEffect, type AxialCoord, type CoreState,
-  type DecisionQuote, type DrawTileEffect, type EffectDescriptor, type EffectResolver,
+  createExpansionRegistry, createMatchResourceRegistry, ensureExpansionSlice,
+  getTopology, isRegisteredAction, MeasureExtensionTargetSchema, paymentPlans,
+  type ActiveMeasureEffect, type AxialCoord, type CoreState,
+  type DecisionQuote, type DrawTileEffect, type EffectDecision, type EffectDescriptor, type EffectResolver,
   type ExpansionHooks, type ExpansionId, type ExpansionModule, type ExpireMeasureEffects, type Influence,
   type MeasureDeckState, type PaymentQuote, type PendingHotspot, type PendingRegulationChoice, type PlaceTileEffect,
   type PlayMeasureEffect, type PoliticalActionEffect, type RegisterMeasureEffect,
@@ -118,8 +118,8 @@ function planPayment(
   let first: ReturnType<typeof createBankTransaction> | undefined;
   let reason = effect.payment ? 'invalid-or-unpayable-cost' : 'insufficient';
   const explore = preview === true || typeof preview === 'function';
-  const unpaidDeficits = typeof preview === 'object' ? preview : undefined;
-  const plans = paymentPlans(G, registry, effect, cost, units, isStartCommitteeContext(G, effect.contextCoord), hooks, explore, unpaidDeficits);
+  const ignoredSurcharges = typeof preview === 'object' ? preview : undefined;
+  const plans = paymentPlans(G, registry, effect, cost, units, isStartCommitteeContext(G, effect.contextCoord), hooks, explore, ignoredSurcharges);
   for (const selected of plans) {
     const transaction = createBankTransaction(G, registry);
     const result = selected.transfers.map(route => transaction.transfer({ from: 'PersonalSupply', to: 'Bank', ...route }))
@@ -130,9 +130,10 @@ function planPayment(
     }
     first ??= { ...transaction, commit: () => {
       transaction.commit();
-      // CORE-01-06-00-11, EXP-01-08-M08-05 and EXP-03-08-M13-09: usage follows successful payment.
-      const council = G.exp.core.activeMeasureEffects?.find(instance => instance.id === selected.useCouncil);
-      if (council) council.used = true;
+      // CORE-01-06-00-11: apply planned usage only with successful payment.
+      for (const instance of G.exp.core.activeMeasureEffects ?? []) {
+        if (selected.markUsed.includes(instance.id)) instance.used = true;
+      }
       consumeMeasureEffects(G, selected.consumeEffects);
     } };
     if (typeof preview !== 'function') break;
@@ -146,9 +147,9 @@ function planPayment(
 }
 
 function isProhibited(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[]): boolean {
-  // EXP-02-04-B-01 and CORE-01-06-00-07(c): check Blockade first, then other prohibitions, before pricing.
+  // CORE-01-06-00-07(c) and -10: priority prohibitions run before the other checks and before pricing.
   const context = { G, effect };
-  return hooks.some(hook => hook.blockade?.(context)) || hooks.some(hook => hook.prohibitions?.(context));
+  return hooks.some(hook => hook.priorityProhibition?.(context)) || hooks.some(hook => hook.prohibitions?.(context));
 }
 
 function modifyOutput(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[], baseAmount: number): number {
@@ -170,39 +171,42 @@ function executePoliticalPlan(
   hooks: readonly ExpansionHooks[],
   planAction: (preview?: PaymentPreview) => { ok: true; commit: () => void } | { ok: false; reason?: string },
 ): ResolveResult {
-  const deficits = budgetDeficitIds(G, playerID, hooks);
+  const attempts = hooks.flatMap(hook => hook.politicalAttempt?.(G, playerID) ?? []);
   const plan = planAction();
   if (plan.ok) {
     plan.commit();
-    // EXP-01-08-M06-07: a new Deficit registered by this action applies later.
-    consumeMeasureEffects(G, deficits);
+    // CORE-01-06-00-11: usage applies to the effects present when the attempt started.
+    consumeMeasureEffects(G, attempts.flatMap(attempt => attempt.consume));
     return { ok: true };
   }
-  // CORE-01-06-00-11/-12 and EXP-01-08-M06-06/-07: the exception consumes only Deficit
-  // instances and only when the requested action is otherwise legal and payable.
-  if (deficits.length && (plan.reason === 'insufficient' || plan.reason === 'invalid-or-unpayable-cost')
-      && planAction(new Set(deficits)).ok) {
-    consumeMeasureEffects(G, deficits);
-    return { ...plan, budgetDeficitConsumed: true };
+  // CORE-01-06-00-11/-12: apply registered failure exceptions without committing the failed action.
+  const consumed = attempts.filter(attempt => attempt.consumeOnFailure?.(plan.reason, ids => planAction(new Set(ids)).ok))
+    .flatMap(attempt => attempt.consume);
+  if (consumed.length) {
+    consumeMeasureEffects(G, consumed);
+    return { ...plan, attemptEffectsConsumed: true };
   }
   return plan;
 }
 
-function planRegulationAction(G: CoreState, requested: ResolveRegulationEffect, active: readonly RulesModule[], preview?: PaymentPreview) {
-  if (!Object.hasOwn(G.exp.core.players, requested.playerID)) return { ok: false, reason: 'no-player' } as const;
-  const rules = getRegulationRules(G, active);
-  const authority = requested.kind === 'activateAuthorityApparatus' ? rules?.authorityContext(G, requested) : undefined;
-  if (requested.kind === 'activateAuthorityApparatus' && !authority) {
-    return { ok: false, reason: 'apparatus-unavailable' } as const;
+function extensionAction(active: readonly RulesModule[], kind: ResolveRegulationEffect['kind']) {
+  for (const module of active) {
+    if (module.id !== 'core' && module.actions?.[kind]) return module.actions[kind];
   }
-  const context = authority ?? (requested.contextTileId
-    ? G.exp.core.tiles.board.find(tile => tile.tileId === requested.contextTileId) : rules?.context(G, requested.regulation));
-  if (!context) return { ok: false, reason: 'regulation-unavailable' } as const;
-  const effect = { ...requested, contextCoord: context.coord };
+}
+
+// CORE-01-06-00-05/-07/-11: bind the registered action's context, then pay and commit its plan.
+function planExtensionAction(G: CoreState, requested: ResolveRegulationEffect, active: readonly RulesModule[], preview?: PaymentPreview) {
+  if (!Object.hasOwn(G.exp.core.players, requested.playerID)) return { ok: false, reason: 'no-player' } as const;
+  const action = extensionAction(active, requested.kind);
+  if (!action) return { ok: false, reason: 'inactive-expansion' } as const;
+  const context = action.context(G, requested);
+  if ('reason' in context) return { ok: false, reason: context.reason } as const;
+  const effect = { ...requested, contextCoord: context.placement.coord, political: action.political };
   const hooks = active.flatMap(module => module.hooks ?? []);
   if (isProhibited(G, effect, hooks)) return { ok: false, reason: 'prohibited' } as const;
-  const operation = rules?.plan(G, requested.regulation, requested.playerID, authority?.tileId);
-  if (!operation) return { ok: false, reason: 'invalid-regulation-operation' } as const;
+  const operation = action.plan(G, effect, context.placement);
+  if (!operation) return { ok: false, reason: 'invalid-extension-operation' } as const;
   const payment = planPayment(G, createMatchResourceRegistry(active), effect, hooks, operation.cost, preview);
   if (!payment.ok) return payment;
   return { ok: true, commit: () => {
@@ -297,16 +301,6 @@ function planPoliticalAction(
     }
     const cost: ResourceAmounts = Object.create(null);
     for (const resource of effect.resources) cost[resource] = (cost[resource] ?? 0) + 1;
-    // EXP-03-08-M05-05..09: add the selected fixed replacement only after other prerequisites.
-    const fee = effect.payment?.greenwashing;
-    const fees = start ? [] : greenwashingResources(G, hooks);
-    if (fees.length) {
-      if (fee === undefined) return { ok: false, reason: 'greenwashing' };
-      if (!fees.includes(fee)) return { ok: false, reason: 'invalid-greenwashing-payment' };
-      cost[fee] = (cost[fee] ?? 0) + 1;
-    } else if (fee !== undefined) {
-      return { ok: false, reason: 'invalid-greenwashing-payment' };
-    }
     const payment = planPayment(G, registry, effect, localHooks, cost, preview);
     if (!payment.ok) return payment;
 
@@ -425,10 +419,10 @@ function planMeasureRegistration(
     return { ok: false, reason: 'inactive-measure' };
   }
   const target = instance.targetPlayerID;
-  // EXP-01-08-M09-03 and EXP-03-08-M11-03.
+  // CORE-01-06-00-11: validate the registered target before storing the effect.
   if (!Object.hasOwn(G.exp.core.players, instance.owner)
-      || (target !== undefined && !Object.hasOwn(G.exp.core.players, target))
-      || (module.measureRules?.[instance.sourceCardId]?.targetPlayer === 'opponent' && instance.owner === target)) {
+      || (target !== undefined && (!Object.hasOwn(G.exp.core.players, target)
+        || module.measureRules?.[instance.sourceCardId]?.targetPlayer?.(G, instance.owner, target) === false))) {
     return { ok: false, reason: 'invalid-target' };
   }
   const id = `${instance.sourceCardId}:${instance.playNumber}`;
@@ -456,8 +450,15 @@ function keepMeasureEffect(instance: ActiveMeasureEffect, boundary: ExpireMeasur
   }
 }
 
+// Save compatibility: before usage was shared, it was stored on a Measure deck.
+function legacyMeasureUsageDeck(G: CoreState): MeasureDeckState | undefined {
+  for (const slice of Object.values(G.exp)) {
+    if (slice && 'measures' in slice && slice.measures?.usedThisRound) return slice.measures;
+  }
+}
+
 function measureUsage(G: CoreState): Record<string, boolean> {
-  const legacy = G.exp?.exp01?.measures;
+  const legacy = legacyMeasureUsageDeck(G);
   const flags = G.exp.core.playedMeasureThisRound ??= legacy?.usedThisRound ?? Object.fromEntries(
     Object.keys(G.exp.core.players).map(playerID => [playerID, false]),
   );
@@ -492,7 +493,7 @@ function planMeasureAction(
   const index = (take ? deck.open : hand).indexOf(measureId);
   if (index < 0) return { ok: false, reason: take ? 'not-open' : 'not-in-hand' };
   // EXP-01-06-02..03: both limits are shared across decks.
-  const flags = G.exp.core.playedMeasureThisRound ?? G.exp?.exp01?.measures?.usedThisRound;
+  const flags = G.exp.core.playedMeasureThisRound ?? legacyMeasureUsageDeck(G)?.usedThisRound;
   if (!take && flags?.[playerID]) return { ok: false, reason: 'limit-per-round' };
   const enabled = (Object.keys(G.cfg.expansions) as ExpansionId[]).filter(id => G.cfg.expansions[id]);
   if (take && enabled.reduce((sum, id) => sum + (G.exp?.[id]?.measures?.hands[playerID]?.length ?? 0), 0) >= 2) {
@@ -505,69 +506,58 @@ function planMeasureAction(
   if (!take && rules && !rule) return { ok: false, reason: 'measure-unavailable' };
   const target = requested.kind === 'playMeasure' ? requested.targetPlayerID : undefined;
   if (rule?.targetPlayer
-    ? target === undefined || !Object.hasOwn(G.exp.core.players, target) || (rule.targetPlayer === 'opponent' && target === playerID)
+    ? target === undefined || !Object.hasOwn(G.exp.core.players, target) || !rule.targetPlayer(G, playerID, target)
     : target !== undefined) return { ok: false, reason: 'invalid-target' };
   const targetTileId = requested.kind === 'playMeasure' ? requested.targetTileId : undefined;
-  const targetRegulationId = requested.kind === 'playMeasure' ? requested.targetRegulationId : undefined;
-  const regulation = requested.kind === 'playMeasure' ? requested.regulation : undefined;
-  const regulationRules = getRegulationRules(G, active);
-  const selectedRegulation = targetRegulationId === undefined ? undefined
-    : regulationRules?.attached(G).find(item => item.id === targetRegulationId);
-  if (rule?.targetRegulation ? !selectedRegulation : targetRegulationId !== undefined) return { ok: false, reason: 'invalid-target' };
-  const placement = regulation ? regulationRules?.context(G, regulation) : G.exp.core.tiles.board.find(tile =>
-    tile.tileId === (targetTileId ?? selectedRegulation?.tileId));
+  const extensionTarget = requested.kind === 'playMeasure' ? rule?.extensionTarget?.plan(G, requested) : undefined;
+  if (extensionTarget && !extensionTarget.ok) return extensionTarget;
+  if (requested.kind === 'playMeasure' && !rule?.extensionTarget) {
+    const extra = MeasureExtensionTargetSchema.safeParse(requested);
+    if (!extra.success || Object.values(extra.data).some(value => value !== undefined)) return { ok: false, reason: 'invalid-target' };
+  }
+  const placement = extensionTarget?.placement ?? G.exp.core.tiles.board.find(tile => tile.tileId === targetTileId);
   if (rule?.targetTile
     ? !placement || !rule.targetTile(G, playerID, G.exp.core.allTiles[placement.tileId], placement.coord)
     : targetTileId !== undefined) return { ok: false, reason: 'invalid-target' };
-  const operation = regulation ? regulationRules?.plan(G, regulation, playerID) : undefined;
-  if (rule?.regulation ? !regulation || !placement || (rule.regulation.timing === 'immediate' && !operation)
-      || (regulation.operation === 'place' && !regulationRules?.mayAttach(G.exp.core.allTiles[placement.tileId], regulation.regulationKind))
-      || regulation.operation !== rule.regulation.operation
-      || (rule.regulation.hotspotOnly && (!placement || G.exp.core.allTiles[placement.tileId].kind !== 'Hotspot'))
-    : regulation !== undefined) return { ok: false, reason: 'invalid-regulation-operation' };
   const registry = createMatchResourceRegistry(active);
   const targetResort = requested.kind === 'playMeasure' ? requested.targetResort : undefined;
   if (rule?.targetResort
-    ? targetResort === undefined || !registry.has(targetResort) || (rule.targetResort === 'unique'
-      && G.exp.core.activeMeasureEffects?.some(instance => instance.sourceCardId === measureId && instance.targetResort === targetResort))
+    ? targetResort === undefined || !registry.has(targetResort) || !rule.targetResort(G, targetResort)
     : targetResort !== undefined) return { ok: false, reason: 'invalid-target' };
   // CORE-01-06-00-05(b)/(e): a single targeted Tile supplies the ContextTile.
-  const effect = { ...requested, contextCoord: placement?.coord, gainTargetResort: rule?.gainTargetResort };
+  const resourceOutputs = rule?.resourceOutputs?.(G, playerID, placement) ?? [];
+  const effect = { ...requested, contextCoord: placement?.coord, resourceOutputs };
   const registration = rule?.duration && planMeasureRegistration(G, {
     sourceCardId: measureId, duration: rule.duration, owner: playerID, playNumber: playNumber === 1 ? 1 : 2,
     ...(target === undefined ? {} : { targetPlayerID: target }),
-    ...((targetTileId ?? selectedRegulation?.tileId) === undefined ? {} : { targetTileId: targetTileId ?? selectedRegulation?.tileId }),
+    ...(targetTileId === undefined ? {} : { targetTileId }),
     ...(targetResort === undefined ? {} : { targetResort }),
-    ...(targetRegulationId === undefined ? {} : { targetRegulationId }),
-    ...(regulation === undefined ? {} : { regulation }),
+    ...extensionTarget?.registration,
   }, active, expansion);
   if (registration && !registration.ok) return registration;
 
   // EXP-01-06-04C and CORE-01-06-00-07/-11: plan the complete payment before moving cards.
   const hooks = active.flatMap(module => module.hooks ?? []);
   if (isProhibited(G, effect, hooks)) return { ok: false, reason: 'prohibited' };
-  // CORE-01-06-00-08/-09 and EXP-02-04-A-06: immediate placement shares this card's one payment.
-  const immediateRegulation = rule?.regulation?.timing === 'immediate' ? operation : undefined;
+  // CORE-01-06-00-08/-09: an embedded operation shares this card's single payment.
+  const operation = extensionTarget?.operation;
   const cost = { ...rule?.cost };
-  for (const [resource, amount] of Object.entries(immediateRegulation?.cost ?? {})) {
+  for (const [resource, amount] of Object.entries(operation?.cost ?? {})) {
     if (amount !== undefined) cost[resource] = (cost[resource] ?? 0) + amount;
   }
   const payment = planPayment(G, registry, effect, hooks, cost, preview);
   if (!payment.ok) return payment;
-  if (rule?.gainTargetResort && placement) {
-    const tile = G.exp.core.allTiles[placement.tileId];
-    if (tile.kind !== 'ResortTile') return { ok: false, reason: 'invalid-target' };
-    // EXP-03-08-M03-05: stage the immediate gain in the same paid resolution.
-    const output: AddResourcesEffect = { kind: 'addResources', playerID, resource: tile.resort, amount: 1, contextCoord: placement.coord };
-    const amount = modifyOutput(G, output, hooks, 1);
-    const payout = payment.transaction.transfer({ from: 'Bank', to: 'PersonalSupply', playerID, resource: tile.resort, amount });
+  for (const output of resourceOutputs) {
+    // CORE-01-06-00-11: stage immediate outputs with the same payment.
+    const amount = modifyOutput(G, output, hooks, output.amount);
+    const payout = payment.transaction.transfer({ from: 'Bank', to: 'PersonalSupply', playerID: output.playerID, resource: output.resource, amount });
     if (!payout.ok) return { ok: false, reason: payout.reason };
   }
 
   return { ok: true, commit: () => {
     payment.transaction.commit();
     registration?.commit();
-    immediateRegulation?.commit();
+    operation?.commit();
     if (take) {
       deck.open[index] = null;
       (deck.hands[playerID] ??= []).push(measureId);
@@ -594,13 +584,11 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
         case 'takeMeasure':
         case 'playMeasure':
           return planMeasureAction(G, effect, active, preview);
-        case 'activateAuthorityApparatus':
-        case 'regulationOperation':
-          return planRegulationAction(G, effect, active, preview);
         case 'placeTile':
           return planTilePlacement(G, effect, createMatchResourceRegistry(active), active.flatMap(module => module.hooks ?? []), preview);
         default:
-          return planPoliticalAction(G, effect, active, preview);
+          return isRegisteredAction(effect) ? planExtensionAction(G, effect, active, preview)
+            : planPoliticalAction(G, effect, active, preview);
       }
     };
     const options: PaymentQuote[] = [];
@@ -608,28 +596,52 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
     return options.filter(option => quote({ ...requested, payment: option.payment }).ok);
   }
 
+  function hotspotInfluencePayment(G: CoreState, outcome: ResolveHotspotAtEffect, hooks: readonly ExpansionHooks[]) {
+    for (const hook of hooks) {
+      const payment = hook.hotspotInfluencePayment?.(G, outcome);
+      if (payment) return payment;
+    }
+  }
+
+  function hotspotDecision(G: CoreState, tileId: string, playerID: string, hooks: readonly ExpansionHooks[]) {
+    for (const hook of hooks) {
+      const decision = hook.hotspotDecision?.(G, tileId, playerID);
+      if (decision) return decision;
+    }
+  }
+
+  function followUpDecision(G: CoreState, pending: PendingRegulationChoice, hooks: readonly ExpansionHooks[]) {
+    for (const hook of hooks) {
+      const decision = hook.followUpDecision?.(G, pending);
+      if (decision) return decision;
+    }
+  }
+
+  function effectDecisionQuotes(G: CoreState, decision?: EffectDecision): DecisionQuote[] {
+    if (!decision) return [];
+    return Array.from(decision.options).flatMap(({ effect, choice }) =>
+      actionQuotes(G, effect).map(({ payment, ...quote }) => ({ ...quote, choice: choice(payment) })));
+  }
+
   function hotspotQuotes(G: CoreState, pending = G.exp.core.pendingHotspot): DecisionQuote[] {
     if (!pending) return [];
-    const active = activeModules(G);
+    const hooks = activeModules(G).flatMap(module => module.hooks ?? []);
+    const decision = hotspotDecision(G, pending.tileId, pending.playerID, hooks);
     const choices: DecisionQuote[] = [];
-    if (pending.outcome === 'greenwashing') {
-      const supply = G.exp.core.players[pending.playerID].personal;
-      if (supply.influence.length > 0) {
-        for (const resource of greenwashingResources(G, active.flatMap(module => module.hooks ?? []))) {
-          if ((supply.resources[resource] ?? 0) >= 1) choices.push({
-            choice: { kind: 'greenwashing', resource },
-            contextTile: pending.tileId,
-            costBreakdown: [{ playerID: pending.playerID, resource, amount: 1 }],
-          });
-        }
-      }
+    if (decision?.outcome === pending.outcome) {
+      choices.push(...effectDecisionQuotes(G, decision));
     } else {
-      const rules = getRegulationRules(G, active);
-      const operations = rules ? [...rules.operations(G, 'place'), ...rules.operations(G, 'move')] : [];
-      for (const regulation of operations) {
-        for (const { payment, ...quote } of actionQuotes(G, {
-          kind: 'regulationOperation', playerID: pending.playerID, regulation, contextTileId: pending.tileId,
-        })) choices.push({ ...quote, choice: { kind: 'regulation', regulation, ...(payment ? { payment } : {}) } });
+      const supply = G.exp.core.players[pending.playerID].personal;
+      const placement = G.exp.core.tiles.board.find(tile => tile.tileId === pending.tileId);
+      if (placement && supply.influence.length > 0) {
+        const outcome: ResolveHotspotAtEffect = { kind: 'resolveHotspotAt', coord: placement.coord, contextCoord: placement.coord };
+        const payment = !isProhibited(G, outcome, hooks) && hotspotInfluencePayment(G, outcome, hooks);
+        if (payment && payment.outcome === pending.outcome) for (const { choice, cost } of payment.options) {
+          const costBreakdown = Object.entries(cost).map(([resource, amount]) => ({ playerID: pending.playerID, resource, amount }));
+          if (costBreakdown.every(({ resource, amount }) => (supply.resources[resource] ?? 0) >= amount)) {
+            choices.push({ choice, contextTile: pending.tileId, costBreakdown });
+          }
+        }
       }
     }
     if (choices.length > 0) choices.push({ choice: { kind: 'decline' }, contextTile: pending.tileId, costBreakdown: [] });
@@ -639,31 +651,29 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
   function regulationFollowUpQuotes(G: CoreState): DecisionQuote[] {
     const pending = G.exp.core.pendingRegulationChoices?.[0];
     if (!pending) return [];
-    const rules = getRegulationRules(G, activeModules(G));
-    const operations = rules?.followUpOperations(G, pending) ?? [];
+    const decision = followUpDecision(G, pending, activeModules(G).flatMap(module => module.hooks ?? []));
     return [
-      ...operations.flatMap(regulation => actionQuotes(G, {
-        kind: 'regulationOperation', playerID: pending.playerID, regulation,
-      }).map(({ payment, ...quote }): DecisionQuote => ({
-        ...quote, choice: { kind: 'regulation', regulation, ...(payment ? { payment } : {}) },
-      }))),
+      ...effectDecisionQuotes(G, decision),
       {
         choice: { kind: 'decline' },
-        contextTile: rules?.followUpContext(G, pending) ?? null,
+        contextTile: decision?.contextTile ?? null,
         costBreakdown: [],
       },
     ];
   }
 
-  function removeRegulationFollowUp(G: CoreState, pending: PendingRegulationChoice): void {
+  function completeFollowUp(G: CoreState, decision?: EffectDecision): void {
     G.exp.core.pendingRegulationChoices!.shift();
     if (!G.exp.core.pendingRegulationChoices!.length) delete G.exp.core.pendingRegulationChoices;
-    consumeMeasureEffects(G, [pending.instanceId]);
+    consumeMeasureEffects(G, decision?.consumeOnCompletion ?? []);
   }
 
   function continueRegisteredDecisions(G: CoreState): void {
-    while (G.exp.core.pendingRegulationChoices?.length && regulationFollowUpQuotes(G).length === 1) {
-      removeRegulationFollowUp(G, G.exp.core.pendingRegulationChoices[0]);
+    const hooks = activeModules(G).flatMap(module => module.hooks ?? []);
+    while (G.exp.core.pendingRegulationChoices?.length) {
+      const decision = followUpDecision(G, G.exp.core.pendingRegulationChoices[0], hooks);
+      if (effectDecisionQuotes(G, decision).length) break;
+      completeFollowUp(G, decision);
     }
     if (!G.exp.core.pendingRegulationChoices && !G.exp.core.pendingHotspot && G.exp.core.remainingHotspots) {
       const remaining = G.exp.core.remainingHotspots;
@@ -727,9 +737,10 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
       return { ok: true };
     }
 
-    if (effect.kind === 'consumeBudgetDeficits') {
-      // EXP-01-08-M06-07A: complete an empty mandatory slot without reopening it.
-      consumeMeasureEffects(G, budgetDeficitIds(G, undefined, hooks).filter(id => effect.ids.includes(id)));
+    if (effect.kind === 'completeEmptyPoliticalSlot') {
+      // CORE-01-04-09B: complete the slot without attempting or paying for a move.
+      const attempts = hooks.flatMap(hook => hook.politicalAttempt?.(G, effect.playerID) ?? []);
+      consumeMeasureEffects(G, attempts.filter(attempt => attempt.consumeOnEmptySlot).flatMap(attempt => attempt.consume));
       return { ok: true };
     }
 
@@ -768,28 +779,20 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
       return { ok: true };
     }
 
-    if (effect.kind === 'initRegulations') {
-      const rules = getRegulationRules(G, active);
-      if (!rules) return { ok: false, reason: 'inactive-expansion' };
-      rules.initialize(G);
-      return { ok: true };
-    }
-
     if (effect.kind === 'resetMeasuresRound') {
       // CORE-01-07-17 and EXP-01-06-02A: reset only on an actually begun round.
-      if (G.exp.core.playedMeasureThisRound || G.exp?.exp01?.measures) {
+      if (G.exp.core.playedMeasureThisRound || legacyMeasureUsageDeck(G)) {
         const flags = measureUsage(G);
         for (const id of Object.keys(flags)) flags[id] = false;
       }
       return { ok: true };
     }
 
-    if (effect.kind === 'activateAuthorityApparatus') {
-      return executePoliticalPlan(G, effect.playerID, hooks, preview => planRegulationAction(G, effect, active, preview));
-    }
-
-    if (effect.kind === 'regulationOperation') {
-      const plan = planRegulationAction(G, effect, active);
+    if (isRegisteredAction(effect)) {
+      if (extensionAction(active, effect.kind)?.political) {
+        return executePoliticalPlan(G, effect.playerID, hooks, preview => planExtensionAction(G, effect, active, preview));
+      }
+      const plan = planExtensionAction(G, effect, active);
       if (!plan.ok) return plan;
       plan.commit();
       return { ok: true };
@@ -812,21 +815,19 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
     }
 
     if (effect.kind === 'chooseRegulationFollowUp') {
-      // EXP-02-08-M03-03/-04 and EXP-02-08-M05-03/-05.
+      // CORE-01-06-00-11/-12: validate and complete the queued decision once.
       const pending = G.exp.core.pendingRegulationChoices?.[0];
       if (!pending || pending.playerID !== effect.playerID) return { ok: false, reason: 'follow-up-unavailable' };
       const { choice } = effect;
-      if (choice.kind === 'greenwashing') return { ok: false, reason: 'invalid-follow-up' };
+      const decision = followUpDecision(G, pending, hooks);
       if (choice.kind === 'decline') {
-        removeRegulationFollowUp(G, pending);
+        completeFollowUp(G, decision);
       } else {
-        const { regulation } = choice;
-        if (!getRegulationRules(G, active)?.permitsFollowUp(pending, regulation)) return { ok: false, reason: 'invalid-follow-up' };
-        const plan = planRegulationAction(G, {
-          kind: 'regulationOperation', playerID: pending.playerID, regulation, payment: choice.payment,
-        }, active);
+        const next = decision?.select(choice);
+        if (!next) return { ok: false, reason: 'invalid-follow-up' };
+        const plan = planExtensionAction(G, next, active);
         if (!plan.ok) return plan;
-        removeRegulationFollowUp(G, pending);
+        completeFollowUp(G, decision);
         plan.commit();
       }
       continueRegisteredDecisions(G);
@@ -839,26 +840,23 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
       const placement = G.exp.core.tiles.board.find(tile => tile.tileId === pending.tileId);
       if (!placement) return { ok: false, reason: 'hotspot-unavailable' };
       const { choice } = effect;
-      if (choice.kind === 'regulation') {
-        if (pending.outcome !== 'regulation' || (choice.regulation.operation !== 'place' && choice.regulation.operation !== 'move')) {
-          return { ok: false, reason: 'invalid-hotspot-choice' };
-        }
-        // EXP-02-02-G-04..05B: the majority player's Regulation resolution uses Inner Order as its context.
-        const placed = resolveEffect(G, {
-          kind: 'regulationOperation', playerID: pending.playerID, regulation: choice.regulation,
-          contextTileId: pending.tileId, payment: choice.payment,
-        });
+      const decision = hotspotDecision(G, pending.tileId, pending.playerID, hooks);
+      if (choice.kind !== 'decline' && decision?.outcome === pending.outcome) {
+        const selected = decision.select(choice);
+        if (!selected) return { ok: false, reason: 'invalid-hotspot-choice' };
+        const placed = resolveEffect(G, selected);
         if (!placed.ok) return placed;
-      } else if (choice.kind === 'greenwashing') {
-        if (pending.outcome !== 'greenwashing') return { ok: false, reason: 'invalid-hotspot-choice' };
+      } else if (choice.kind !== 'decline') {
+        const quote = hotspotQuotes(G, pending).find(({ choice: option }) =>
+          stableHash(option) === stableHash(choice));
+        if (!quote) return { ok: false, reason: 'invalid-hotspot-choice' };
         const supply = G.exp.core.players[pending.playerID].personal.influence;
-        if (!supply.length) return { ok: false, reason: 'influence-unavailable' };
-        // EXP-03-08-M05-05..08: stage the single fixed fee separately from ordinary surcharges.
+        // CORE-01-06-00-11: stage the selected payment before committing the Hotspot outcome.
         const transaction = createBankTransaction(G, createMatchResourceRegistry(active));
-        const fee = transaction.transfer({
-          from: 'PersonalSupply', to: 'Bank', playerID: pending.playerID, resource: choice.resource, amount: 1,
-        });
-        if (!fee.ok) return fee;
+        for (const transfer of quote.costBreakdown) {
+          const fee = transaction.transfer({ from: 'PersonalSupply', to: 'Bank', ...transfer });
+          if (!fee.ok) return fee;
+        }
         const outcome: ResolveHotspotAtEffect = { kind: 'resolveHotspotAt', coord: placement.coord, contextCoord: placement.coord };
         const amount = modifyOutput(G, outcome, hooks, 1);
         if (amount !== 0 && amount !== 1) return { ok: false, reason: 'invalid-influence-output' };
@@ -904,7 +902,7 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
       if (G.exp.core.pendingHotspot || !placement || placement.enclosureProcessed || hotspot?.kind !== 'Hotspot'
           || !isFullySurrounded(G, placement.coord)) return { ok: true };
 
-      // CORE-01-06-04(a) and EXP-02-08-M02-03..05: each registered decree attempts once before majority.
+      // CORE-01-06-04(a): attempt registered effects before checking majority.
       const triggers = hooks.flatMap(hook => hook.beforeHotspot?.(G, placement.tileId) ?? []);
       for (const { effect: operation, consume } of triggers) {
         resolveEffect(G, operation);
@@ -916,16 +914,16 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
       const outcome = { ...effect, contextCoord: placement.coord };
       const winner = computeMajority(G, placement.coord);
       if (winner !== null && !isProhibited(G, outcome, hooks)) {
-        // EXP-02-02-G-04/-07 and EXP-03-08-M05-04..09: only the entitled player may choose.
-        const choice = hotspot.hotspotOutcome === 'regulation' ? 'regulation'
-          : greenwashingResources(G, hooks).length ? 'greenwashing' : undefined;
+        // CORE-01-06-04(c): only the entitled player may choose an alternative outcome.
+        const choice = hotspotDecision(G, placement.tileId, winner, hooks)?.outcome
+          ?? hotspotInfluencePayment(G, outcome, hooks)?.outcome;
         if (choice) {
           const pending: PendingHotspot = { tileId: placement.tileId, playerID: winner, outcome: choice };
           if (hotspotQuotes(G, pending).length) {
             G.exp.core.pendingHotspot = pending;
             return { ok: true };
           }
-        } else {
+        } else if (hotspot.hotspotOutcome === undefined) {
           // CORE-01-06-05/-06/-07 and CORE-01-06-00-07(a): transfer one existing marker without a payer.
           const supply = G.exp.core.players[winner].personal.influence;
           const amount = modifyOutput(G, outcome, hooks, 1);
@@ -968,7 +966,7 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
         const plan = planProductionForTile(G, effect.coord, active);
         if (!plan) return { ok: true };
         const transaction = createBankTransaction(G, createMatchResourceRegistry(active));
-        // EXP-03-08-M11-05..09: cap each applicable receipt after the regular split.
+        // CORE-01-06-16A: apply registered receipt limits after the regular split.
         for (const pid of plan.winners) {
           const amount = Math.min(plan.share, ...hooks.map(hook => hook.productionReceiptLimit?.(G, pid) ?? plan.share));
           const payout = transaction.transfer({ from: 'Bank', to: 'PersonalSupply', playerID: pid, resource: plan.resort, amount });

@@ -1,7 +1,7 @@
-import type { AxialCoord, BoardPlacement, BoardRegulation, CoreState, ExpansionId, MeasureDuration, PendingRegulationChoice, RegulationKind, RegulationOperation, ResourceId, ResortTile, Tile } from './types.js';
+import type { AxialCoord, BoardPlacement, CoreState, ExpansionId, MeasureDuration, PendingHotspot, PendingRegulationChoice, ResourceId, ResortTile, Tile } from './types.js';
 import type { ResourceRegistry, ResourceAmounts } from './resources.js';
-import type { EffectDescriptor, EffectResolver, RegisterMeasureEffect, ResolveRegulationEffect } from './effects.js';
-import type { ExpansionFlags, MatchConfig } from './schemas.js';
+import type { AddResourcesEffect, EffectDescriptor, EffectResolver, PlayMeasureEffect, RegisterMeasureEffect, ResolveHotspotAtEffect, ResolveRegulationEffect } from './effects.js';
+import type { ExpansionFlags, FixedPaymentSelection, HotspotChoice, MatchConfig, MeasureExtensionTarget, PaymentSelection, SubstitutionSelection } from './schemas.js';
 import type { MajorityResult } from './rule-services.js';
 
 export interface ProhibitionsArgs { G: CoreState; effect: EffectDescriptor }
@@ -11,7 +11,7 @@ export interface Surcharge {
   id: string;
   source: 'measure' | 'regulation';
   resources?: readonly ResourceId[];
-  climate?: true;
+  origin?: ExpansionId;
 }
 export interface ProductionModifiersArgs { G: CoreState; coord: AxialCoord; tile: ResortTile; amount: number }
 export type ProductionModifier = { source: 'measure' | 'regulation' | 'other' } & (
@@ -20,44 +20,104 @@ export type ProductionModifier = { source: 'measure' | 'regulation' | 'other' } 
 
 export interface MeasureRule {
   cost: Readonly<Partial<ResourceAmounts>>;
-  targetPlayer?: 'any' | 'opponent';
+  targetPlayer?: (G: CoreState, owner: string, target: string) => boolean;
   targetTile?: (G: CoreState, playerID: string, tile: Tile, coord: AxialCoord) => boolean;
-  targetResort?: 'any' | 'unique';
-  gainTargetResort?: true;
-  targetRegulation?: true;
-  regulation?: { timing: 'immediate' | 'settlement'; operation: RegulationOperation['operation']; hotspotOnly?: true };
+  targetResort?: (G: CoreState, resort: ResourceId) => boolean;
+  resourceOutputs?: (G: CoreState, playerID: string, placement?: BoardPlacement) => readonly AddResourcesEffect[];
+  extensionTarget?: {
+    options(G: CoreState): Iterable<MeasureExtensionTarget>;
+    plan(G: CoreState, effect: PlayMeasureEffect): MeasureTargetPlan;
+  };
   duration?: MeasureDuration;
 }
 
+export interface StagedOperation {
+  cost?: Partial<ResourceAmounts>;
+  commit(): void;
+}
+
+export type MeasureTargetPlan = {
+  ok: true;
+  placement?: BoardPlacement;
+  registration?: MeasureExtensionTarget & { targetTileId?: string };
+  operation?: StagedOperation;
+} | { ok: false; reason: string };
+
+export interface ExtensionAction {
+  political?: true;
+  context(G: CoreState, effect: ResolveRegulationEffect): { placement: BoardPlacement } | { reason: string };
+  plan(G: CoreState, effect: ResolveRegulationEffect, placement: BoardPlacement): StagedOperation | undefined;
+}
+
+export interface EffectDecision {
+  contextTile: string | null;
+  options: Iterable<{ effect: ResolveRegulationEffect; choice(payment?: PaymentSelection): HotspotChoice }>;
+  select(choice: HotspotChoice): ResolveRegulationEffect | undefined;
+  consumeOnCompletion?: readonly string[];
+}
 export interface ConversionAlternative {
   id: string;
   input: ResourceId;
   cost: number;
 }
 
+export interface FixedPaymentOption {
+  selection: FixedPaymentSelection;
+  cost: Readonly<ResourceAmounts>;
+}
+
+export type PaymentSubstitutionGroup = {
+  [Key in keyof SubstitutionSelection]-?: {
+    key: Key;
+    options: readonly {
+      choice: NonNullable<SubstitutionSelection[Key]>;
+      from: ResourceId;
+      to: ResourceId;
+      markUsed?: string;
+    }[];
+  };
+}[keyof SubstitutionSelection];
+
+export interface HotspotInfluencePayment {
+  outcome: Exclude<PendingHotspot['outcome'], 'regulation'>;
+  options: readonly {
+    choice: Exclude<HotspotChoice, { kind: 'decline' | 'regulation' }>;
+    cost: Readonly<ResourceAmounts>;
+  }[];
+}
+
 export interface ExpansionHooks {
-  blockade?: (args: ProhibitionsArgs) => boolean;
+  priorityProhibition?: (args: ProhibitionsArgs) => boolean;
   prohibitions?: (args: ProhibitionsArgs) => boolean;
   costIncreases?: (args: CostIncreasesArgs) => Partial<ResourceAmounts> | void;
   surcharges?: (args: CostIncreasesArgs) => readonly Surcharge[] | void;
   outputModifiers?: (args: OutputModifiersArgs) => number | void;
   // CORE-01-06-16-00: report only effects eligible for this tile's production instance.
   productionModifiers?: (args: ProductionModifiersArgs) => readonly ProductionModifier[] | void;
-  suppressMeasureProduction?: (G: CoreState, coord: AxialCoord) => boolean;
+  excludeProductionModifier?: (args: ProductionModifiersArgs, modifier: ProductionModifier) => boolean;
   productionReceiptLimit?: (G: CoreState, playerID: string) => number | undefined;
-  paymentModifiers?: (G: CoreState, effect: EffectDescriptor & { playerID: string }) => PaymentModifiers;
-  budgetDeficits?: (G: CoreState, playerID?: string) => readonly string[];
-  greenwashing?: (G: CoreState) => readonly ('CLM' | 'INF')[] | undefined;
-  beforeHotspot?: (G: CoreState, tileId: string) => readonly { effect: ResolveRegulationEffect; consume: string }[];
-  beforeSettlement?: (G: CoreState) => readonly { effect?: ResolveRegulationEffect; consume: string }[];
+  paymentRules?: (G: CoreState, effect: EffectDescriptor & { playerID: string }, resources: readonly ResourceId[]) => PaymentRules;
+  politicalAttempt?: (G: CoreState, playerID: string) => PoliticalAttemptRule | undefined;
+  fixedPaymentOptions?: (args: ProhibitionsArgs) => readonly FixedPaymentOption[] | undefined;
+  hotspotInfluencePayment?: (G: CoreState, effect: ResolveHotspotAtEffect) => HotspotInfluencePayment | undefined;
+  hotspotDecision?: (G: CoreState, tileId: string, playerID: string) =>
+    (EffectDecision & Pick<PendingHotspot, 'outcome'>) | undefined;
+  followUpDecision?: (G: CoreState, pending: PendingRegulationChoice) => EffectDecision | undefined;
+  beforeHotspot?: (G: CoreState, tileId: string) => readonly { effect: EffectDescriptor; consume: string }[];
+  beforeSettlement?: (G: CoreState) => readonly { effect?: EffectDescriptor; consume: string }[];
 }
 
-export interface PaymentModifiers {
-  waiveClimateSurcharges?: boolean;
-  replaceSurcharge?: boolean;
-  transferSurchargeIds?: readonly string[];
-  councils?: readonly { id: string; resource: ResourceId }[];
-  partnerships?: readonly { id: string; resource: ResourceId }[];
+export interface PaymentRules {
+  waive?: (cost: Surcharge) => boolean;
+  replacements?: (cost: Surcharge) => readonly { resource: ResourceId; amount: number }[];
+  transfers?: readonly { effectId: string; playerIDs: readonly string[]; consumeOnCommit?: string }[];
+  substitutions?: readonly PaymentSubstitutionGroup[];
+}
+
+export interface PoliticalAttemptRule {
+  consume: readonly string[];
+  consumeOnEmptySlot?: true;
+  consumeOnFailure?: (reason: string | undefined, isPayableWithout: (surcharges: readonly string[]) => boolean) => boolean;
 }
 
 interface ModuleContributions {
@@ -90,21 +150,7 @@ export interface ExpansionModule extends ModuleContributions {
   measureRules?: Readonly<Record<string, MeasureRule | undefined>>;
   measurePrefix?: string;
   canRegisterMeasure?: (G: CoreState, instance: RegisterMeasureEffect['instance']) => boolean;
-  regulations?: RegulationRules;
-}
-
-export interface RegulationRules {
-  initialize(G: CoreState): void;
-  attached(G: CoreState): readonly BoardRegulation[];
-  mayAttach(tile: Tile, kind: RegulationKind): boolean;
-  context(G: CoreState, operation: RegulationOperation): BoardPlacement | undefined;
-  authorityContext(G: CoreState, request: ResolveRegulationEffect): BoardPlacement | undefined;
-  operations(G: CoreState, kind: RegulationOperation['operation']): Iterable<RegulationOperation>;
-  plan(G: CoreState, operation: RegulationOperation, playerID: string, authorityTileId?: string):
-    { cost?: Partial<ResourceAmounts>; commit(): void } | undefined;
-  followUpOperations(G: CoreState, pending: PendingRegulationChoice): readonly RegulationOperation[];
-  permitsFollowUp(pending: PendingRegulationChoice, operation: RegulationOperation): boolean;
-  followUpContext(G: CoreState, pending: PendingRegulationChoice): string | null;
+  actions?: Partial<Record<ResolveRegulationEffect['kind'], ExtensionAction>>;
 }
 
 export type RulesModule = CoreModule | ExpansionModule;
@@ -138,8 +184,4 @@ export function createExpansionRegistry(
   const enabled = candidates.filter((module): module is ExpansionModule =>
     module.id !== 'core' && flags?.[module.id] === true);
   return [getCoreExpansion(), ...enabled];
-}
-
-export function getRegulationRules(G: CoreState, modules: readonly RulesModule[] = createExpansionRegistry(G.cfg.expansions)) {
-  return modules.find((module): module is ExpansionModule => module.id !== 'core' && !!module.regulations)?.regulations;
 }

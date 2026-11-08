@@ -41,13 +41,22 @@ export type MatchConfig = z.infer<typeof MatchConfigSchema>;
 export type MatchConfigInput = z.input<typeof MatchConfigSchema>;
 
 const PaymentId = z.string().min(1);
+// Preserve the serialized selection used by existing moves and replays.
+export const FixedPaymentSelectionSchema = z.object({
+  greenwashing: z.enum(['CLM', 'INF']).optional(),
+});
+export type FixedPaymentSelection = z.infer<typeof FixedPaymentSelectionSchema>;
+export const SubstitutionSelectionSchema = z.object({
+  council: z.object({ effectId: PaymentId, resource: PaymentId }).strict().optional(),
+  partnership: z.object({ effectId: PaymentId, replacedResource: PaymentId }).strict().optional(),
+});
+export type SubstitutionSelection = z.infer<typeof SubstitutionSelectionSchema>;
 export const PaymentSelectionSchema = z.object({
   surcharges: z.record(PaymentId).optional(),
   replacement: z.object({ costId: PaymentId, resource: PaymentId }).strict().optional(),
   transfers: z.array(z.object({ costId: PaymentId, effectId: PaymentId, playerID: PaymentId }).strict()).optional(),
-  council: z.object({ effectId: PaymentId, resource: PaymentId }).strict().optional(),
-  partnership: z.object({ effectId: PaymentId, replacedResource: PaymentId }).strict().optional(),
-  greenwashing: z.enum(['CLM', 'INF']).optional(),
+  ...SubstitutionSelectionSchema.shape,
+  ...FixedPaymentSelectionSchema.shape,
 }).strict();
 export type PaymentSelection = z.infer<typeof PaymentSelectionSchema>;
 export const RegulationOperationSchema = z.discriminatedUnion('operation', [
@@ -56,6 +65,11 @@ export const RegulationOperationSchema = z.discriminatedUnion('operation', [
   z.object({ operation: z.literal('remove'), regulationId: PaymentId }).strict(),
   z.object({ operation: z.literal('removeAll'), tileId: PaymentId }).strict(),
 ]);
+export const MeasureExtensionTargetSchema = z.object({
+  targetRegulationId: PaymentId.optional(),
+  regulation: RegulationOperationSchema.optional(),
+});
+export type MeasureExtensionTarget = z.infer<typeof MeasureExtensionTargetSchema>;
 export const HotspotChoiceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('decline') }).strict(),
   z.object({ kind: z.literal('greenwashing'), resource: z.enum(['CLM', 'INF']) }).strict(),

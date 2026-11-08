@@ -1,11 +1,13 @@
 import { Client } from 'boardgame.io/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { createBCGame, engineMoveOptions, type EngineMoveOption } from '@bc/game';
+import { CoreStages, createBCGame, engineMoveOptions, type EngineMoveOption } from '@bc/game';
 import { CoreView, submitCoreOption } from './BoardCore.js';
+import { MeasurePanel, RegulationPanel } from './ExpansionPanels.js';
+import { describeOption, measureAction, optionCost } from './core-board-labels.js';
 
-function hotseat() {
-  const client = Client({ game: createBCGame({ matchSeed: 'task-0030-full-core' }), numPlayers: 2, playerID: '0' });
+function hotseat(game = createBCGame({ matchSeed: 'task-0030-full-core' }), numPlayers = 2) {
+  const client = Client({ game, numPlayers, playerID: '0' });
   const state = () => client.getState()!;
   const activePlayer = () => Object.keys(state().ctx.activePlayers ?? {})[0] ?? state().ctx.currentPlayer;
   const submit = (option: EngineMoveOption) => {
@@ -31,6 +33,7 @@ describe('CORE hotseat', () => {
     expect(placement).toContain('Player 1 to act');
     expect(placement).toContain('Start Committee');
     expect(placement).toContain('Place the drawn tile');
+    expect(placement).not.toContain('Expansion tools');
     expect(placement.match(/aria-label="Place tile at /g)).toHaveLength(options().length);
     const waiting = render('1');
     expect(waiting).toContain('Waiting for Player 1');
@@ -91,4 +94,72 @@ describe('CORE hotseat', () => {
     expect(end).toContain('Start a new match');
     expect(end).not.toContain('<select');
   });
+});
+
+it('shows all six players on one tile and all six active resources alongside the market', () => {
+  const { state } = hotseat(createBCGame({
+    addOn56: true, expansions: { exp01: true, exp02: true, exp03: true },
+  }), 6);
+  const { G, ctx, _stateID } = structuredClone(state());
+  const core = G.exp.core;
+  const tileId = core.tiles.drawPile.find(id => core.allTiles[id].kind === 'ResortTile')!;
+  const lobbyistId = core.tiles.drawPile.find(id => core.allTiles[id].kind === 'Lobbyist')!;
+  core.tiles.drawPile = core.tiles.drawPile.filter(id => id !== tileId && id !== lobbyistId);
+  core.tiles.board.push({ tileId, coord: { q: 1, r: 0 } }, { tileId: lobbyistId, coord: { q: 2, r: 0 } });
+  core.influencesOnBoard = Object.values(core.players).map(({ personal }) => ({ ...personal.influence.shift()!, tileId }));
+  core.influencesOnBoard.push({ ...core.players['5'].personal.influence.shift()!, tileId: lobbyistId });
+  G.exp.exp02!.regulations!.attached.push({ id: 'test-regulation', kind: 'Administration', tileId });
+
+  const markup = renderToStaticMarkup(<CoreView G={G} ctx={ctx} revision={_stateID} submit={() => undefined} />);
+  const tile = markup.match(/<button [^>]*aria-label="[^"]*\(1, 0\)[^"]*"[^>]*>.*?<\/button>/)?.[0];
+  expect(tile).toBeDefined();
+  expect(tile?.match(/class="influence-chip"/g)).toHaveLength(6);
+  expect(tile).toContain('Player 6 has 1 marker and 1 virtual influence');
+  expect(tile).toContain('Regulations: Administration');
+  const supplies = markup.match(/<table class="core-supplies">.*?<\/table>/)?.[0];
+  expect(supplies?.match(/class="resource-icon"/g)).toHaveLength(6);
+  expect(supplies).toContain('Player 6');
+  expect(markup).toContain('Open Measures');
+});
+
+it('takes a Security measure and offers a named, priced Regulation action for the card in hand', () => {
+  const game = createBCGame({ expansions: { exp02: true } });
+  const setup = game.setup!;
+  game.setup = (context, setupData) => {
+    const G = setup(context, setupData);
+    const deck = G.exp.exp02!.measures!;
+    const index = deck.drawPile.indexOf('SEC_M01');
+    if (index !== -1) [deck.open[0], deck.drawPile[index]] = ['SEC_M01', deck.open[0]!];
+    Object.assign(G.exp.core.players['0'].personal.resources, { SEC: 3, INF: 1 });
+    return G;
+  };
+  const { state, options, submit, render } = hotseat(game);
+  submit(options()[0]);
+  const market = renderToStaticMarkup(<MeasurePanel G={state().G} options={options()} onSelect={() => undefined} />);
+  expect(market).toContain('Security &amp; Order');
+  expect(market).toContain('Threat Situation');
+  expect(market).toContain('Take available');
+  expect(market).not.toContain('Economy &amp; Labor');
+  expect(market).not.toContain('Climate &amp; Future');
+  const take = options().find(option => measureAction(option)?.id === 'SEC_M01')!;
+  expect(describeOption(state().G, take)).toBe('Take Threat Situation');
+  submit(take);
+  expect(state().G.exp.exp02!.measures!.hands['0']).toEqual(['SEC_M01']);
+
+  submit(options()[0]);
+  submit(options().find(option => describeOption(state().G, option).startsWith('Place marker'))!);
+  submit(options()[0]);
+  const hand = renderToStaticMarkup(<MeasurePanel G={state().G} options={options()} onSelect={() => undefined} />);
+  expect(hand).toContain('Player 1 · 1 in hand');
+  expect(hand).toContain('Play available');
+  const play = options().find(option => describeOption(state().G, option)
+    .startsWith('Play Threat Situation · Place Security Level on '))!;
+  expect(optionCost(play)).toBe('3 SEC + 1 INF');
+  submit(play);
+  expect(state().ctx.activePlayers).toEqual({ '0': CoreStages.AdditionalPoliticalAction });
+  const attached = state().G.exp.exp02!.regulations!.attached;
+  expect(attached).toHaveLength(1);
+  expect(render()).toContain('Regulations: Security Level (reg-1)');
+  const regulations = renderToStaticMarkup(<RegulationPanel G={state().G} options={options()} onInspect={() => undefined} />);
+  expect(regulations).toContain('Security Level (reg-1)');
 });

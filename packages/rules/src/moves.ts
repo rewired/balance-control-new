@@ -1,10 +1,9 @@
 import { z, ZodFirstPartyTypeKind, type ZodTypeAny } from 'zod';
 import type { CoreState } from './types.js';
-import { createExpansionRegistry, getRegulationRules, type ExpansionModule, type RulesModule } from './expansion-registry.js';
+import { createExpansionRegistry, type ExpansionModule, type RulesModule } from './expansion-registry.js';
 import { createResolver, type PaymentQuote, type ResolveResult } from './effects.js';
 import { matchResourceIds } from './resources.js';
-import { PaymentSelectionSchema, RegulationOperationSchema } from './schemas.js';
-import { regulationOperations } from './rule-services.js';
+import { MeasureExtensionTargetSchema, PaymentSelectionSchema } from './schemas.js';
 
 // MoveDefinition is rules-only (no boardgame.io types here per AGENTS §1.2)
 export type MoveQuote<P> = Omit<PaymentQuote, 'payment'> & { payload: P };
@@ -68,8 +67,7 @@ const PlayMeasurePayload = MeasurePayload.extend({
   targetPlayerID: z.string().min(1).optional(),
   targetTileId: z.string().min(1).optional(),
   targetResort: z.string().min(1).optional(),
-  targetRegulationId: z.string().min(1).optional(),
-  regulation: RegulationOperationSchema.optional(),
+  ...MeasureExtensionTargetSchema.shape,
 });
 
 // EXP-01-06-00A/-01A: each active deck exposes the same shared actions.
@@ -88,19 +86,16 @@ function measureMove(module: ExpansionModule, kind: 'takeMeasure' | 'playMeasure
         if (!measureId) return [];
         const rule = kind === 'playMeasure' ? module.measureRules?.[measureId] : undefined;
         const players = rule?.targetPlayer
-          ? Object.keys(G.exp.core.players).filter(id => rule.targetPlayer !== 'opponent' || id !== playerID) : [undefined];
+          ? Object.keys(G.exp.core.players).filter(id => rule.targetPlayer?.(G, playerID, id)) : [undefined];
         const tiles = rule?.targetTile ? G.exp.core.tiles.board.map(tile => tile.tileId) : [undefined];
-        const resorts = rule?.targetResort ? matchResourceIds(G) : [undefined];
-        const regulationIds = rule?.targetRegulation
-          ? getRegulationRules(G)?.attached(G).map(item => item.id) ?? [] : [undefined];
-        const operations = rule?.regulation ? [...regulationOperations(G, rule.regulation.operation)] : [undefined];
+        const resorts = rule?.targetResort ? matchResourceIds(G).filter(id => rule.targetResort?.(G, id)) : [undefined];
+        const targets = rule?.extensionTarget ? [...rule.extensionTarget.options(G)] : [{}];
         const choices = players.flatMap(targetPlayerID => tiles.flatMap(targetTileId => resorts.flatMap(targetResort =>
-          regulationIds.flatMap(targetRegulationId => operations.map(regulation => ({
+          targets.map(extensionTarget => ({
           measureId, ...(targetPlayerID === undefined ? {} : { targetPlayerID }), ...(targetTileId === undefined ? {} : { targetTileId }),
           ...(targetResort === undefined ? {} : { targetResort }),
-          ...(targetRegulationId === undefined ? {} : { targetRegulationId }),
-          ...(regulation === undefined ? {} : { regulation }),
-        }))))));
+          ...extensionTarget,
+        })))));
         return choices.flatMap(payload => resolve.actionQuotes(G, { kind, expansion, playerID, ...payload })
           .map(({ payment, ...quote }) => ({ ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } })));
       });
