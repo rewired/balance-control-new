@@ -1,5 +1,5 @@
 import { Client } from 'boardgame.io/client';
-import type { BoardPlacement, CoreState } from '@bc/rules';
+import { createResolver, type BoardPlacement, type CoreState } from '@bc/rules';
 import { describe, expect, it } from 'vitest';
 import { createBCGame } from './factory.js';
 
@@ -112,5 +112,131 @@ describe('Regulation operations through boardgame.io', () => {
     expect(G.resources.bank.SEC).toBe(payable ? 4 : 2);
     expect(G.exp!.exp02!.regulations!.attached).toHaveLength(payable ? 1 : 0);
     expect(G.influencesOnBoard!.filter(marker => marker.tileId === hotspot.tileId)).toHaveLength(payable ? 1 : 2);
+  });
+
+  it('lets the majority player resolve Inner Order before the current player acts', () => {
+    const hotspot = { tileId: 'InnerOrder', coord: { q: 1, r: 0 } };
+    const client = setupSecurity([
+      hotspot,
+      { tileId: 'Committee-1', coord: { q: 2, r: -1 } },
+      { tileId: 'Committee-2', coord: { q: 1, r: -1 } },
+      { tileId: 'Committee-3', coord: { q: 0, r: 1 } },
+      { tileId: 'Committee-4', coord: { q: 1, r: 1 } },
+    ], G => {
+      mark(G, '1', hotspot.tileId);
+      G.players['1'].personal.resources.SEC = 2;
+    });
+    client.moves.placeTile({ q: 2, r: 0 });
+    const pending = client.getState()!;
+    expect(pending.ctx.currentPlayer).toBe('0');
+    expect(pending.ctx.activePlayers).toEqual({ '1': 'ResolveHotspot' });
+    expect(pending.G.pendingHotspot).toEqual({ tileId: hotspot.tileId, playerID: '1', outcome: 'regulation' });
+    const choice = { kind: 'regulation', regulation: { operation: 'place', regulationKind: 'Control', tileId: 'Committee-7' } };
+    client.moves.chooseHotspotOutcome(choice);
+    expect(client.getState()!._stateID).toBe(pending._stateID);
+    client.updatePlayerID('1');
+    client.moves.chooseHotspotOutcome(choice);
+
+    const { G, ctx } = client.getState()!;
+    expect(ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
+    expect(G.pendingHotspot).toBeUndefined();
+    expect(G.resources.bank.SEC).toBe(2);
+    expect(G.exp!.exp02!.regulations!.attached).toContainEqual({ id: 'reg-1', kind: 'Control', tileId: 'Committee-7' });
+    expect(G.tiles.board.find(tile => tile.tileId === hotspot.tileId)?.enclosureProcessed).toBe(true);
+    expect(G.influencesOnBoard).toHaveLength(1);
+  });
+
+  it('resumes the additional slot only after a registered Deployment Order moves the new Regulation', () => {
+    const client = setupSecurity([apparatus, grassroots], G => {
+      takeIntoFixtureHand(G, 'SEC_M03');
+      takeIntoFixtureHand(G, 'SEC_M01');
+      Object.assign(G.players['0'].personal.resources, { SEC: 4, INF: 1 });
+    });
+    client.moves.placeTile({ q: -1, r: 0 });
+    client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: { measureId: 'SEC_M03' } });
+    client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-1', targetTileId: 'Committee-7' } });
+    client.moves.placeTile({ q: -2, r: 0 });
+    client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId: 'INF-1-1', targetTileId: 'Committee-8' } });
+    client.moves.placeTile({ q: -3, r: 0 });
+    client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: {
+      measureId: 'SEC_M01', regulation: { operation: 'place', regulationKind: 'SecurityLevel', tileId: grassroots.tileId },
+    } });
+    const pending = client.getState()!;
+    expect(pending.ctx.activePlayers).toEqual({ '0': 'ResolveRegulationFollowUp' });
+    expect(pending.G.exp!.exp02!.regulations!.attached[0].tileId).toBe(grassroots.tileId);
+    client.moves.chooseRegulationFollowUp({
+      kind: 'regulation', regulation: { operation: 'move', regulationId: 'reg-1', tileId: 'Committee-9' },
+    });
+
+    const { G, ctx } = client.getState()!;
+    expect(ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
+    expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'SecurityLevel', tileId: 'Committee-9' }]);
+    expect(G.resources.bank).toMatchObject({ SEC: 4, INF: 1 });
+    expect(G.activeMeasureEffects).toBeUndefined();
+  });
+
+  it('offers and charges Competence Conflict separately after Authority activation', () => {
+    const client = setupSecurity([apparatus, grassroots], G => {
+      takeIntoFixtureHand(G, 'SEC_M05');
+      mark(G, '0', apparatus.tileId);
+      const zones = G.exp!.exp02!.regulations!;
+      zones.attached.push({ id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId });
+      zones.serial = 1;
+      Object.assign(G.players['0'].personal.resources, { SEC: 3, DOM: 1 });
+    });
+    client.moves.placeTile({ q: -1, r: 0 });
+    client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: { measureId: 'SEC_M05' } });
+    client.moves.doPoliticalAction({ type: 'activateAuthorityApparatus', payload: {
+      regulation: { operation: 'remove', regulationId: 'reg-1' },
+    } });
+    const pending = client.getState()!;
+    expect(pending.ctx.activePlayers).toEqual({ '0': 'ResolveRegulationFollowUp' });
+    expect(pending.G.resources.bank).toMatchObject({ SEC: 1, DOM: 1 });
+    expect(pending.G.exp!.exp02!.regulations!.supply).toContainEqual({ id: 'reg-1', kind: 'SecurityLevel' });
+    client.moves.chooseRegulationFollowUp({ kind: 'regulation', regulation: {
+      operation: 'place', regulationKind: 'Control', tileId: apparatus.tileId,
+    } });
+    const { G, ctx } = client.getState()!;
+    expect(ctx.currentPlayer).toBe('1');
+    expect(G.resources.bank).toMatchObject({ SEC: 3, DOM: 1 });
+    expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-2', kind: 'Control', tileId: apparatus.tileId }]);
+  });
+
+  it('resumes a paused Settlement without repeating the registered placement or producing early', () => {
+    const hotspot = { tileId: 'Hotspot-1', coord: { q: 1, r: 0 } };
+    const resort = { tileId: 'DOM-W1-1', coord: { q: 0, r: 1 } };
+    const client = setupSecurity([hotspot, resort], G => {
+      takeIntoFixtureHand(G, 'SEC_M12');
+      mark(G, '0', resort.tileId);
+      G.players['0'].personal.resources.SEC = 4;
+      createResolver()(G, {
+        kind: 'registerMeasureEffect',
+        instance: { sourceCardId: 'SEC_M03', playNumber: 1, owner: '0', duration: 'untilConsumed' },
+      });
+    });
+    client.moves.placeTile({ q: -1, r: 0 });
+    client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: {
+      measureId: 'SEC_M12', regulation: { operation: 'place', regulationKind: 'SecurityLevel', tileId: hotspot.tileId },
+    } });
+    client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-2', targetTileId: 'Committee-7' } });
+    client.moves.placeTile({ q: -2, r: 0 });
+    client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId: 'INF-1-1', targetTileId: 'Committee-8' } });
+    const pending = client.getState()!;
+    expect(pending.ctx.currentPlayer).toBe('1');
+    expect(pending.ctx.activePlayers).toEqual({ '0': 'ResolveRegulationFollowUp' });
+    expect(pending.G.players['0'].personal.resources.DOM).toBe(0);
+    expect(pending.G.resources.bank.SEC).toBe(4);
+
+    client.updatePlayerID('0');
+    client.moves.chooseRegulationFollowUp({
+      kind: 'regulation', regulation: { operation: 'move', regulationId: 'reg-1', tileId: 'Committee-7' },
+    });
+    const { G, ctx } = client.getState()!;
+    expect(ctx.turn).toBe(3);
+    expect(G.resources.bank.SEC).toBe(4);
+    expect(G.players['0'].personal.resources.DOM).toBe(1);
+    expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'SecurityLevel', tileId: 'Committee-7' }]);
+    expect(G.decisionContinuation).toBeUndefined();
+    expect(G.activeMeasureEffects).toBeUndefined();
   });
 });

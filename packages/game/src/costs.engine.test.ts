@@ -125,4 +125,34 @@ describe('Cost interactions through boardgame.io', () => {
     expect(G.tiles.drawPile).not.toContain('DOM-W5-1');
     expect(G.resources.bank).toMatchObject({ CLM: 1, DOM: 0 });
   });
+
+  it.each([false, true])('offers the Greenwashing fee only when Protest Movement=%s permits the outcome', protest => {
+    const client = setupCosts(['Committee-7', 'Committee-8'], G => {
+      const ring = [
+        { tileId: 'Hotspot-1', coord: { q: 1, r: 0 } },
+        { tileId: 'Committee-1', coord: { q: 2, r: -1 } },
+        { tileId: 'Committee-2', coord: { q: 1, r: -1 } },
+        { tileId: 'Committee-3', coord: { q: 1, r: 1 } },
+      ];
+      G.tiles.discardFaceUp = G.tiles.discardFaceUp.filter(id => !ring.some(placement => placement.tileId === id));
+      G.tiles.board.push(...ring);
+      G.influencesOnBoard!.push({ ...G.players['1'].personal.influence.shift()!, tileId: 'Hotspot-1' });
+      G.players['1'].personal.resources.CLM = 1;
+      for (const sourceCardId of protest ? ['CLM_M05', 'CLM_M07'] : ['CLM_M05']) {
+        createResolver()(G, { kind: 'registerMeasureEffect', instance: { sourceCardId, owner: '1', playNumber: 1, duration: 'ownerNextTurn' } });
+      }
+    });
+    client.moves.placeTile({ q: 2, r: 0 });
+    if (!protest) {
+      expect(client.getState()!.ctx.activePlayers).toEqual({ '1': 'ResolveHotspot' });
+      client.updatePlayerID('1');
+      client.moves.chooseHotspotOutcome({ kind: 'greenwashing', resource: 'CLM' });
+    }
+    const { G, ctx } = client.getState()!;
+    expect(ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
+    expect(G.pendingHotspot).toBeUndefined();
+    expect(G.tiles.board.find(tile => tile.tileId === 'Hotspot-1')?.enclosureProcessed).toBe(true);
+    expect(G.resources.bank.CLM).toBe(protest ? 0 : 1);
+    expect(G.influencesOnBoard!.filter(marker => marker.tileId === 'Hotspot-1')).toHaveLength(protest ? 1 : 2);
+  });
 });

@@ -7,10 +7,16 @@ import type { ResourceAmounts, ResourceRegistry } from './resources.js';
 type Replacement = NonNullable<PaymentSelection['replacement']>;
 type Transfer = NonNullable<PaymentSelection['transfers']>[number];
 type Council = NonNullable<PaymentSelection['council']>;
+type Partnership = NonNullable<PaymentSelection['partnership']>;
 type SurchargePayment = Surcharge & { payer: string; resource?: ResourceId };
 
 export function isPoliticalEffect(effect: EffectDescriptor): boolean {
   return ['placeOrMoveInfluence', 'formalizeInfluence', 'convertResources', 'takeMeasure', 'playMeasure', 'activateAuthorityApparatus'].includes(effect.kind);
+}
+
+// EXP-03-08-M05-04..09: one suppression fee per eligible gain, even with multiple instances.
+export function isGreenwashingActive(G: CoreState): boolean {
+  return G.cfg.expansions.exp03 && Boolean(G.activeMeasureEffects?.some(instance => instance.sourceCardId === 'CLM_M05'));
 }
 
 function* transferChoices(
@@ -52,6 +58,7 @@ export function planSelectedPayment(
 ): PlannedPayment | undefined {
   const original = effect.playerID;
   const selected = effect.payment;
+  if (selected?.greenwashing && effect.kind !== 'formalizeInfluence') return;
   const resources = registry.list();
   const effects = immune ? [] : G.activeMeasureEffects ?? [];
   const owned = effects.filter(instance => instance.owner === original);
@@ -62,6 +69,8 @@ export function planSelectedPayment(
   const costs = raw.filter(cost => !cost.climate || !protection);
   const pacts = owned.filter(instance => instance.sourceCardId === 'CLM_M13');
   const councils = owned.filter(instance => instance.sourceCardId === 'ECO_M08' && !instance.used);
+  const partnerships = effect.kind === 'playMeasure' || effect.kind === 'regulationOperation' || effect.kind === 'activateAuthorityApparatus'
+    ? effects.filter(instance => instance.sourceCardId === 'SEC_M06') : [];
   const supplemental = isPoliticalEffect(effect) && owned.some(instance => instance.sourceCardId === 'ECO_M10');
   const others = Object.keys(G.players).filter(playerID => playerID !== original);
   const replacements: (Replacement | undefined)[] = selected ? [selected.replacement] : [
@@ -87,8 +96,14 @@ export function planSelectedPayment(
       const councilChoices: (Council | undefined)[] = selected ? [selected.council] : [
         undefined, ...councils.flatMap(instance => resources.filter(resource => resource !== 'ECO').map(resource => ({ effectId: instance.id, resource }))),
       ];
-      for (const council of councilChoices) {
+      const partnershipChoices: (Partnership | undefined)[] = selected ? [selected.partnership] : [
+        undefined, ...partnerships.flatMap(instance => resources.filter(resource => resource !== 'SEC')
+          .map(replacedResource => ({ effectId: instance.id, replacedResource }))),
+      ];
+      for (const [council, partnership] of councilChoices.flatMap(council => partnershipChoices.map(partnership => [council, partnership] as const))) {
         if (council && (!councils.some(instance => instance.id === council.effectId) || council.resource === 'ECO' || !registry.has(council.resource))) continue;
+        if (partnership && (!partnerships.some(instance => instance.id === partnership.effectId)
+            || partnership.replacedResource === 'SEC' || !registry.has(partnership.replacedResource))) continue;
         const accounts = new Map<string, ResourceAmounts>([[original, Object.assign(Object.create(null), base)]]);
         if (replacement) {
           const cost = accounts.get(original)!;
@@ -100,13 +115,24 @@ export function planSelectedPayment(
           cost.ECO = (cost.ECO ?? 0) - 1;
           cost[council.resource] = (cost[council.resource] ?? 0) + 1;
         }
+        // EXP-02-08-M06-03: substitute one original Resource with SEC for a Regulation or Measure.
+        if (partnership) {
+          const cost = accounts.get(original)!;
+          cost[partnership.replacedResource] = (cost[partnership.replacedResource] ?? 0) - 1;
+          cost.SEC = (cost.SEC ?? 0) + 1;
+        }
         const affordable = (payer: string, amounts: ResourceAmounts) => Object.entries(amounts)
           .every(([resource, amount]) => registry.has(resource) && Number.isSafeInteger(amount)
             && amount <= (G.players[payer].personal.resources[resource] ?? 0));
         if (!affordable(original, accounts.get(original)!)) continue;
 
         const allocate = (index: number): boolean => {
-          if (index === units.length) return !council || accounts.get(original)!.ECO >= 0;
+          if (index === units.length) {
+            const cost = accounts.get(original)!;
+            // CORE-01-06-00-10: a Resource created by one substitution cannot satisfy the other.
+            return (!council || cost.ECO >= 0) && (!partnership || cost[partnership.replacedResource]
+              >= (council?.resource === partnership.replacedResource ? 1 : 0));
+          }
           const unit = units[index];
           const options = unit.resources ?? resources;
           const choices = unit.resource === undefined ? options : options.includes(unit.resource) ? [unit.resource] : [];

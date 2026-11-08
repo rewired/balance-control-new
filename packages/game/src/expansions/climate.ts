@@ -23,6 +23,8 @@ export function exp03Climate(): ExpansionModule {
       CLM_M03: { cost: { CLM: 2 }, targetTile: (_G, _player, tile) => tile.kind === 'ResortTile', gainTargetResort: true },
       // EXP-03-08-M04-02..05.
       CLM_M04: { cost: { CLM: 2 }, targetPlayer: 'any', duration: 'targetNextTurn' },
+      // EXP-03-08-M05-02..09.
+      CLM_M05: { cost: { CLM: 1, INF: 1 }, duration: 'ownerNextTurn' },
       // EXP-03-08-M06-02..05.
       CLM_M06: { cost: { CLM: 1, ECO: 1 }, duration: 'ownerNextTurn' },
       // EXP-03-08-M07-02..06.

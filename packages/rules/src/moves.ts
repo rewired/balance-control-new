@@ -5,6 +5,7 @@ import { createResolver, type PoliticalActionEffect, type ResolveResult } from '
 import { createMatchResourceRegistry } from './resources.js';
 import { PaymentSelectionSchema, RegulationOperationSchema } from './schemas.js';
 import { regulationOperations } from './regulations.js';
+import { isGreenwashingActive } from './payment.js';
 
 // MoveDefinition is rules-only (no boardgame.io types here per AGENTS §1.2)
 export interface MoveDefinition<P> {
@@ -172,7 +173,12 @@ export function corePoliticalMoves(): MoveDefinition<unknown>[] {
           const kind = G.allTiles[tileId].kind;
           if (kind !== 'Committee' && kind !== 'StartCommittee') continue;
           for (const payment of paymentCombinations(resources, kind === 'Committee' ? 2 : 4)) {
-            yield { tileId, resources: payment };
+            if (kind === 'Committee' && isGreenwashingActive(G)) {
+              yield { tileId, resources: payment, payment: { greenwashing: 'CLM' as const } };
+              yield { tileId, resources: payment, payment: { greenwashing: 'INF' as const } };
+            } else {
+              yield { tileId, resources: payment };
+            }
           }
         }
       },

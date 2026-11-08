@@ -29,7 +29,7 @@ Norm: CORE-01-00, CORE-01-03, CORE-01-04, CORE-01-06-00-03 und CORE-01-06-00-07 
 - [x] Startmarker-Timing, Cap, Start-Committee-Immunität, Platzierungsverbot und einmalige Formalisierung sind durch Engine-Tests abgedeckt. Pflichtslots prüfen die implementierten Optionen nach Tile-Platzierung und Measure-Play und schließen automatisch ab, wenn keine legal ist. Erweiterungsspezifische Zahlungsalternativen und die Budget-Deficit-Ausnahme folgen in Stufe 3 und 4.
 - [x] S07, Mehrheitsverteilung: Produktion bei positiver Mehrheit/Gleichstand und Nullmehrheit ohne Noise umgesetzt.
 - [x] S08, CORE-Einschließung: Hotspot-Ereignisse persistent vermerken und vor der politischen Aktion in ordinaler Tile-ID-Reihenfolge auflösen. [DD-0024](../design-decisions/DD-0024-hotspot-enclosure-events.md)
-- [ ] S08, Erweiterungswirkungen: Bereits aktive Vor-Mehrheits-Effekte an die gemeinsame Ereignisauflösung aus Stufe 3 anbinden.
+- [x] S08, Erweiterungswirkungen: Emergency Decree vor der Mehrheit auslösen. Inner Order und Greenwashing an das unterbrechbare Einschließungsereignis anbinden. [DD-0029](../design-decisions/DD-0029-registered-decisions.md)
 - [x] S09: Abschluss nach der letzten erfolgreichen Platzierung und politischen Sequenz sowie nach erfolglosem Ziehen mit genau einem finalen Settlement und Wertung. Die Engine-Replays prüfen eine verkürzte Schlussrunde und das Zusammenfallen von regulärem und finalem Settlement.
 - [x] S18: Begrenztes TileRecycling, Abwurf bei fehlender bezahlbarer Platzierung, FirstPlayerHandicap sowie CORE-Material und Startmengen für fünf und sechs Spieler implementiert.
 - [x] S18: Cap 8 für das 5–6-Spieler-Add-on bei der Influence-Erzeugung umgesetzt und im Fünf-Spieler-Match nachgewiesen.
@@ -63,10 +63,11 @@ Norm: CORE-01-06-00-07 bis -12; CORE-01-06-16/-16A/-17; CORE-01-07-04 bis -18; E
 
 - [x] S10, Material: EXP-01-Tiles und zehn Karten im Deck. Investment Program ist als kontrollabhängige Grassroots-Alternative über boardgame.io geprüft.
 - [x] Alle zehn EXP-01-Karten über den regulären, kostenpflichtigen Spielweg anbinden.
-- [ ] S14: EXP-02 mit SEC, Material, eigenen Maßnahmen, Regulationszonen/-typen, Authority Apparatus und Inner Order umsetzen.
-- [ ] ContextTile, explizite Objektsperren, Blockade vor Kosten/Output, SecurityLevel-Klassen und bezahlten Nulloutput testen.
+- [x] S14: EXP-02 mit SEC, Material, eigenen Maßnahmen, Regulationszonen/-typen, Authority Apparatus und Inner Order umsetzen.
+- [x] ContextTile, Blockade, SecurityLevel und bezahlten Nulloutput über die Engine prüfen. Authority Apparatus behält seinen Kontext bei einem Transfer von einem blockierten Quell-Tile.
+- [ ] Explizite Objektsperre durch Surveillance zusätzlich mit einem Engine-Regressionsfall absichern.
 - [x] EXP-03 mit CLM-Material, Transformationsdruck und Setup-Eligibility: zehn Karten ohne EXP-01, dreizehn mit EXP-01. M14/M15 und Countdown-State bleiben ausgeschlossen.
-- [ ] Greenwashing/Protest, statische Climate-Herkunft, Schutzumfang und Waiver vor Supplemental Budget vor Intergenerational Pact umsetzen.
+- [x] Greenwashing/Protest, statische Climate-Herkunft, Schutzumfang und Waiver vor Supplemental Budget vor Intergenerational Pact umsetzen.
 - [x] T13/T14 und alle acht Setup-Konfigurationen aus DD-0018 dauerhaft prüfen. 5–6-Spieler-Ergänzungen sind separat abgedeckt. [Materialtests](../../packages/game/src/expansion.material.engine.test.ts)
 
 Norm: EXP-01 bis EXP-03 in konsolidierter Fassung; vollständige R-Zuordnung in DD-0018. Kein Countdown-Effekt wird aus reserviertem Kartentext abgeleitet.

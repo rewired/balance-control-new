@@ -41,8 +41,14 @@ export function exp02Security(): ExpansionModule {
       SEC_M02: { cost: { SEC: 2 }, targetTile: (G, _owner, tile, coord) => tile.kind === 'Hotspot'
         && !G.tiles.board.find(placement => placement.tileId === tile.id)?.enclosureProcessed && !isFullySurrounded(G, coord),
       duration: 'untilConsumed' },
+      // EXP-02-08-M03-01..04.
+      SEC_M03: { cost: { SEC: 1 }, duration: 'untilConsumed' },
       // EXP-02-08-M04-01..03, EXP-02-02-F-04.
       SEC_M04: { cost: { SEC: 1 }, regulation: { timing: 'immediate', operation: 'move' } },
+      // EXP-02-08-M05-01..05.
+      SEC_M05: { cost: { SEC: 1, DOM: 1 }, duration: 'thisTurn' },
+      // EXP-02-08-M06-01..03.
+      SEC_M06: { cost: { SEC: 1, FOR: 1 }, duration: 'thisRound' },
       // EXP-02-08-M07-01..03.
       SEC_M07: { cost: { SEC: 1, DOM: 1 }, regulation: { timing: 'immediate', operation: 'remove' } },
       // EXP-02-08-M08-01..04.

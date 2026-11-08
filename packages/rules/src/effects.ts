@@ -1,5 +1,5 @@
 import { shuffleSeeded, stableHash } from '@bc/shared';
-import type { ActiveMeasureEffect, AxialCoord, CoreState, Exp02State, Influence, MeasureDeckState, ResourceId, ExpansionId, RegulationOperation } from './types.js';
+import type { ActiveMeasureEffect, AxialCoord, BoardRegulation, CoreState, DecisionContinuation, Exp02State, Influence, MeasureDeckState, PendingHotspot, PendingRegulationChoice, ResourceId, ExpansionId, RegulationOperation } from './types.js';
 import { createMatchResourceRegistry, type ResourceAmounts, type ResourceRegistry } from './resources.js';
 import { createExpansionRegistry, ensureExpansionSlice, type ExpansionHooks, type ExpansionModule, type Surcharge } from './expansion-registry.js';
 import { isFullySurrounded } from './hotspot.js';
@@ -7,15 +7,19 @@ import { planProductionForTile } from './production.plan.js';
 import { computeMajority, getControl } from './majority.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
 import { getTopology } from './topology/index.js';
-import { planSelectedPayment } from './payment.js';
-import type { PaymentSelection } from './schemas.js';
-import { mayAttachRegulation, regulationContext } from './regulations.js';
+import { isGreenwashingActive, planSelectedPayment } from './payment.js';
+import type { HotspotChoice, PaymentSelection } from './schemas.js';
+import { mayAttachRegulation, regulationContext, regulationOperations } from './regulations.js';
 
 export type EffectKind =
   | 'addResources'
   | 'drawTile'
   | 'placeTile'
   | 'resolveHotspotAt'
+  | 'chooseHotspotOutcome'
+  | 'chooseRegulationFollowUp'
+  | 'continueRegisteredDecisions'
+  | 'recordDecisionContinuation'
   | 'applyProductionAt'
   | 'registerMeasureEffect'
   | 'expireMeasureEffects'
@@ -61,6 +65,18 @@ export interface PlaceTileEffect extends BaseEffect {
 export interface ResolveHotspotAtEffect extends BaseEffect {
   kind: 'resolveHotspotAt';
   coord: AxialCoord;
+}
+
+interface ChooseHotspotOutcome extends BaseEffect {
+  kind: 'chooseHotspotOutcome' | 'chooseRegulationFollowUp';
+  playerID: string;
+  choice: HotspotChoice;
+}
+
+interface ContinueRegisteredDecisions extends BaseEffect { kind: 'continueRegisteredDecisions' }
+interface RecordDecisionContinuation extends BaseEffect {
+  kind: 'recordDecisionContinuation';
+  continuation?: DecisionContinuation;
 }
 
 export interface ApplyProductionAtEffect extends BaseEffect {
@@ -142,6 +158,9 @@ export type EffectDescriptor =
   | DrawTileEffect
   | PlaceTileEffect
   | ResolveHotspotAtEffect
+  | ChooseHotspotOutcome
+  | ContinueRegisteredDecisions
+  | RecordDecisionContinuation
   | ApplyProductionAtEffect
   | RegisterMeasureEffect
   | ExpireMeasureEffects
@@ -284,7 +303,7 @@ function modifyOutput(G: CoreState, effect: EffectDescriptor, hooks: readonly Ex
   return Math.max(0, amount);
 }
 
-function planRegulationMutation(G: CoreState, operation: RegulationOperation): (() => void) | undefined {
+function planRegulationMutation(G: CoreState, operation: RegulationOperation): (() => BoardRegulation | void) | undefined {
   const zones = G.cfg.expansions.exp02 ? G.exp?.exp02?.regulations : undefined;
   const placement = regulationContext(G, operation);
   if (!zones || !placement) return;
@@ -295,7 +314,9 @@ function planRegulationMutation(G: CoreState, operation: RegulationOperation): (
     return () => {
       const index = zones.supply.findIndex(item => item.kind === operation.regulationKind);
       const regulation = index < 0 ? { id: `reg-${++zones.serial}`, kind: operation.regulationKind } : zones.supply.splice(index, 1)[0];
-      zones.attached.push({ ...regulation, tileId: placement.tileId });
+      const attached = { ...regulation, tileId: placement.tileId };
+      zones.attached.push(attached);
+      return attached;
     };
   }
   const affected = operation.operation === 'removeAll' ? zones.attached.filter(item => item.tileId === placement.tileId)
@@ -316,6 +337,28 @@ function planRegulationMutation(G: CoreState, operation: RegulationOperation): (
     zones.attached = zones.attached.filter(item => !ids.has(item.id));
     zones.supply.push(...affected.map(({ id, kind }) => ({ id, kind })));
   };
+}
+
+function consumeMeasureEffects(G: CoreState, ids: readonly string[]): void {
+  if (!ids.length || !G.activeMeasureEffects) return;
+  const remaining = G.activeMeasureEffects.filter(instance => !ids.includes(instance.id));
+  if (remaining.length) G.activeMeasureEffects = remaining;
+  else delete G.activeMeasureEffects;
+}
+
+function queueRegulationFollowUps(G: CoreState, playerID: string, placed?: BoardRegulation | void, apparatusId?: string): void {
+  // EXP-02-08-M03-03/-04 and EXP-02-08-M05-03..05: capture the first actual triggering operation.
+  const queued = new Set(G.pendingRegulationChoices?.map(choice => choice.instanceId));
+  const choices: PendingRegulationChoice[] = [];
+  for (const instance of G.activeMeasureEffects ?? []) {
+    if (instance.owner !== playerID || queued.has(instance.id)) continue;
+    if (placed && instance.sourceCardId === 'SEC_M03') {
+      choices.push({ kind: 'deploymentOrder', instanceId: instance.id, playerID, regulationId: placed.id });
+    } else if (apparatusId && instance.sourceCardId === 'SEC_M05') {
+      choices.push({ kind: 'competenceConflict', instanceId: instance.id, playerID, tileId: apparatusId });
+    }
+  }
+  if (choices.length) (G.pendingRegulationChoices ??= []).unshift(...choices);
 }
 
 function regulationPrice(G: CoreState, operation: RegulationOperation, owner: string): { amount: number; discountId?: string } {
@@ -354,8 +397,9 @@ function planRegulationAction(G: CoreState, requested: ResolveRegulationEffect, 
   if (!payment.ok) return payment;
   return { ok: true, commit: () => {
     payment.transaction.commit();
-    mutate();
+    const placed = mutate();
     commitRegulationDiscount(G, discountId);
+    queueRegulationFollowUps(G, requested.playerID, placed, authority?.tileId);
   } } as const;
 }
 
@@ -422,6 +466,14 @@ function planPoliticalAction(
     }
     const cost: ResourceAmounts = Object.create(null);
     for (const resource of effect.resources) cost[resource] = (cost[resource] ?? 0) + 1;
+    // EXP-03-08-M05-05..09: add the selected fixed replacement only after other prerequisites.
+    const fee = effect.payment?.greenwashing;
+    if (!start && isGreenwashingActive(G)) {
+      if (fee === undefined) return { ok: false, reason: 'greenwashing' };
+      cost[fee] = (cost[fee] ?? 0) + 1;
+    } else if (fee !== undefined) {
+      return { ok: false, reason: 'invalid-greenwashing-payment' };
+    }
     const payment = planPayment(G, registry, effect, localHooks, cost);
     if (!payment.ok) return payment;
 
@@ -657,8 +709,9 @@ function planMeasureAction(
     payment.transaction.commit();
     registration?.commit();
     if (immediateRegulation) {
-      operation?.();
+      const placed = operation?.();
       commitRegulationDiscount(G, price?.discountId);
+      queueRegulationFollowUps(G, playerID, placed);
     }
     if (take) {
       deck.open[index] = null;
@@ -689,12 +742,96 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     return planRegulationAction(G, effect, activeModules(G)).ok;
   }
 
+  function hotspotChoices(G: CoreState, pending = G.pendingHotspot): HotspotChoice[] {
+    if (!pending) return [];
+    const choices: HotspotChoice[] = [];
+    if (pending.outcome === 'greenwashing') {
+      const supply = G.players[pending.playerID].personal;
+      if (supply.influence.length > 0) {
+        for (const resource of ['CLM', 'INF'] as const) {
+          if ((supply.resources[resource] ?? 0) >= 1) choices.push({ kind: 'greenwashing', resource });
+        }
+      }
+    } else {
+      for (const regulation of [...regulationOperations(G, 'place'), ...regulationOperations(G, 'move')]) {
+        if (previewRegulationAction(G, {
+          kind: 'regulationOperation', playerID: pending.playerID, regulation, contextTileId: pending.tileId,
+        })) choices.push({ kind: 'regulation', regulation });
+      }
+    }
+    if (choices.length > 0) choices.push({ kind: 'decline' });
+    return choices;
+  }
+
+  function regulationFollowUpChoices(G: CoreState): HotspotChoice[] {
+    const pending = G.pendingRegulationChoices?.[0];
+    if (!pending) return [];
+    const operations: RegulationOperation[] = pending.kind === 'deploymentOrder'
+      ? [...regulationOperations(G, 'move')].filter(operation => operation.operation === 'move' && operation.regulationId === pending.regulationId)
+      : [{ operation: 'place', regulationKind: 'Control', tileId: pending.tileId }];
+    return [
+      ...operations.flatMap(regulation => previewRegulationAction(G, {
+        kind: 'regulationOperation', playerID: pending.playerID, regulation,
+      }) ? [{ kind: 'regulation' as const, regulation }] : []),
+      { kind: 'decline' },
+    ];
+  }
+
+  function removeRegulationFollowUp(G: CoreState, pending: PendingRegulationChoice): void {
+    G.pendingRegulationChoices!.shift();
+    if (!G.pendingRegulationChoices!.length) delete G.pendingRegulationChoices;
+    consumeMeasureEffects(G, [pending.instanceId]);
+  }
+
+  function continueRegisteredDecisions(G: CoreState): void {
+    while (G.pendingRegulationChoices?.length && regulationFollowUpChoices(G).length === 1) {
+      removeRegulationFollowUp(G, G.pendingRegulationChoices[0]);
+    }
+    if (!G.pendingRegulationChoices && !G.pendingHotspot && G.remainingHotspots) {
+      const remaining = G.remainingHotspots;
+      delete G.remainingHotspots;
+      resumeHotspots(G, remaining);
+      if (G.pendingRegulationChoices) continueRegisteredDecisions(G);
+    }
+  }
+
+  function resumeHotspots(G: CoreState, tileIds: string[]): void {
+    for (const [index, id] of tileIds.entries()) {
+      if (G.pendingRegulationChoices) {
+        G.remainingHotspots = tileIds.slice(index);
+        return;
+      }
+      const placement = G.tiles.board.find(tile => tile.tileId === id);
+      if (!placement) continue;
+      resolveEffect(G, { kind: 'resolveHotspotAt', coord: placement.coord });
+      if (G.pendingHotspot) {
+        const rest = tileIds.slice(index + 1);
+        if (rest.length) G.remainingHotspots = rest;
+        return;
+      }
+      if (G.pendingRegulationChoices) {
+        G.remainingHotspots = tileIds.slice(placement.enclosureProcessed ? index + 1 : index);
+        return;
+      }
+    }
+  }
+
   function resolveEffect(G: CoreState, requested: EffectDescriptor): ResolveResult {
     // CORE-01-06-00-05(c): production checks local prohibitions on the producing Tile.
     const effect = requested.kind === 'applyProductionAt' ? { ...requested, contextCoord: requested.coord } : requested;
     if (effect.kind === 'recordTurnHash') {
       // AGENTS 5.3: hash the completed turn, excluding the previous checkpoint.
       G.lastTurnHash = stableHash({ state: { ...G, lastTurnHash: undefined }, turn: effect.turn, playerID: effect.playerID });
+      return { ok: true };
+    }
+
+    if (effect.kind === 'recordDecisionContinuation') {
+      if (effect.continuation) G.decisionContinuation = effect.continuation;
+      else delete G.decisionContinuation;
+      return { ok: true };
+    }
+    if (effect.kind === 'continueRegisteredDecisions') {
+      continueRegisteredDecisions(G);
       return { ok: true };
     }
 
@@ -783,6 +920,9 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
         instance.sourceCardId === 'SEC_M08' || instance.sourceCardId === 'SEC_M12') ?? [];
       for (const instance of operations) {
         if (instance.regulation) resolveEffect(G, { kind: 'regulationOperation', playerID: instance.owner, regulation: instance.regulation });
+        consumeMeasureEffects(G, [instance.id]);
+        continueRegisteredDecisions(G);
+        if (G.pendingRegulationChoices) break;
       }
       return { ok: true };
     }
@@ -791,6 +931,72 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
       const plan = planMeasureAction(G, effect, active);
       if (!plan.ok) return plan;
       plan.commit();
+      return { ok: true };
+    }
+
+    if (effect.kind === 'chooseRegulationFollowUp') {
+      const pending = G.pendingRegulationChoices?.[0];
+      if (!pending || pending.playerID !== effect.playerID) return { ok: false, reason: 'follow-up-unavailable' };
+      const { choice } = effect;
+      if (choice.kind === 'greenwashing') return { ok: false, reason: 'invalid-follow-up' };
+      if (choice.kind === 'decline') {
+        removeRegulationFollowUp(G, pending);
+      } else {
+        const { regulation } = choice;
+        const permitted = pending.kind === 'deploymentOrder'
+          ? regulation.operation === 'move' && regulation.regulationId === pending.regulationId
+          : regulation.operation === 'place' && regulation.regulationKind === 'Control' && regulation.tileId === pending.tileId;
+        if (!permitted) return { ok: false, reason: 'invalid-follow-up' };
+        const plan = planRegulationAction(G, {
+          kind: 'regulationOperation', playerID: pending.playerID, regulation, payment: choice.payment,
+        }, active);
+        if (!plan.ok) return plan;
+        removeRegulationFollowUp(G, pending);
+        plan.commit();
+      }
+      continueRegisteredDecisions(G);
+      return { ok: true };
+    }
+
+    if (effect.kind === 'chooseHotspotOutcome') {
+      const pending = G.pendingHotspot;
+      if (!pending || pending.playerID !== effect.playerID) return { ok: false, reason: 'hotspot-choice-unavailable' };
+      const placement = G.tiles.board.find(tile => tile.tileId === pending.tileId);
+      if (!placement) return { ok: false, reason: 'hotspot-unavailable' };
+      const { choice } = effect;
+      if (choice.kind === 'regulation') {
+        if (pending.outcome !== 'regulation' || (choice.regulation.operation !== 'place' && choice.regulation.operation !== 'move')) {
+          return { ok: false, reason: 'invalid-hotspot-choice' };
+        }
+        // EXP-02-02-G-04..05B: the majority player's Regulation resolution uses Inner Order as its context.
+        const placed = resolveEffect(G, {
+          kind: 'regulationOperation', playerID: pending.playerID, regulation: choice.regulation,
+          contextTileId: pending.tileId, payment: choice.payment,
+        });
+        if (!placed.ok) return placed;
+      } else if (choice.kind === 'greenwashing') {
+        if (pending.outcome !== 'greenwashing') return { ok: false, reason: 'invalid-hotspot-choice' };
+        const supply = G.players[pending.playerID].personal.influence;
+        if (!supply.length) return { ok: false, reason: 'influence-unavailable' };
+        // EXP-03-08-M05-05..08: stage the single fixed fee separately from ordinary surcharges.
+        const transaction = createBankTransaction(G, createMatchResourceRegistry(active));
+        const fee = transaction.transfer({
+          from: 'PersonalSupply', to: 'Bank', playerID: pending.playerID, resource: choice.resource, amount: 1,
+        });
+        if (!fee.ok) return fee;
+        const outcome: ResolveHotspotAtEffect = { kind: 'resolveHotspotAt', coord: placement.coord, contextCoord: placement.coord };
+        const amount = modifyOutput(G, outcome, hooks, 1);
+        if (amount !== 0 && amount !== 1) return { ok: false, reason: 'invalid-influence-output' };
+        transaction.commit();
+        if (amount === 1) placeSupplyMarker(G, supply, supply.length - 1, pending.tileId);
+      }
+      // CORE-01-06-04(d)/-04A: decline also completes the event before moving to the next Tile ID.
+      placement.enclosureProcessed = true;
+      delete G.pendingHotspot;
+      const rest = G.remainingHotspots ?? [];
+      delete G.remainingHotspots;
+      resumeHotspots(G, rest);
+      continueRegisteredDecisions(G);
       return { ok: true };
     }
 
@@ -811,9 +1017,8 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
       // CORE-01-06-03/-03A: resolve all enclosures before the political action, in ordinal Tile ID order.
       if (G.allTiles[placed.tileId]?.kind === 'Hotspot') candidates.push(placed);
       candidates.sort((a, b) => a.tileId < b.tileId ? -1 : a.tileId > b.tileId ? 1 : 0);
-      for (const candidate of candidates) {
-        resolveEffect(G, { kind: 'resolveHotspotAt', coord: candidate.coord });
-      }
+      resumeHotspots(G, candidates.map(candidate => candidate.tileId));
+      continueRegisteredDecisions(G);
       return { ok: true };
     }
 
@@ -821,7 +1026,7 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
       const placement = G.tiles.board.find(p => p.coord.q === effect.coord.q && p.coord.r === effect.coord.r);
       const hotspot = placement && G.allTiles[placement.tileId];
       // CORE-01-06-01/-02A: check geometry and the persisted guard before evaluating the event.
-      if (!placement || placement.enclosureProcessed || hotspot?.kind !== 'Hotspot'
+      if (G.pendingHotspot || !placement || placement.enclosureProcessed || hotspot?.kind !== 'Hotspot'
           || !isFullySurrounded(G, placement.coord)) return { ok: true };
 
       // CORE-01-06-04(a) and EXP-02-08-M02-03..05: each registered decree attempts once before majority.
@@ -832,19 +1037,29 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
           kind: 'regulationOperation', playerID: decree.owner,
           regulation: { operation: 'place', regulationKind: 'Blockade', tileId: placement.tileId },
         });
-        G.activeMeasureEffects = G.activeMeasureEffects?.filter(instance => instance.id !== decree.id);
-        if (G.activeMeasureEffects?.length === 0) delete G.activeMeasureEffects;
+        consumeMeasureEffects(G, [decree.id]);
+        if (G.pendingRegulationChoices) return { ok: true };
       }
 
       // CORE-01-06-00-05(d) and CORE-01-06-04(b)/(c): bind the Hotspot, then check its majority and outcome.
       const outcome = { ...effect, contextCoord: placement.coord };
       const winner = computeMajority(G, placement.coord);
-      // EXP-02-02-G-07: the special Inner Order outcome never awards Influence.
-      if (winner !== null && hotspot.hotspotOutcome !== 'regulation' && !isProhibited(G, outcome, hooks)) {
-        // CORE-01-06-05/-06/-07 and CORE-01-06-00-07(a): transfer one existing marker without a payer.
-        const supply = G.players[winner].personal.influence;
-        const amount = modifyOutput(G, outcome, hooks, 1);
-        if (amount === 1 && supply.length > 0) placeSupplyMarker(G, supply, supply.length - 1, placement.tileId);
+      if (winner !== null && !isProhibited(G, outcome, hooks)) {
+        // EXP-02-02-G-04/-07 and EXP-03-08-M05-04..09: only the entitled player may choose.
+        const choice = hotspot.hotspotOutcome === 'regulation' ? 'regulation'
+          : isGreenwashingActive(G) ? 'greenwashing' : undefined;
+        if (choice) {
+          const pending: PendingHotspot = { tileId: placement.tileId, playerID: winner, outcome: choice };
+          if (hotspotChoices(G, pending).length) {
+            G.pendingHotspot = pending;
+            return { ok: true };
+          }
+        } else {
+          // CORE-01-06-05/-06/-07 and CORE-01-06-00-07(a): transfer one existing marker without a payer.
+          const supply = G.players[winner].personal.influence;
+          const amount = modifyOutput(G, outcome, hooks, 1);
+          if (amount === 1 && supply.length > 0) placeSupplyMarker(G, supply, supply.length - 1, placement.tileId);
+        }
       }
       // CORE-01-06-04(d)/-04A: consume the enclosure even when its outcome did not execute.
       placement.enclosureProcessed = true;
@@ -910,5 +1125,5 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     }
   }
 
-  return Object.assign(resolveEffect, { previewPoliticalAction, previewMeasureAction, previewRegulationAction });
+  return Object.assign(resolveEffect, { previewPoliticalAction, previewMeasureAction, previewRegulationAction, hotspotChoices, regulationFollowUpChoices });
 }

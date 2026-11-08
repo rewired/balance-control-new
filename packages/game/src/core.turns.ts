@@ -1,13 +1,15 @@
-import type { Ctx, FnContext, Game, Move } from 'boardgame.io';
+import type { FnContext, Game, Move } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
-import type { AxialCoord, CoreState } from '@bc/rules';
+import type { AxialCoord, CoreState, DecisionContinuation } from '@bc/rules';
 import {
   assertExpansionStateMatchesConfig, buildMoveCatalog, corePoliticalMoves,
-  createExpansionRegistry, createResolver, PaymentSelectionSchema, politicalMoveOptions, resolveRoundSettlement, z,
+  createExpansionRegistry, createResolver, HotspotChoiceSchema, PaymentSelectionSchema, politicalMoveOptions, resolveRoundSettlement, z,
 } from '@bc/rules';
 
 export const CoreStages = {
   DrawAndPlaceTile: 'DrawAndPlaceTile',
+  ResolveHotspot: 'ResolveHotspot',
+  ResolveRegulationFollowUp: 'ResolveRegulationFollowUp',
   ExactlyOnePoliticalAction: 'ExactlyOnePoliticalAction',
   AdditionalPoliticalAction: 'AdditionalPoliticalAction',
 } as const;
@@ -24,21 +26,51 @@ const placeTile: Move<CoreState> = ({ G, ctx, events }, requested: AxialCoord, p
   if (!selected.success) return INVALID_MOVE;
   const placed = createResolver()(G, { kind: 'placeTile', tileId: drawn.tileId, coord, playerID: ctx.currentPlayer, payment: selected.data });
   if (!placed.ok) return INVALID_MOVE;
-  beginPoliticalSlot({ G, ctx, events }, false);
+  afterEnclosure({ G, ctx, events });
 };
 
-function settleAndRecordTurn(G: CoreState, ctx: Ctx, settle: boolean): void {
+const chooseHotspotOutcome: Move<CoreState> = ({ G, ctx, events, playerID }, action: unknown) => {
+  const parsed = HotspotChoiceSchema.safeParse(action);
+  if (!parsed.success || playerID == null) return INVALID_MOVE;
+  const chosen = createResolver()(G, { kind: 'chooseHotspotOutcome', playerID, choice: parsed.data });
+  if (!chosen.ok) return INVALID_MOVE;
+  afterEnclosure({ G, ctx, events });
+};
+
+const chooseRegulationFollowUp: Move<CoreState> = ({ G, ctx, events, playerID }, action: unknown) => {
+  const parsed = HotspotChoiceSchema.safeParse(action);
+  if (!parsed.success || playerID == null || !G.decisionContinuation) return INVALID_MOVE;
+  const resolve = createResolver();
+  const chosen = resolve(G, { kind: 'chooseRegulationFollowUp', playerID, choice: parsed.data });
+  if (!chosen.ok) return INVALID_MOVE;
+  const continuation = G.decisionContinuation;
+  const turn = { G, ctx, events };
+  if (suspendForRegulation(turn, continuation)) return;
+  resolve(G, { kind: 'recordDecisionContinuation' });
+  if (continuation === 'enclosures') afterEnclosure(turn);
+  else if (continuation === 'additional') beginPoliticalSlot(turn, true);
+  else if (continuation === 'finalSettlement') finishTurn(turn, true);
+  else completePoliticalSequence(turn);
+};
+
+function finishTurn(turn: TurnContext, final: boolean): void {
+  const { G, ctx, events } = turn;
   // CORE-01-07-08/-09: expire turn-bound effects before any regular or final Settlement.
   const resolve = createResolver();
   resolve(G, { kind: 'expireMeasureEffects', boundary: 'turnEnd', playerID: ctx.currentPlayer });
-  if (settle) resolveRoundSettlement(G);
+  // CORE-01-07-02/-03 and CORE-01-09-01C: a coinciding final Settlement is the same event.
+  if (final || ctx.playOrderPos === ctx.playOrder.length - 1) {
+    if (!resolveRoundSettlement(G)) {
+      suspendForRegulation(turn, final ? 'finalSettlement' : 'turnEnd');
+      return;
+    }
+  }
   // AGENTS 5.3: record the completed state before the next turn begins.
   resolve(G, { kind: 'recordTurnHash', turn: ctx.turn, playerID: ctx.currentPlayer });
-}
-
-function finishMatch({ G, ctx, events }: Pick<FnContext<CoreState>, 'G' | 'ctx' | 'events'>): void {
-  // CORE-01-09-01C and CORE-01-09-02: settle exactly once, then score the Board.
-  settleAndRecordTurn(G, ctx, true);
+  if (!final) {
+    events.endTurn();
+    return;
+  }
   // CORE-01-09-03/-04: compare real Board markers and share ties.
   const scores = Object.keys(G.players).map(playerID => ({
     playerID,
@@ -50,10 +82,30 @@ function finishMatch({ G, ctx, events }: Pick<FnContext<CoreState>, 'G' | 'ctx' 
 
 type TurnContext = Pick<FnContext<CoreState>, 'G' | 'ctx' | 'events'>;
 
+function suspendForRegulation(turn: TurnContext, continuation: DecisionContinuation): boolean {
+  const resolve = createResolver();
+  resolve(turn.G, { kind: 'continueRegisteredDecisions' });
+  const pending = turn.G.pendingRegulationChoices?.[0];
+  if (!pending) return false;
+  resolve(turn.G, { kind: 'recordDecisionContinuation', continuation });
+  turn.events.setActivePlayers({ value: { [pending.playerID]: CoreStages.ResolveRegulationFollowUp } });
+  return true;
+}
+
+function afterEnclosure(turn: TurnContext): void {
+  if (suspendForRegulation(turn, 'enclosures')) return;
+  const pending = turn.G.pendingHotspot;
+  if (pending) {
+    // CORE-01-06-03: finish each enclosure choice before the current player's Political Action.
+    turn.events.setActivePlayers({ value: { [pending.playerID]: CoreStages.ResolveHotspot } });
+  } else {
+    beginPoliticalSlot(turn, false);
+  }
+}
+
 function completePoliticalSequence({ G, ctx, events }: TurnContext): void {
   // CORE-01-09-01A: the last placement keeps its full political action sequence.
-  if (G.tiles.drawPile.length === 0) finishMatch({ G, ctx, events });
-  else events.endTurn();
+  finishTurn({ G, ctx, events }, G.tiles.drawPile.length === 0);
 }
 
 function budgetDeficits(G: CoreState, playerID: string): string[] {
@@ -68,7 +120,7 @@ function beginPoliticalSlot(turn: TurnContext, additional: boolean): void {
     completePoliticalSequence(turn);
     return;
   }
-  turn.events.setStage(additional ? CoreStages.AdditionalPoliticalAction : CoreStages.ExactlyOnePoliticalAction);
+  turn.events.setActivePlayers({ currentPlayer: additional ? CoreStages.AdditionalPoliticalAction : CoreStages.ExactlyOnePoliticalAction });
 }
 
 // CORE-01-04-09 and CORE-01-06-00-12: reject invalid input before spending the slot.
@@ -93,6 +145,7 @@ const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown)
   createResolver()(G, { kind: 'consumeBudgetDeficits', ids: deficits });
 
   // EXP-01-06-05(b) and CORE-01-07-08: complete the whole action sequence in this turn.
+  if (suspendForRegulation({ G, ctx, events }, definition.isPlayMeasure ? 'additional' : 'turnEnd')) return;
   if (definition.isPlayMeasure) beginPoliticalSlot({ G, ctx, events }, true);
   else completePoliticalSequence({ G, ctx, events });
 };
@@ -102,6 +155,8 @@ export const CoreTurn: NonNullable<Game<CoreState>['turn']> = {
   activePlayers: { currentPlayer: CoreStages.DrawAndPlaceTile },
   stages: {
     [CoreStages.DrawAndPlaceTile]: { moves: { placeTile } },
+    [CoreStages.ResolveHotspot]: { moves: { chooseHotspotOutcome } },
+    [CoreStages.ResolveRegulationFollowUp]: { moves: { chooseRegulationFollowUp } },
     [CoreStages.ExactlyOnePoliticalAction]: { moves: { doPoliticalAction } },
     [CoreStages.AdditionalPoliticalAction]: { moves: { doPoliticalAction } },
   },
@@ -122,10 +177,6 @@ export const CoreTurn: NonNullable<Game<CoreState>['turn']> = {
     const draw = resolve(G, { kind: 'drawTile', playerID: ctx.currentPlayer, turn: ctx.turn });
     if (!draw.ok) throw new Error(`Draw failed: ${draw.reason}`);
     // CORE-01-09-01B and VAR-01-01-08: an exhausted draw omits political action.
-    if (!G.tiles.drawResolution) finishMatch({ G, ctx, events });
-  },
-  onEnd: ({ G, ctx }) => {
-    // CORE-01-07-02/-03: settle once when the last player completes the round.
-    settleAndRecordTurn(G, ctx, ctx.playOrderPos === ctx.playOrder.length - 1);
+    if (!G.tiles.drawResolution) finishTurn({ G, ctx, events }, true);
   },
 };

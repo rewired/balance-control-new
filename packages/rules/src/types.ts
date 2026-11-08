@@ -141,6 +141,18 @@ export interface ActiveMeasureEffect {
   used?: true;
 }
 
+export interface PendingHotspot {
+  tileId: string;
+  playerID: string;
+  outcome: 'regulation' | 'greenwashing';
+}
+
+export type PendingRegulationChoice = { instanceId: string; playerID: string } & (
+  { kind: 'deploymentOrder'; regulationId: string }
+  | { kind: 'competenceConflict'; tileId: string }
+);
+export type DecisionContinuation = 'enclosures' | 'additional' | 'turnEnd' | 'finalSettlement';
+
 export interface CoreState {
   cfg: import('./schemas.js').MatchConfig;
   matchSeed: string;
@@ -151,6 +163,10 @@ export interface CoreState {
   lastTurnHash?: string; // AGENTS 5.3: SHA-256 at the most recent completed turn
   influencesOnBoard?: InfluenceOnBoard[];
   activeMeasureEffects?: ActiveMeasureEffect[];
+  pendingHotspot?: PendingHotspot;
+  remainingHotspots?: string[];
+  pendingRegulationChoices?: PendingRegulationChoice[];
+  decisionContinuation?: DecisionContinuation;
   playedMeasureThisRound?: Record<string, boolean>;
   exp?: ExpansionsState;
 }

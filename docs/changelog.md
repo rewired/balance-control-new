@@ -457,3 +457,9 @@
 - Der Zahlungsplan bucht Grundkosten und Aufschläge gemeinsam und berücksichtigt Herkunft, Climate-Schutz, Ersetzung, Transfer und Council-Nutzung. Pflichtslots ohne legale Aktion verbrauchen Budget Deficit.
 - Regulationen behalten beim Transfer ihre Identität. Authority Apparatus bindet seinen eigenen Kontext. Emergency Decree löst seinen separaten Versuch vor der Hotspot-Mehrheit aus, und registrierte Settlement-Operationen laufen vor der Produktion.
 - 153 Workspace-Tests, Lint, Mutation-Check und Game-TypeScript-Build bestehen unter Node 22.22.2.
+
+## 2026-11-08 — Task 0030 — Entscheidungen bei Hotspots und Folgeeffekten
+
+- Die Engine bietet Inner Order und Greenwashing dem Mehrheitsinhaber an und setzt die Einschließungssequenz nach dessen Wahl fort.
+- Deployment Order und Competence Conflict warten auf die Wahl des ursprünglichen Maßnahmeneigentümers. Auch ein begonnenes Settlement kann nach einer Folgeentscheidung ohne erneute Zahlung fortgesetzt werden.
+- Projektstandard ist Node.js 24 LTS mit 24.22.2 in .nvmrc. Die vollständige Testsuite, Lint und der Game-TypeScript-Build laufen auf dieser Version.
