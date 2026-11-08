@@ -6,8 +6,8 @@ export * from './schemas.js';
 export * from './setup.js';
 
 export * from './topology/hex.js';
+export * from './topology/index.js';
 export * from './placement.js';
-export * from './draw.js';
 
 export * from './majority.js';
 export * from './hotspot.js';

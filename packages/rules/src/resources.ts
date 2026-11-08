@@ -1,4 +1,5 @@
 import type { ResourceId } from './types.js';
+import type { ExpansionModule } from './expansion-registry.js';
 
 export interface ResourceMeta { label?: string; icon?: string }
 
@@ -30,6 +31,13 @@ export function createCoreResourceRegistry(): ResourceRegistry {
   r.register('FOR');
   r.register('INF');
   return r;
+}
+
+// CORE-01-00-04C: only the modules enabled for this match contribute resorts.
+export function createMatchResourceRegistry(modules: readonly ExpansionModule[]): ResourceRegistry {
+  const registry = createCoreResourceRegistry();
+  for (const module of modules) module.registerResources(registry);
+  return registry;
 }
 
 export type ResourceAmounts = Record<ResourceId, number>;

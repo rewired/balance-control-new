@@ -362,3 +362,78 @@
 - Abschlussprüfung der vier normativen Spezifikationen: 801 eindeutige Regel-/Abschnittsanker, keine doppelten Definitionen, alle ausgeschriebenen vollständigen Abschnittsverweise auflösbar. Kein normativer Overlay-Begriff oder Bearbeitungsrest mehr vorhanden.
 - Alle 26 Befunde sind entschieden: R01–R11 und R13–R26 über ERRATA-0001 bis -0030 normativ übernommen, R12 durch R02 geklärt. DD-0017 auf Accepted gesetzt; keine offene Regelentscheidung aus diesem Audit.
 - Game-Code unverändert. Softwareabgleich, Implementierung und Validierung gegen die konsolidierten Regeln stehen aus; frühere Tests/Lint-Ergebnisse bleiben historische Bestandsprüfung.
+
+## 2026-11-08 — Softwareabgleich mit konsolidierten Regeln
+
+- Regelkonsolidierung als Commit `3d6f289` nach `origin/main` gesichert; Softwareabgleich auf `codex/rules-software-audit` in DD-0018 abgeschlossen dokumentiert.
+- 20 priorisierte Softwarebefunde mit Normankern, Codebelegen, Reproduktionsrezepten und Zuordnung aller R01–R26 erfasst. Schwerpunkte: echte Engine-Integration, fehlende CORE-Aktionen/Spielabschluss, Mehrheit/Produktion, Ressourcenbank, Maßnahmenmodell, Erweiterungsstubs und Bot-Legalität.
+- 19 gezielte Laufzeit-Sollprüfungen bestätigen Abweichungen. Separate Material-/Ressourcenprüfung aller acht Konfigurationen: CORE besteht diese Setup-Teilprüfung, sieben Erweiterungskombinationen scheitern. Das ersetzt keinen vollständigen Interaktions- oder Konformitätsnachweis.
+- Vorhandener Code: 65 Tests in 30 Dateien bestanden. Lint scheitert an drei bestehenden `any`-Fehlern im Server-Bot-Runner; Encoding-Check meldet fünf bereits zuvor betroffene Dateien. Mutation-Check besteht mit den in DD-0018 beschriebenen Abdeckungsgrenzen. Prüfungen unter Node 24.18.0 außerhalb des deklarierten Bereichs; vorgesehene Node-Version bleibt nachzuweisen.
+- Task 0030 enthält die gestufte Umsetzung mit dauerhaften Regressionstests, echten Engine-Replays und allen acht erforderlichen Erweiterungs-Interaktionssuiten. DD-0017 verweist auf den abgeschlossenen Abgleich; Implementierung und Konformitätsnachweis bleiben offen.
+- Produktivcode und normative Regeln unverändert; temporäre Diagnosetests nach Ausführung entfernt.
+
+## 2026-11-08 — Task 0030: Engine-Setup und Zugablauf
+
+- boardgame.io erhält zwei bis vier Spieler aus seinem Setup-Kontext. Die Factory liest die validierten Match-Optionen und `matchSeed` aus dem zweiten Setup-Argument. Der Headless-Runner verwendet denselben Zustandsinitialisierer.
+- Ziehen, Platzierung, politische Aktion und ein gewährter Zusatzslot laufen als Stages desselben Engine-Turns. Abgelehnte Platzierungen und politische Eingaben behalten ihren Slot. Settlement läuft einmal nach dem letzten vollständigen Zug der Runde. Die EXP-01-Nutzung wird bei Beginn der Folgerunde zurückgesetzt.
+- `InitializeGame`, `createMatch` und der echte `Client` prüfen Setup, Seed, Phasen und Zusatzaktion. Zwei Wiederholungen von zwei vollständigen Runden liefern dieselben Zustandshashes nach jedem Zug.
+- `pnpm test` besteht mit 70 Tests, davon 28 im Game-Paket. Workspace-Lint und Mutation-Check bestehen. TypeScript-Prüfung der Engine und ihrer Projektabhängigkeiten besteht mit explizit eingebundenen vorhandenen Node-Typen. Standard-Build meldet die bestehende Typauflösung für `node:crypto` in `shared`. Laufzeitprüfungen unter Node 24.18.0.
+- Architektur und Prüfgrenzen in DD-0019, Fortschritt in Task 0030 und DD-0018 dokumentiert.
+
+## 2026-11-08 — Task 0030: Banktransfers und Zug-Hashes
+
+- Setup und Resolver verwenden dieselbe Registry für aktive Ressorts. Bank, Noise und PersonalSupply werden je Auflösung gemeinsam gebucht. Zahlungen gehen in Bank. Auszahlungen verbrauchen Bestand und erzeugen fehlende aktive Einheiten bedarfsgerecht.
+- Die Produktion eines ResortTiles überträgt alle geplanten Anteile und den Noise-Rest in einer Transaktion. Die internen Transfers erhalten keinen erneuten Kostenpass.
+- SHA-256 nutzt kanonisch sortiertes JSON nach den Speicherregeln. Der Game-Layer speichert `lastTurnHash` nach jedem regulären Zug. Die Hashfunktion ist auch im Webclient verfügbar.
+- T05/T06/T19 sind dauerhaft abgedeckt. Die 79 Workspace-Tests, Workspace-Lint, Mutation-Check, Game-TypeScript-Build und Webclient-Build bestehen unter Node 24.18.0. Die beiden Hash-Abhängigkeiten sind offline aus dem vorhandenen Lockfile verknüpft.
+- Architektur und Nachweise in DD-0020, Fortschritt in Task 0030 und DD-0018 dokumentiert.
+
+## 2026-11-08 — Task 0030: DrawResolution, Topologie und Match-Optionen
+
+- DrawResolution hält höchstens ein Tile. Der Resolver prüft Geometrie, Prohibitions und Zahlung mit demselben Plan für Angebot und Platzierung. Tile und Zahlung werden zusammen übertragen. TileRecycling überspringt bereits versuchte IDs und verwirft unbezahlbare Tiles mit vorhandener Geometrie.
+- Hex und orthogonale Adjazenz sind über die Match-Konfiguration gebunden. Die gewählte Topologie steuert Platzierungskoordinaten, Hotspot-Einschließung und die Nachbarschaft der Mehrheits- und Produktionsberechnung.
+- FirstPlayerHandicap und TileRecycling sind separat schaltbar. `addOn56` validiert die Spielerzahl und ergänzt das CORE-Material und die Startmarker für fünf und sechs Spieler. Bei erschöpfter Ziehphase und nach dem vollständigen letzten Zug läuft genau ein finales Settlement.
+- Setup und Ziehen über die echte Engine geprüft. Der Golden-Replay verwendet zehn feste Engine-Züge. 91 Tests, Workspace-Lint, Mutation-Check, Game-TypeScript-Build und Webclient-Build bestehen unter Node 24.18.0.
+- Konfigurationsbeispiel, Architektur und Prüfgrenzen stehen in DD-0021. Task 0030 führt Cap 8 bei Influence-Erzeugung und Erweiterungsmaterial als weitere Arbeit.
+
+## 2026-11-08 — Task 0030: Kanonische Mehrheit und Kontrollrechte
+
+- Kontrolle, Hotspots und Produktion verwenden dieselbe Mehrheitsberechnung. Sie liefert den Controller, positive Führende und die Einflusswerte pro Spieler.
+- Ein kontrollierter Lobbyist gibt den Bonus ausschließlich seinem Controller. Boni addieren sich und können Kontrolle auf leeren Committees und Grassroots begründen. Lobbyisten und Start Committee erhalten keine Boni. Ein Gleichstand auf dem Lobbyisten erzeugt keinen Bonus.
+- Produktion verteilt nur an positive Führende. Bei Nullmehrheit bleiben PersonalSupply, Bank und Noise unverändert. Der Golden-Replay prüft den korrigierten Noise-Bestand und den neuen Hash.
+- T01/T02/T03 sind dauerhaft abgedeckt. 93 Workspace-Tests, Lint, Mutation-Check und Game-TypeScript-Build bestehen unter Node 24.18.0. Die Umsetzung steht in DD-0022 und Task 0030.
+
+
+## 2026-11-08 — Task 0030 — Politische CORE-Aktionen
+
+- PlaceOrMoveInfluence platziert oder bewegt genau einen eigenen Marker. ID und Eigentümer bleiben beim Zonenwechsel erhalten. Der automatische Hotspot-Transfer erhält ebenfalls die Marker-ID.
+- Committee-Formalisierung prüft Kontrolle, Startmarker-Timing, Ressortkosten und das Cap von 7 beziehungsweise 8 Markern. Das Start Committee wendet seine Immunität und sein Nutzungslimit pro Spieler an.
+- Grassroots tauscht atomar drei Einheiten eines aktiven Ressorts gegen eine Einheit eines anderen aktiven Ressorts. Die Engine schließt Pflichtslots ohne legale Option automatisch ab. Der Hotseat-Client zeigt die verfügbaren Aktionen aus demselben Katalog.
+- 103 Workspace-Tests, darunter zehn neue boardgame.io-Tests, Lint, Mutation-Check, Game-TypeScript-Build und Webclient-Build bestehen unter Node 22.22.2. Task 0030 und DD-0023 dokumentieren den Umfang.
+
+## 2026-11-08 — Task 0030 — Einmalige Hotspot-Einschließung
+
+- Jeder vollständig eingeschlossene Hotspot erhält nach dem ersten Ereignis einen Vermerk am Board-Eintrag. Er bleibt auch bei Gleichstand, Verbot, leerem PersonalSupply oder null Output erhalten.
+- Gleichzeitige Einschließungen werden vor der politischen Aktion nach ordinaler Tile-ID verarbeitet. Jeder Hotspot verwendet den Zustand nach dem vorangegangenen Ereignis.
+- T04 prüft die Verarbeitung über boardgame.io einschließlich erneutem Aufruf nach einem JSON-Roundtrip und beider Tile-ID-Reihenfolgen für den letzten gemeinsamen Influence-Marker.
+- 111 Workspace-Tests, darunter acht neue Engine-Fälle, Lint, Mutation-Check, Game-TypeScript-Build und Webclient-Build bestehen unter Node 22.22.2. Die Umsetzung steht in DD-0024 und Task 0030.
+
+## 2026-11-08 — Task 0030 — Engine-Endspielreplays
+
+- Ein vollständiger CORE-Replay verarbeitet alle 71 Tiles. Er prüft geteilten Sieg, einmalige Produktion samt Noise in der verkürzten Schlussrunde und deterministische Checkpoints für jeden Zug.
+- Zwei kürzere Replays prüfen das reguläre Rundenende nach Hotspot, Measure und Zusatzaktion sowie das Ende nach unbezahlbaren Ziehversuchen. Der Endzustand bleibt bei weiteren Move-Eingaben stabil.
+- Alle drei Replays laufen zweimal mit festen Seeds und Aktionen. Sie prüfen die Gewinner, den erwarteten Produktionszuwachs und feste Endhashes, die auch aus dem serialisierten Zustand reproduzierbar sind.
+- 114 Workspace-Tests, Lint, Mutation-Check und Game-TypeScript-Build bestehen unter Node 22.22.2.
+
+## 2026-11-08 — Task 0030 — Kanonische Produktionsrechnung
+
+- Resort-Produktion prüft Verbote am produzierenden Tile. Typisierte Modifikatoren verdoppeln den Druckwert und liefern additive Deltas. Die Rechnung summiert alle aktiven Deltas und wendet den Minimum-0-Floor einmal vor Mehrheit, Anteilen und Noise an.
+- T07 prüft über boardgame.io, dass ein kontrolliertes DOM-W3 trotz aktivem synthetischem Kostenzuschlag und leerer PersonalSupply 3 DOM produziert. Weitere Engine-Fälle prüfen Verbot, Verdopplung, Modifikatorstapel, deaktivierte Quellen und Noise-Rest.
+- 118 Workspace-Tests, Lint, Mutation-Check, Game-TypeScript-Build und Webclient-Build bestehen unter Node 22.22.2. DD-0025 und Task 0030 dokumentieren die Umsetzung.
+
+## 2026-11-08 — Task 0030 — Investment Freeze und Supply Chain Disruption
+
+- Investment Freeze filtert die Measure-Modifikatoren eines ResortTiles, wenn das Ziel es zum Produktionszeitpunkt kontrolliert. Regulationen und sonstige Quellen bleiben wirksam.
+- Supply Chain Disruption begrenzt die endgültige Auszahlung je ResortTile und betroffenen Empfänger auf höchstens eins. Andere Spieler und Noise erhalten ihre regulären Beträge. Die Kürzung bleibt ungebucht.
+- Der Resolver speichert die registrierten Produktionswirkungen unabhängig von Kartenzonen und verarbeitet ihren Ablauf am Settlement- oder Zugbeginn. Die Engine-Tests verwenden einen Test-Move für die Registrierung. Reguläres Kartenspiel folgt mit den Erweiterungen.
+- 122 Workspace-Tests, Lint, Mutation-Check, TypeScript- und Webclient-Build bestehen unter Node 22.22.2.

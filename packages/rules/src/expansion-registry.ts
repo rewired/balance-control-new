@@ -7,13 +7,16 @@ export interface ProhibitionsArgs { G: CoreState; effect: EffectDescriptor }
 export interface CostIncreasesArgs { G: CoreState; effect: EffectDescriptor; cost?: Partial<ResourceAmounts> }
 export interface OutputModifiersArgs { G: CoreState; effect: EffectDescriptor; amount: number }
 export interface ProductionModifiersArgs { G: CoreState; coord: AxialCoord; tile: ResortTile; amount: number }
-export type ProductionModifier = (amount: number) => number;
+export type ProductionModifier = { source: 'measure' | 'regulation' | 'other' } & (
+  { kind: 'double' } | { kind: 'additive'; delta: number }
+);
 
 export interface ExpansionHooks {
   prohibitions?: (args: ProhibitionsArgs) => boolean;
   costIncreases?: (args: CostIncreasesArgs) => Partial<ResourceAmounts> | void;
   outputModifiers?: (args: OutputModifiersArgs) => number | void;
-  productionModifiers?: (args: ProductionModifiersArgs) => ProductionModifier[] | void;
+  // CORE-01-06-16-00: report only effects eligible for this tile's production instance.
+  productionModifiers?: (args: ProductionModifiersArgs) => readonly ProductionModifier[] | void;
 }
 
 export interface ExpansionModule {

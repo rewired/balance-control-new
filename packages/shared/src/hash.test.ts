@@ -7,4 +7,9 @@ describe('stableHash', () => {
     const b = { a: { q: 'x', z: [3,2,1] }, b: 1 } as const;
     expect(stableHash(a)).toBe(stableHash(b));
   });
+
+  it('uses JSON values for nested optional fields and array slots', () => {
+    const value = { skipped: undefined, entries: [undefined, NaN, { skipped: undefined, keep: true }] };
+    expect(stableHash(value)).toBe(stableHash({ entries: [null, null, { keep: true }] }));
+  });
 });

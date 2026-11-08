@@ -1,65 +1,59 @@
-// CORE-01-05 â€” Majority & Control (canonical)
-import type { AxialCoord, BoardPlacement, CoreState, Tile } from './types.js';
+import type { AxialCoord, CoreState } from './types.js';
+import { getTopology } from './topology/index.js';
 
 export interface MajorityBreakdown { [playerID: string]: number }
 
-function findPlacementAt(board: BoardPlacement[], coord: AxialCoord): BoardPlacement | undefined {
-  return board.find((p) => p.coord.q === coord.q && p.coord.r === coord.r);
+export interface MajorityResult {
+  controller: string | null;
+  leaders: string[];
+  scores: MajorityBreakdown;
 }
 
-function influencesOnTile(state: CoreState, tileId: string, playerID: string): number {
-  const list = (state as CoreState & { influencesOnBoard?: Array<{ tileId: string; owner: string; count: number }> }).influencesOnBoard as Array<{ tileId: string; owner: string; count: number }> | undefined;
-  if (!list) return 0;
-  return list.filter((i) => i.tileId === tileId && i.owner === playerID).reduce((a, b) => a + b.count, 0);
+function scoreTile(state: CoreState, coord: AxialCoord): MajorityBreakdown {
+  const scores = Object.fromEntries(Object.keys(state.players).sort().map(playerID => [playerID, 0]));
+  const placement = state.tiles.board.find(p => p.coord.q === coord.q && p.coord.r === coord.r);
+  const tile = placement && state.allTiles[placement.tileId];
+  // CORE-01-08-05: Start Committee cannot be controlled.
+  if (!tile || tile.kind === 'StartCommittee') return scores;
+
+  // CORE-01-05-03A: count the real markers of each player on the tile.
+  for (const marker of state.influencesOnBoard ?? []) {
+    if (marker.tileId === tile.id && Object.hasOwn(scores, marker.owner)) scores[marker.owner] += 1;
+  }
+
+  // CORE-01-05-07: Lobbyists use real markers only, so looking up a controller cannot recurse further.
+  if (tile.kind === 'Lobbyist') return scores;
+
+  const { adjacent } = getTopology(state.cfg.topology);
+  for (const neighbor of state.tiles.board) {
+    if (state.allTiles[neighbor.tileId]?.kind !== 'Lobbyist' || !adjacent(coord, neighbor.coord)) continue;
+    // CORE-01-05-04/-08/-09: each controlled adjacent Lobbyist adds one to its controller.
+    const controller = computeMajority(state, neighbor.coord);
+    if (controller !== null) scores[controller] += 1;
+  }
+  return scores;
 }
 
-function adjacentLobbyistBonus(state: CoreState, targetCoord: AxialCoord, playerID: string): number {
-  const neighbors = [
-    { q: +1, r: 0 },
-    { q: +1, r: -1 },
-    { q: 0, r: -1 },
-    { q: -1, r: 0 },
-    { q: -1, r: +1 },
-    { q: 0, r: +1 },
-  ].map((d) => ({ q: targetCoord.q + d.q, r: targetCoord.r + d.r }));
-
-  let bonus = 0;
-  for (const n of neighbors) {
-    const placement = findPlacementAt(state.tiles.board, n);
-    if (!placement) continue;
-    const tile = state.allTiles[placement.tileId] as Tile | undefined;
-    if (tile && tile.kind === 'Lobbyist') {
-      // CORE-01-05-04..06 â€” Lobbyist contributes +1 virtual Influence to adjacent tile for the same player
-      // Design note: we interpret contribution for the player who has any Influence present on the Lobbyist tile.
-      // If multiple players have presence, both will get +1 from that tile (no exclusivity specified in CORE text).
-      const present = influencesOnTile(state, placement.tileId, playerID);
-      if (present > 0) bonus += 1;
+// CORE-01-05-01/-02/-03A: select the highest positive score or the tied leaders.
+export function computeMajority(state: CoreState, coord: AxialCoord): string | null;
+export function computeMajority(state: CoreState, coord: AxialCoord, format: 'details'): MajorityResult;
+export function computeMajority(state: CoreState, coord: AxialCoord, format?: 'details'): string | null | MajorityResult {
+  const scores = scoreTile(state, coord);
+  let highest = 0;
+  let leaders: string[] = [];
+  for (const [playerID, score] of Object.entries(scores)) {
+    if (score > highest) {
+      highest = score;
+      leaders = [playerID];
+    } else if (score === highest && highest > 0) {
+      leaders.push(playerID);
     }
   }
-  return bonus;
+  const controller = leaders.length === 1 ? leaders[0] : null;
+  return format === 'details' ? { controller, leaders, scores } : controller;
 }
 
-export function computeMajority(state: CoreState, coord: AxialCoord): string | null {
-  const placement = findPlacementAt(state.tiles.board, coord);
-  if (!placement) return null;
-  const players = Object.keys(state.players);
-  const scores: MajorityBreakdown = {};
-  for (const pid of players) {
-    const base = influencesOnTile(state, placement.tileId, pid);
-    const bonus = adjacentLobbyistBonus(state, coord, pid);
-    scores[pid] = base + bonus;
-  }
-  const entries = Object.entries(scores);
-  entries.sort((a, b) => b[1] - a[1]);
-  if (entries.length === 0) return null;
-  const [topPlayer, topScore] = entries[0];
-  const second = entries[1]?.[1] ?? -Infinity;
-  if (topScore <= 0) return null; // nobody present
-  if (topScore === second) return null; // CORE-01-05-02 tie â†’ no control
-  return topPlayer; // CORE-01-05-01 strict majority
-}
-
+// CORE-01-05-03B: control includes virtual Influence even on tiles without real markers.
 export function getControl(state: CoreState, coord: AxialCoord): string | null {
-  // CORE-01-05-03A
   return computeMajority(state, coord);
 }

@@ -1,12 +1,15 @@
+import { MatchConfigSchema } from './schemas.js';
 import { describe, it, expect } from 'vitest';
 import { resolveProductionForTile } from './production.js';
+import { createResolver } from './effects.js';
 import type { CoreState, Tile } from './types.js';
 
 function stateWithResort(q=1,r=0,w=5): CoreState {
   const tile: Tile = { id: 'DOM-W1-1', kind: 'ResortTile', resort: 'DOM', w } as const;
   return {
+    cfg: MatchConfigSchema.parse({ expansions: { exp01: false, exp02: false, exp03: false } }),
     matchSeed: 's',
-    tiles: { drawPile: [], discardFaceUp: [], board: [ { tileId: tile.id, coord: { q, r } } ] },
+    tiles: { drawPile: [], drawResolution: null, discardFaceUp: [], board: [ { tileId: tile.id, coord: { q, r } } ] },
     allTiles: { [tile.id]: tile },
     players: {
       '0': { id: '0', personal: { resources: { DOM: 0, FOR: 0, INF: 0 }, influence: [] } },
@@ -20,17 +23,50 @@ function stateWithResort(q=1,r=0,w=5): CoreState {
 describe('Production â€” CORE-01-06-16', () => {
   it('awards all to controlling player', () => {
     const G = stateWithResort(1,0,3);
-    G.influencesOnBoard = [ { tileId: 'DOM-W1-1', owner: '0', count: 1 } ];
+    G.influencesOnBoard = [ { tileId: 'DOM-W1-1', owner: '0', id: 'test-1' } ];
     resolveProductionForTile(G, { q:1, r:0 });
     expect(G.players['0'].personal.resources.DOM).toBe(3);
     expect(G.resources.noise.DOM).toBe(0);
   });
-  it('tie splits evenly; remainder to Noise', () => {
+  it('splits production among the canonical tied leaders and sends the remainder to Noise', () => {
     const G = stateWithResort(1,0,5);
-    G.influencesOnBoard = [ { tileId: 'DOM-W1-1', owner: '0', count: 1 }, { tileId: 'DOM-W1-1', owner: '1', count: 1 } ];
+    G.resources.bank.DOM = 7;
+    G.allTiles['Lobbyist-1'] = { id: 'Lobbyist-1', kind: 'Lobbyist' };
+    G.tiles.board.push({ tileId: 'Lobbyist-1', coord: { q: 2, r: 0 } });
+    G.influencesOnBoard = [
+      { tileId: 'DOM-W1-1', owner: '1', id: 'test-2' },
+      { tileId: 'Lobbyist-1', owner: '0', id: 'test-3' },
+      { tileId: 'Lobbyist-1', owner: '0', id: 'test-4' },
+      { tileId: 'Lobbyist-1', owner: '1', id: 'test-5' },
+    ];
     resolveProductionForTile(G, { q:1, r:0 });
     expect(G.players['0'].personal.resources.DOM).toBe(2);
     expect(G.players['1'].personal.resources.DOM).toBe(2);
     expect(G.resources.noise.DOM).toBe(1);
+    expect(G.resources.bank.DOM).toBe(2);
+  });
+
+  it('T03: a ResortTile with no positive leader pays neither players nor Noise', () => {
+    const G = stateWithResort(1, 0, 3);
+    G.resources.bank.DOM = 2;
+    const before = structuredClone(G);
+    resolveProductionForTile(G, { q: 1, r: 0 });
+    expect(G).toEqual(before);
+  });
+
+  it('rolls back the whole payout if a later recipient cannot accept it', () => {
+    const G = stateWithResort(1, 0, 5);
+    G.influencesOnBoard = [
+      { tileId: 'DOM-W1-1', owner: '0', id: 'test-6' },
+      { tileId: 'DOM-W1-1', owner: '1', id: 'test-7' },
+    ];
+    G.players['1'].personal.resources.DOM = Number.MAX_SAFE_INTEGER;
+    G.resources.bank.DOM = 7;
+    const before = structuredClone(G);
+
+    const result = createResolver()(G, { kind: 'applyProductionAt', coord: { q: 1, r: 0 }, contextCoord: { q: 1, r: 0 } });
+
+    expect(result.ok).toBe(false);
+    expect(G).toEqual(before);
   });
 });

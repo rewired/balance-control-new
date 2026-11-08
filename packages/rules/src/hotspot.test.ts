@@ -1,3 +1,4 @@
+import { MatchConfigSchema } from './schemas.js';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { isFullySurrounded } from './hotspot.js';
@@ -11,15 +12,16 @@ function base(): CoreState {
   const all: Record<string, Tile> = { [hotspot.id]: hotspot, ...Object.fromEntries(fillers.map(t=>[t.id,t])) };
   const board = [ { tileId: 'H1', coord: { q:0,r:0 } } ];
   return {
+    cfg: MatchConfigSchema.parse({ expansions: { exp01: false, exp02: false, exp03: false } }),
     matchSeed: 's',
-    tiles: { drawPile: [], discardFaceUp: [], board },
+    tiles: { drawPile: [], drawResolution: null, discardFaceUp: [], board },
     allTiles: all,
     players: {
       '0': { id: '0', personal: { resources: [], influence: [ { id:'i1', owner:'0' } ] } },
       '1': { id: '1', personal: { resources: [], influence: [] } },
     },
     resources: { bank: [], noise: [] },
-    influencesOnBoard: [ { tileId: 'H1', owner: '0', count: 1 } ],
+    influencesOnBoard: [ { tileId: 'H1', owner: '0', id: 'i0' } ],
   };
 }
 
@@ -39,8 +41,10 @@ describe('Hotspot — CORE-01-06', () => {
   it('awards 1 influence to majority player if available', () => {
     const G = base();
     surround(G); { const resolve = createResolver([]); resolve(G, { kind: 'resolveHotspotAt', coord: { q:0,r:0 }, contextCoord: { q:0,r:0 } }); }
-    const onHotspot = (G.influencesOnBoard ?? []).find(i=>i.tileId==='H1'&&i.owner==='0');
-    expect(onHotspot?.count ?? 0).toBe(2);
+    expect(G.influencesOnBoard).toEqual([
+      { tileId: 'H1', owner: '0', id: 'i0' },
+      { tileId: 'H1', owner: '0', id: 'i1' },
+    ]);
     expect(G.players['0'].personal.influence).toHaveLength(0);
   });
 });

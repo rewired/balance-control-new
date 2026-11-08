@@ -13,12 +13,14 @@ function makeStubExp01(): ExpansionModule {
       add({
         type: 'exp01_stub',
         payloadSchema: z.object({ v: z.number().int() }).strict(),
-        execute: (_G, _payload) => { void _G; void _payload; },
+        execute: () => ({ ok: true }),
         enumerate: () => [ { v: 1 } ],
       });
     },
   };
 }
+
+const coreTypes = ['convertResources', 'formalizeInfluence', 'placeOrMoveInfluence'];
 
 describe('Move catalog — Task 0016', () => {
   beforeEach(() => {
@@ -27,29 +29,30 @@ describe('Move catalog — Task 0016', () => {
 
   it('core-only catalog contains only core moves', () => {
     const catalog = buildMoveCatalog(corePoliticalMoves(), []);
-    expect(catalog.types).toEqual(['chooseNoop']);
-    expect(Object.keys(catalog.schemas)).toEqual(['chooseNoop']);
+    expect(catalog.types).toEqual(coreTypes);
+    expect(Object.keys(catalog.schemas).sort()).toEqual(coreTypes);
   });
 
   it('core + exp01 includes expansion moves when enabled', () => {
     registerExpansion(makeStubExp01());
     const mods = createExpansionRegistry({ exp01: true, exp02: false, exp03: false });
     const catalog = buildMoveCatalog(corePoliticalMoves(), mods);
-    expect(catalog.types).toEqual(['chooseNoop','exp01_stub']);
+    expect(catalog.types).toEqual([...coreTypes, 'exp01_stub'].sort());
   });
 
   it('disabled expansion moves are absent', () => {
     registerExpansion(makeStubExp01());
     const mods = createExpansionRegistry({ exp01: false, exp02: false, exp03: false });
     const catalog = buildMoveCatalog(corePoliticalMoves(), mods);
-    expect(catalog.types).toEqual(['chooseNoop']);
+    expect(catalog.types).toEqual(coreTypes);
   });
 
   it('bot-schema validation fails strictly for illegal payload', () => {
     const catalog = buildMoveCatalog(corePoliticalMoves(), []);
-    const schema = catalog.schemas['chooseNoop'];
-    expect(() => schema.parse({ any: 'thing' })).toThrow();
-    expect(() => schema.parse({})).not.toThrow();
+    const schema = catalog.schemas.placeOrMoveInfluence;
+    const payload = { markerId: 'i1', targetTileId: 'C1' };
+    expect(() => schema.parse({ ...payload, owner: '1' })).toThrow();
+    expect(schema.parse(payload)).toEqual(payload);
   });
 });
 

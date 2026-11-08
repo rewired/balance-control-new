@@ -1,13 +1,22 @@
-import type { AxialCoord, CoreState, ResourceId, ResortTile, Tile } from './types.js';
-import { computeMajority } from './majority.js';
+import type { AxialCoord, CoreState, ResourceId, ResortTile } from './types.js';
+import { computeMajority, getControl } from './majority.js';
 import type { ExpansionModule, ProductionModifier } from './expansion-registry.js';
 
-export function collectProductionModifiers(G: CoreState, coord: AxialCoord, tile: ResortTile, modules: ExpansionModule[]): ProductionModifier[] {
-  if (!modules || modules.length === 0) return [];
+// CORE-01-06-16-00: collect modifiers from active sources before applying any.
+export function collectProductionModifiers(G: CoreState, coord: AxialCoord, tile: ResortTile, modules: readonly ExpansionModule[]): ProductionModifier[] {
+  // EXP-01-08-M09-05/-06: only current sole control by the target suppresses Measure modifiers.
+  const freezes = G.cfg.expansions.exp01 ? G.productionEffects?.filter(effect => effect.sourceCardId === 'ECO_M09') : undefined;
+  const controller = freezes?.length ? getControl(G, coord) : null;
+  const suppressMeasures = controller !== null && freezes?.some(effect => effect.targetPlayerID === controller);
+
   const out: ProductionModifier[] = [];
-  for (const m of modules) {
-    const list = m.hooks?.productionModifiers?.({ G, coord, tile, amount: tile.w });
-    if (Array.isArray(list)) out.push(...list);
+  for (const module of modules) {
+    if (!G.cfg.expansions[module.id]) continue;
+    const modifiers = module.hooks?.productionModifiers?.({ G, coord, tile, amount: tile.w });
+    if (!modifiers) continue;
+    for (const modifier of modifiers) {
+      if (!suppressMeasures || modifier.source !== 'measure') out.push(modifier);
+    }
   }
   return out;
 }
@@ -16,64 +25,34 @@ function getPlacement(state: CoreState, coord: AxialCoord) {
   return state.tiles.board.find((p) => p.coord.q === coord.q && p.coord.r === coord.r);
 }
 
-function printedValue(tile: Tile): number { return tile.kind === 'ResortTile' ? tile.w : 0 }
-
-function scores(state: CoreState, coord: AxialCoord): Array<[string, number]> {
-  const players = Object.keys(state.players);
-  const placement = getPlacement(state, coord); if (!placement) return players.map(pid => [pid, 0]);
-  const tileId = placement.tileId;
-  function base(pid: string) {
-    const list = state.influencesOnBoard ?? [];
-    return list.filter(i => i.tileId === tileId && i.owner === pid).reduce((a,b)=>a+b.count,0);
-  }
-  function lobbyAdj(pid: string) {
-    const deltas = [ {q:+1,r:0},{q:+1,r:-1},{q:0,r:-1},{q:-1,r:0},{q:-1,r:+1},{q:0,r:+1} ];
-    let bonus = 0;
-    for (const d of deltas) {
-      const ncoord = { q: coord.q + d.q, r: coord.r + d.r };
-      const place = getPlacement(state, ncoord);
-      if (!place) continue;
-      const t = state.allTiles[place.tileId];
-      if (t && t.kind === 'Lobbyist') {
-        const present = (state.influencesOnBoard ?? []).find(i => i.tileId === place.tileId && i.owner === pid)?.count ?? 0;
-        if (present > 0) bonus += 1;
-      }
-    }
-    return bonus;
-  }
-  return players.map(pid => [pid, base(pid) + lobbyAdj(pid)]);
-}
-
 export interface PlannedProduction {
   resort: ResourceId;
-  winners: string[]; // empty means all to noise
+  winners: string[]; // positive leaders who receive a regular share
   share: number;     // per-winner amount
   remainder: number; // to noise
 }
 
-export function planProductionForTile(state: CoreState, coord: AxialCoord, modules: ExpansionModule[] = []): PlannedProduction | null {
-  const placement = getPlacement(state, coord); if (!placement) return null;
-  const tile = state.allTiles[placement.tileId]; if (!tile || tile.kind !== 'ResortTile') return null;
-  // CORE-01-06-16 order
-  let out = printedValue(tile); // 1. printed value
-  // 2. doubling effects (none in core)
-  // 3. production output modifiers
+export function planProductionForTile(state: CoreState, coord: AxialCoord, modules: readonly ExpansionModule[] = []): PlannedProduction | null {
+  const placement = getPlacement(state, coord);
+  if (!placement) return null;
+  const tile = state.allTiles[placement.tileId];
+  if (tile?.kind !== 'ResortTile') return null;
+
   const modifiers = collectProductionModifiers(state, coord, tile, modules);
-  for (const f of modifiers) out = f(out);
-  // 4. floors (ensure non-negative)
-  if (out < 0) out = 0;
-  if (out === 0) return { resort: tile.resort, winners: [], share: 0, remainder: 0 };
-  // 5. Majority check
-  const winner = computeMajority(state, coord);
-  if (winner) {
-    return { resort: tile.resort, winners: [winner], share: out, remainder: 0 };
+  // CORE-01-06-16(a)(1)-(4): double the printed value, add the net delta, then floor once.
+  let doubled: number = tile.w;
+  let delta = 0;
+  for (const modifier of modifiers) {
+    if (modifier.kind === 'double') doubled *= 2;
+    else delta += modifier.delta;
   }
-  // tie: split evenly among top players
-  const sc = scores(state, coord);
-  const max = Math.max(...sc.map(([,v]) => v));
-  const tops = sc.filter(([,v]) => v === max).map(([pid]) => pid);
-  if (max <= 0 || tops.length === 0) { return { resort: tile.resort, winners: [], share: 0, remainder: out }; }
-  const share = Math.floor(out / tops.length);
-  const rem = out - share * tops.length;
-  return { resort: tile.resort, winners: tops, share, remainder: rem };
+  const out = Math.max(0, doubled + delta);
+
+  // CORE-01-06-16(b) and CORE-01-06-13: use the canonical positive leaders.
+  const { leaders } = computeMajority(state, coord, 'details');
+  if (out === 0 || leaders.length === 0) return { resort: tile.resort, winners: [], share: 0, remainder: 0 };
+
+  // CORE-01-06-16(c) and CORE-01-06-15: only a positive tie can produce a Noise remainder.
+  const share = Math.floor(out / leaders.length);
+  return { resort: tile.resort, winners: leaders, share, remainder: out - share * leaders.length };
 }

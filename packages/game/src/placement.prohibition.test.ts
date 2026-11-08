@@ -1,45 +1,39 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Client } from 'boardgame.io/client';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createBCGame } from './factory.js';
-import { CorePhases } from './core.turns.js';
 import { registerExpansion, __resetRegisteredExpansionsForTest, type ExpansionModule, ensureExpansionSlice } from '@bc/rules';
 
 function makeBlockingModule(): ExpansionModule {
   return {
     id: 'exp01',
-    registerResources: () => void 0,
-    setupExpansionState: (G) => { ensureExpansionSlice(G, 'exp01', {} as Record<string, unknown>); },
+    registerResources: () => {},
+    setupExpansionState: (G) => { ensureExpansionSlice(G, 'exp01', {}); },
     hooks: {
-      prohibitions: ({ effect }) => {
-        if ((effect as any).kind === 'placeTile' && (effect as any).contextCoord?.q === 1 && (effect as any).contextCoord?.r === 0) return true;
-        return false;
-      },
+      prohibitions: ({ effect }) => effect.kind === 'placeTile' && effect.coord.q === 1 && effect.coord.r === 0,
     },
   };
 }
 
-describe('PlaceTile prohibitions via resolver - Task 0020 Phase 2', () => {
+describe('PlaceTile prohibitions via the engine', () => {
   beforeEach(() => { __resetRegisteredExpansionsForTest(); });
 
-  it('blocks placement at prohibited coord', () => {
+  it('keeps the offered tile and draw stage after a rejected placement', () => {
     registerExpansion(makeBlockingModule());
-    const Game = createBCGame({ expansions: { exp01: true } });
-    const setup = Game.setup as unknown as (ctx: { matchID: string; numPlayers: number; setupData?: unknown }) => any;
-    const G = setup({ matchID: 't', numPlayers: 2, setupData: { expansions: { exp01: true } } });
+    const client = Client({ game: createBCGame({ expansions: { exp01: true } }), numPlayers: 2 });
+    const before = client.getState()!;
 
-    // trigger onBegin to generate a pending offer
-    CorePhases.DrawAndPlaceTile.onBegin!({ G } as any);
-    const pending = (G as any).turn?.pending;
-    expect(pending).toBeDefined();
+    client.moves.doPoliticalAction({
+      type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-1', targetTileId: before.G.tiles.drawResolution!.tileId },
+    });
+    client.moves.placeTile({ q: 1, r: 0 });
+    const rejected = client.getState()!;
+    expect(rejected._stateID).toBe(before._stateID);
+    expect(rejected.G).toEqual(before.G);
+    expect(rejected.ctx).toEqual(before.ctx);
 
-    const move = (coord: { q:number; r:number }) => (CorePhases.DrawAndPlaceTile.moves as any).placeTile({ G } as any, coord);
-
-    // Attempt prohibited placement at {1,0}
-    move({ q: 1, r: 0 });
-
-    // Assert: board does not contain the pending tile at prohibited coord and pending still present
-    const hasAtProhibited = (G as any).tiles.board.some((p: any) => p.coord.q === 1 && p.coord.r === 0 && p.tileId === pending.tileId);
-    expect(hasAtProhibited).toBe(false);
-    expect((G as any).turn?.pending).toBeDefined();
+    client.moves.placeTile({ q: 0, r: 1 });
+    const accepted = client.getState()!;
+    expect(accepted.G.tiles.board).toContainEqual({ tileId: before.G.tiles.drawResolution!.tileId, coord: { q: 0, r: 1 } });
+    expect(accepted.ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
   });
 });

@@ -1,40 +1,43 @@
 import type { Game } from 'boardgame.io';
 import type { CoreState } from '@bc/rules';
-import { MatchConfigSchema, buildInitialCoreState, createExpansionRegistry, assertExpansionStateMatchesConfig } from '@bc/rules';
-import { CorePhases } from './core.turns.js';
-import { createResolver } from '@bc/rules';
+import { MatchSetupDataSchema, buildInitialCoreState, createExpansionRegistry, assertExpansionStateMatchesConfig, validateMatchPlayerCount } from '@bc/rules';
+import { CoreTurn } from './core.turns.js';
 
 import './expansions.bootstrap.js';
 
-export function createBCGame(defaultConfig?: unknown): Game<CoreState> {
+export function setupCoreMatch(numPlayers: number, setupData: unknown = {}): CoreState {
+  // CORE-01-03-01..08: build match state before the engine begins the first turn.
+  const { matchSeed, ...cfg } = MatchSetupDataSchema.parse(setupData);
+  const G = buildInitialCoreState(numPlayers, matchSeed, cfg);
+  for (const module of createExpansionRegistry(cfg.expansions)) {
+    module.setupExpansionState(G, { numPlayers, seed: matchSeed });
+  }
+  assertExpansionStateMatchesConfig(G);
+  return G;
+}
+
+export function createBCGame(defaultConfig?: unknown): Game<CoreState, Record<string, unknown>, unknown> {
+  const defaults = MatchSetupDataSchema.parse(defaultConfig ?? {});
   return {
     name: 'core',
-    setup: (ctx): CoreState => {
-      const seed = String(ctx.matchID ?? 'match');
-      const num = Number(ctx.numPlayers ?? 2);
-      const cfg = MatchConfigSchema.parse((ctx as unknown as { setupData?: unknown }).setupData ?? defaultConfig ?? { expansions: {} });
-      const G = buildInitialCoreState(num, seed, cfg);
-      // Module setup hooks
-      const modules = createExpansionRegistry(cfg.expansions);
-      for (const m of modules) m.setupExpansionState(G, { numPlayers: num, seed });
-      assertExpansionStateMatchesConfig(G);
-      return G;
+    minPlayers: 2,
+    maxPlayers: 6,
+    seed: defaults.matchSeed,
+    validateSetupData: (setupData, numPlayers) => {
+      const result = MatchSetupDataSchema.safeParse(setupData === undefined ? defaults : setupData);
+      return result.success ? validateMatchPlayerCount(numPlayers, result.data.addOn56) : result.error.message;
     },
-    phases: CorePhases,
-    turn: {
-      onEnd: ({ G, ctx }) => {
-        if (ctx.playOrderPos === ctx.playOrder.length - 1) {
-          const mods = createExpansionRegistry(G.cfg.expansions);
-          const resolve = createResolver(mods);
-          for (const p of G.tiles.board) {
-            resolve(G, { kind: 'applyProductionAt', coord: p.coord, contextCoord: p.coord });
-          }
-          // EXP measures: reset per-round flags after settlement (EXP-01-07-07)
-          for (const m of mods) {
-            if (m.id === 'exp01') resolve(G, { kind: 'resetMeasuresRound', expansion: 'exp01' });
-          }
-        }
-      },
+    setup: ({ ctx }, setupData) => setupCoreMatch(ctx.numPlayers, setupData === undefined ? defaults : setupData),
+    turn: { ...CoreTurn },
+    events: {
+      endGame: false,
+      endPhase: false,
+      endTurn: false,
+      setPhase: false,
+      endStage: false,
+      setStage: false,
+      pass: false,
+      setActivePlayers: false,
     },
   };
 }

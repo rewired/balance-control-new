@@ -2,6 +2,7 @@
 export type Zone =
   | 'Board'
   | 'DrawPile'
+  | 'DrawResolution'
   | 'DiscardFaceUp'
   | 'Bank'
   | 'Noise'
@@ -15,6 +16,7 @@ export const CoreResorts: readonly ResourceId[] = ['DOM', 'FOR', 'INF'];
 export interface Influence {
   id: string;
   owner: string; // playerID
+  starting?: true;
 }
 
 export type TileKind =
@@ -48,7 +50,11 @@ export interface NonResortTile extends BaseTile {
 export type Tile = ResortTile | NonResortTile | StartCommitteeTile;
 
 export interface AxialCoord { q: number; r: number }
-export interface BoardPlacement { tileId: string; coord: AxialCoord }
+export interface BoardPlacement {
+  tileId: string;
+  coord: AxialCoord;
+  enclosureProcessed?: true; // CORE-01-06-02A/-04A, Hotspots only
+}
 
 export interface PlayerPersonalSupply {
   resources: Record<ResourceId, number>; // registry-driven amounts
@@ -58,10 +64,12 @@ export interface PlayerPersonalSupply {
 export interface PlayerState {
   id: string; // '0'..'N-1'
   personal: PlayerPersonalSupply; // CORE-01-00-03/04
+  usedStartCommittee?: true; // CORE-01-08-07
 }
 
 export interface TileZonesState {
   drawPile: string[]; // tile ids
+  drawResolution: { tileId: string; legalCoords: AxialCoord[] } | null; // CORE-01-00-05A
   discardFaceUp: string[]; // tile ids
   board: BoardPlacement[];
 }
@@ -71,9 +79,7 @@ export interface ResourceZonesState {
   noise: Record<ResourceId, number>;
 }
 
-export interface TurnScratch { pending?: { tileId: string; legalCoords: AxialCoord[] }; allowExtraPoliticalAction?: boolean; bannedMoveType?: string }
-
-export interface InfluenceOnBoard { tileId: string; owner: string; count: number }
+export interface InfluenceOnBoard extends Influence { tileId: string }
 
 export interface ExpansionsState {
   // Namespaced expansion state; only created when enabled (AGENTS Ã‚§3.4, Ã‚§3.8, Ã‚§5.5)
@@ -82,7 +88,7 @@ export interface ExpansionsState {
   exp03?: Exp03State;
 }
 
-export type ExpansionId = 'exp01' | 'exp02' | 'exp03';
+export type { ExpansionId } from './schemas.js';
 
 export interface Exp01MeasuresState {
   drawPile: string[];
@@ -95,9 +101,20 @@ export interface Exp01MeasuresState {
   cycle: number;
 }
 
-export interface Exp01State { sentinel?: boolean; measures?: Exp01MeasuresState }
+export interface Exp01State { measures?: Exp01MeasuresState }
 export interface Exp02State {}
 export interface Exp03State {}
+
+export type ProductionMeasureId = 'ECO_M09' | 'CLM_M11';
+
+// EXP-01-07-08: the production effect survives the card's transfer or recycling.
+export interface ActiveProductionEffect {
+  id: string;
+  sourceCardId: ProductionMeasureId;
+  playNumber: 1 | 2;
+  owner: string;
+  targetPlayerID: string;
+}
 
 export interface CoreState {
   cfg: import('./schemas.js').MatchConfig;
@@ -106,7 +123,8 @@ export interface CoreState {
   allTiles: Record<string, Tile>;
   players: Record<string, PlayerState>;
   resources: ResourceZonesState;
-  turn?: TurnScratch;
+  lastTurnHash?: string; // AGENTS 5.3: SHA-256 at the most recent completed turn
   influencesOnBoard?: InfluenceOnBoard[];
+  productionEffects?: ActiveProductionEffect[];
   exp?: ExpansionsState;
 }

@@ -185,6 +185,12 @@ importers:
 
   packages/shared:
     dependencies:
+      '@noble/hashes':
+        specifier: 1.8.0
+        version: 1.8.0
+      fast-json-stable-stringify:
+        specifier: 2.1.0
+        version: 2.1.0
       seedrandom:
         specifier: ^3.0.5
         version: 3.0.5

@@ -3,7 +3,9 @@
 Prüfdatum: 2026-11-07
 Diskussionsentwürfe R01–R15 ergänzt: 2026-11-07
 R26 freigegeben; Regelprüfung abgeschlossen: 2026-11-08
-Status: Accepted — alle 26 Befunde geklärt; R01–R11 und R13–R26 normativ übernommen, R12 durch R02 geklärt; Softwareabgleich ausstehend
+Status: Accepted — alle 26 Befunde geklärt; R01–R11 und R13–R26 normativ übernommen, R12 durch R02 geklärt; Softwareabgleich in DD-0018 dokumentiert, Umsetzung in Task 0030 begonnen
+
+Software-Folgeprüfung vom 2026-11-08: [DD-0018](DD-0018-software-rule-conformity-audit.md) dokumentiert den Abgleich des unveränderten Codes mit den konsolidierten Regeln. [Task 0030](../tasks/0030_rules_conformity_implementation.md) enthält den Umsetzungsplan. Frühere Angaben zum ausstehenden Softwareabgleich unten beschreiben den damaligen Abschlussstand; sie behaupten keine inzwischen erreichte Implementierungskonformität.
 
 ## Umfang und Methode
 

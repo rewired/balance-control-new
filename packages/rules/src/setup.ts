@@ -1,7 +1,9 @@
 import { shuffleSeeded } from '@bc/shared';
 import type { CoreState, ResourceId, Tile, ResortTile, StartCommitteeTile } from './types.js';
 import { CoreResorts } from './types.js';
-import { createCoreResourceRegistry, makeEmptyResourceBank } from './resources.js'; import { createExpansionRegistry } from './expansion-registry.js';
+import { createMatchResourceRegistry, makeEmptyResourceBank } from './resources.js';
+import { createExpansionRegistry } from './expansion-registry.js';
+import { MatchConfigSchema, validateMatchPlayerCount, type MatchConfigInput } from './schemas.js';
 
 function makeId(prefix: string, n: number): string {
   return `${prefix}-${n}`;
@@ -21,12 +23,13 @@ const counts = {
   Hotspots: 8,    // CORE-01-02-16
 };
 
-function buildResortTiles(): ResortTile[] {
+function buildResortTiles(addOn56: boolean): ResortTile[] {
   const tiles: ResortTile[] = [];
   for (const resort of CoreResorts) {
     const c = resortCounts[resort];
     ([1,2,3,4,5] as const).forEach((w) => {
-      const count = c[w as 1|2|3|4|5];
+      // ADD56-01-01-02 through -10: one additional W2, W3 and W4 per CORE resort.
+      const count = c[w] + (addOn56 && w >= 2 && w <= 4 ? 1 : 0);
       for (let i = 0; i < count; i++) {
         tiles.push({ id: makeId(`${resort}-W${w}`, i+1), kind: 'ResortTile', resort, w: Number(w) as 1|2|3|4|5 });
       }
@@ -39,24 +42,28 @@ function buildStartCommittee(): StartCommitteeTile {
   return { id: 'StartCommittee', kind: 'StartCommittee' }; // CORE-01-02-01..03
 }
 
-function buildNonResortTiles(): Tile[] {
+function buildNonResortTiles(addOn56: boolean): Tile[] {
   const out: Tile[] = [];
-  for (let i = 0; i < counts.Committees; i++) out.push({ id: makeId('Committee', i+1), kind: 'Committee' });
-  for (let i = 0; i < counts.Grassroots; i++) out.push({ id: makeId('Grassroots', i+1), kind: 'Grassroots' });
-  for (let i = 0; i < counts.Lobbyists; i++) out.push({ id: makeId('Lobbyist', i+1), kind: 'Lobbyist' });
+  // ADD56-01-01-11 through -13: extra Committees, Lobbyists and Grassroots.
+  for (let i = 0; i < counts.Committees + (addOn56 ? 2 : 0); i++) out.push({ id: makeId('Committee', i+1), kind: 'Committee' });
+  for (let i = 0; i < counts.Grassroots + (addOn56 ? 2 : 0); i++) out.push({ id: makeId('Grassroots', i+1), kind: 'Grassroots' });
+  for (let i = 0; i < counts.Lobbyists + (addOn56 ? 3 : 0); i++) out.push({ id: makeId('Lobbyist', i+1), kind: 'Lobbyist' });
   for (let i = 0; i < counts.Hotspots; i++) out.push({ id: makeId('Hotspot', i+1), kind: 'Hotspot' });
+  // ADD56-01-01-14 through -16: labels identify the tiles, both use ordinary Hotspot resolution.
+  if (addOn56) out.push({ id: 'Hotspot-DOM', kind: 'Hotspot' }, { id: 'Hotspot-FOR', kind: 'Hotspot' });
   return out;
 }
 
-export function buildInitialCoreState(numPlayers: number, matchSeed: string, cfg?: import('./schemas.js').MatchConfig): CoreState {
-  const registry = createCoreResourceRegistry();
-  const modules = createExpansionRegistry(cfg?.expansions);
-  for (const m of modules) m.registerResources(registry);
+export function buildInitialCoreState(numPlayers: number, matchSeed: string, config: MatchConfigInput = {}): CoreState {
+  const cfg = MatchConfigSchema.parse(config);
+  const invalidCount = validateMatchPlayerCount(numPlayers, cfg.addOn56);
+  if (invalidCount) throw new RangeError(invalidCount);
+  const registry = createMatchResourceRegistry(createExpansionRegistry(cfg.expansions));
 
   // Gather all tiles
   const start = buildStartCommittee();
-  const resortTiles = buildResortTiles();
-  const others = buildNonResortTiles();
+  const resortTiles = buildResortTiles(cfg.addOn56);
+  const others = buildNonResortTiles(cfg.addOn56);
   const allTilesArr: Tile[] = [start, ...resortTiles, ...others];
 
   // Index tiles
@@ -67,8 +74,9 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string, cfg
   const drawPile = shuffleSeeded(drawPool, matchSeed);
 
   // Setup players and starting Influence (CORE-01-03-04..06)
-  const startingByPlayers: Record<number, number> = { 2: 4, 3: 3, 4: 2 };
-  const starting = startingByPlayers[numPlayers as 2|3|4] ?? 0;
+  // ADD56-01-02-01/-02: five and six players also start with two markers.
+  const startingByPlayers: Record<number, number> = { 2: 4, 3: 3, 4: 2, 5: 2, 6: 2 };
+  const starting = startingByPlayers[numPlayers];
   const players: Record<string, import('./types.js').PlayerState> = {};
   for (let p = 0; p < numPlayers; p++) {
     const id = String(p);
@@ -76,16 +84,20 @@ export function buildInitialCoreState(numPlayers: number, matchSeed: string, cfg
       id,
       personal: {
         resources: makeEmptyResourceBank(registry),
-        influence: Array.from({ length: starting }, (_, i) => ({ id: `INF-${id}-${i+1}`, owner: id })),
+        // VAR-01-02-02/-03: the engine starts with player 0.
+        influence: Array.from({ length: starting - (p === 0 && cfg.variants.firstPlayerHandicap ? 1 : 0) }, (_, i) => ({
+          id: `INF-${id}-${i+1}`, owner: id, starting: true,
+        })),
       },
     };
   }
 
   const state: CoreState = {
     matchSeed,
-    cfg: cfg ?? { expansions: { exp01: false, exp02: false, exp03: false } },
+    cfg,
     tiles: {
       drawPile,
+      drawResolution: null, // CORE-01-03-09
       discardFaceUp: [],
       board: [{ tileId: start.id, coord: { q: 0, r: 0 } }], // CORE-01-03-01
     },

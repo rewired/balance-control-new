@@ -26,6 +26,8 @@
                 },
     "sideEffects":  false,
     "dependencies":  {
+                         "@noble/hashes":  "1.8.0",
+                         "fast-json-stable-stringify":  "2.1.0",
                          "seedrandom":  "^3.0.5",
                          "zod":  "^3.23.8"
                      }

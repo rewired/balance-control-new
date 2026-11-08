@@ -1,0 +1,15 @@
+# DD-0020 — Banktransfers und stabile Zug-Hashes
+
+- Datum: 2026-11-08
+- Status: Implementiert und geprüft
+- Bezug: S05/S16 sowie T05/T06/T19 aus DD-0018
+
+Setup und Resolver bauen dieselbe Ressourcenregistry aus CORE und den gemäß Match-Konfiguration aktiven Erweiterungsmodulen. Das Setup initialisiert die Zähler für Bank, Noise und PersonalSupply mit null. Der Resolver prüft jedes beteiligte Ressort gegen diese Registry. Damit bleiben inaktive Ressorts aus den regulär initialisierten Zonen ausgeschlossen. Maßgeblich sind CORE-01-00-04C, CORE-01-03-07/-08 und EXP-01-01-06. [Registry](../../packages/rules/src/resources.ts), [Setup](../../packages/rules/src/setup.ts)
+
+Eine Banktransaktion plant Zahlungen aus PersonalSupply sowie Auszahlungen an PersonalSupply oder Noise in Arbeitskopien. Bezahlte Einheiten landen in Bank. Eine Auszahlung entnimmt vorhandenen Bestand und erzeugt nur den Fehlbetrag, der unmittelbar mit ausgezahlt wird. Eine Zahlung verwendet ausschließlich den Bestand des zahlenden Spielers. Erst wenn der gesamte Plan gültig ist, schreibt der Resolver alle beteiligten Zonen. Pro ResortTile gehören die regulären Anteile und der Noise-Rest zur selben Transaktion. Die Auszahlung ist ein interner Transfer der Produktion und erhält keinen erneuten Kosten- oder Output-Pass. Maßgeblich sind CORE-01-00-04A/-04B/-04D, CORE-01-06-00-07(a), CORE-01-06-00-08/-11 und CORE-01-06-16A. [Resolver](../../packages/rules/src/effects.ts)
+
+`stableHash` normalisiert den Eingang mit den JSON-Speicherregeln und sortiert Objektschlüssel vor dem SHA-256. Damit verschwinden optionale Felder mit `undefined` genauso wie beim Speichern. Nicht darstellbare Arraywerte werden zu `null`. `fast-json-stable-stringify` und `@noble/hashes` sind in den bereits aufgelösten Versionen direkte Abhängigkeiten von `@bc/shared`. Dieselbe synchrone Funktion läuft im Webclient und auf Node. [Hashfunktion](../../packages/shared/src/hash.ts)
+
+Die Engine speichert nach jedem abgeschlossenen regulären Zug `lastTurnHash` nach AGENTS 5.3. Der Hash umfasst den fachlichen Zustand, Zugnummer und aktiven Spieler am Zugende, einschließlich eines dort fälligen regulären Settlements. Der vorherige Hash ist Metadatum und geht nicht in den nächsten Hash ein. Die Speicherung erfolgt vor Beginn des nächsten Zugs. [Turn-Konfiguration](../../packages/game/src/core.turns.ts)
+
+T05 prüft Kostenrückfluss und Auszahlungen aus vorhandener oder leerer Bank. Weitere Tests decken den Abbruch einer bereits geplanten Zahlung oder Produktion ab. T06 prüft ECO-Gutschrift und Zahlung in einem EXP-01-Setup über die Engine sowie Ablehnung in CORE. T19 vergleicht den Hash nach einer Engine-Platzierung vor und nach dem JSON-Roundtrip. Der Replay-Test vergleicht die von der Engine gespeicherten Zug-Hashes aus zwei Durchläufen. [Banktransfers](../../packages/rules/src/effects.test.ts), [Produktion](../../packages/rules/src/production.test.ts), [ECO](../../packages/game/src/core.expansion-config.test.ts), [Zug-Hashes](../../packages/game/src/core.turns.test.ts)

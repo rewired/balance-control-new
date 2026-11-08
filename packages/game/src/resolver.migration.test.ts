@@ -1,56 +1,51 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Client } from 'boardgame.io/client';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createBCGame } from './factory.js'; import { CorePhases } from './core.turns.js';
-import { registerExpansion, __resetRegisteredExpansionsForTest, createExpansionRegistry, ensureExpansionSlice, type ExpansionModule, type CoreState } from '@bc/rules';
-import { type MoveDefinition, type MoveExtensionBuilder } from '@bc/rules';
-import { createResolver } from '@bc/rules';
+import { createBCGame } from './factory.js';
+import { registerExpansion, __resetRegisteredExpansionsForTest, createExpansionRegistry, ensureExpansionSlice, createResolver, z, type ExpansionModule } from '@bc/rules';
 
-const TestPayload: any = { parse: (x: unknown) => x };
+const TestPayload = z.object({ contextCoord: z.object({ q: z.number(), r: z.number() }) }).strict();
 
 function makeTestModule(): ExpansionModule {
   return {
     id: 'exp01',
-    registerResources: () => void 0,
-    setupExpansionState: (G) => { ensureExpansionSlice(G, 'exp01', {} as Record<string, unknown>); },
-    extendMoves: ({ add }: MoveExtensionBuilder) => {
-      const def: MoveDefinition<any> = {
+    registerResources: () => {},
+    setupExpansionState: (G) => { ensureExpansionSlice(G, 'exp01', {}); },
+    extendMoves: ({ add }) => {
+      add({
         type: 'testAddDom',
         payloadSchema: TestPayload,
-        execute: (G: CoreState, _playerID: string, p) => {
-          const mods = createExpansionRegistry({ exp01: true, exp02: false, exp03: false });
-          const resolve = createResolver(mods);
-          resolve(G, { kind: 'addResources', playerID: p.playerID, resource: 'DOM', amount: p.amount, contextCoord: p.contextCoord });
+        execute: (G, playerID, payload) => {
+          const { contextCoord } = TestPayload.parse(payload);
+          const resolve = createResolver(createExpansionRegistry(G.cfg.expansions));
+          return resolve(G, { kind: 'addResources', playerID, resource: 'DOM', amount: 1, contextCoord });
         },
-      };
-      add(def as unknown as MoveDefinition<unknown>);
+      });
     },
     hooks: {
-      costIncreases: ({ cost }) => {
-        if (cost) cost.DOM = (cost.DOM ?? 0) + 1; else return { DOM: 1 };
-      },
+      costIncreases: ({ effect }) => effect.kind === 'addResources' ? { DOM: 1 } : undefined,
     },
   };
 }
 
-describe('Resolver enforcement via move routing - Task 0020', () => {
+describe('Resolver enforcement via engine move routing', () => {
   beforeEach(() => { __resetRegisteredExpansionsForTest(); });
 
-  it('cost increase applies on normal tile (fails), but is ignored on Start Committee', () => {
+  it('rejects an unpayable effect without spending the slot, then accepts the immune context', () => {
     registerExpansion(makeTestModule());
-    const Game = createBCGame({ expansions: { exp01: true } });
-    const setup = Game.setup as unknown as (ctx: { matchID: string; numPlayers: number; setupData?: unknown }) => CoreState;
-    const G = setup({ matchID: 't', numPlayers: 2, setupData: { expansions: { exp01: true } } });
+    const client = Client({ game: createBCGame({ expansions: { exp01: true } }), numPlayers: 2 });
+    client.moves.placeTile({ q: 1, r: 0 });
+    const before = client.getState()!;
 
-    const move = (action: any) => (CorePhases.ExactlyOnePoliticalAction.moves as any).doPoliticalAction({ G, ctx: { playOrderPos: 0, playOrder: ['0','1'] } } as any, action);
+    client.moves.doPoliticalAction({ type: 'testAddDom', payload: { contextCoord: { q: 1, r: 0 } } });
+    const rejected = client.getState()!;
+    expect(rejected._stateID).toBe(before._stateID);
+    expect(rejected.G.players['0'].personal.resources.DOM).toBe(0);
+    expect(rejected.ctx).toEqual(before.ctx);
 
-    // Normal tile context (q:1,r:0) ? cost increase makes it unpayable -> no gain
-    move({ type: 'testAddDom', payload: { playerID: '0', amount: 1, contextCoord: { q: 1, r: 0 } } });
-    expect(G.players['0'].personal.resources.DOM).toBe(0);
-
-    // Start Committee context (q:0,r:0) ? immunity ignores cost increases -> gain applies
-    move({ type: 'testAddDom', payload: { playerID: '0', amount: 1, contextCoord: { q: 0, r: 0 } } });
-    expect(G.players['0'].personal.resources.DOM).toBe(1);
+    client.moves.doPoliticalAction({ type: 'testAddDom', payload: { contextCoord: { q: 0, r: 0 } } });
+    const accepted = client.getState()!;
+    expect(accepted.G.players['0'].personal.resources.DOM).toBe(1);
+    expect(accepted.ctx.currentPlayer).toBe('1');
+    expect(accepted.ctx.activePlayers).toEqual({ '1': 'DrawAndPlaceTile' });
   });
 });
-
-

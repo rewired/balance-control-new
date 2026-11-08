@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { topologyIds } from './topology/index.js';
 
 // Expansion flags — explicit IDs only (Task 0010)
 export const ExpansionIdEnum = z.enum(['exp01', 'exp02', 'exp03']);
@@ -21,23 +22,34 @@ export const ExpansionFlagsSchema = z
 
 export type ExpansionFlags = z.infer<typeof ExpansionFlagsSchema>;
 
-// Canonical match config (strict) — focus of Task 0010
+const VariantFlagsSchema = z.object({
+  tileRecycling: z.boolean().default(false), // VAR-01-01-01
+  firstPlayerHandicap: z.boolean().default(false), // VAR-01-02-01
+}).strict().default({});
+
 export const MatchConfigSchema = z
   .object({
     expansions: ExpansionFlagsSchema,
+    topology: z.enum(topologyIds).default('hex'), // CORE-01-00-09
+    variants: VariantFlagsSchema,
+    addOn56: z.boolean().default(false), // ADD56-01-01-01
   })
   .strict();
 
 export type MatchConfig = z.infer<typeof MatchConfigSchema>;
+export type MatchConfigInput = z.input<typeof MatchConfigSchema>;
 
-// Legacy/extended GameConfig (kept for future; includes defaults for topology/seed)
-export const GameConfigSchema = z
-  .object({
-    numPlayers: z.number().int().min(2).max(4), // CORE-01 scope (no 5-6 add-on yet)
-    topology: z.literal('hex').default('hex'), // CORE-01-00-07..11 (attachment exists; details later)
-    matchSeed: z.string().min(1).default('match'),
-    expansions: ExpansionFlagsSchema, // Task 0010
-  })
-  .strict();
+export const MatchSetupDataSchema = MatchConfigSchema.extend({ matchSeed: z.string().min(1).default('match') });
+
+export function validateMatchPlayerCount(numPlayers: number, addOn56: boolean): string | undefined {
+  if (!Number.isInteger(numPlayers) || numPlayers < 2 || numPlayers > 6) return 'A match requires 2 to 6 players';
+  if (addOn56 !== (numPlayers >= 5)) return 'Enable the 5–6-player add-on exactly for matches with 5 or 6 players';
+}
+
+export const GameConfigSchema = MatchSetupDataSchema.extend({ numPlayers: z.number().int().min(2).max(6) })
+  .superRefine(({ numPlayers, addOn56 }, context) => {
+    const message = validateMatchPlayerCount(numPlayers, addOn56);
+    if (message) context.addIssue({ code: 'custom', path: ['numPlayers'], message });
+  });
 
 export type GameConfig = z.infer<typeof GameConfigSchema>;

@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { adjacent } from './topology/hex.js';
+import { getTopology } from './topology/index.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
 import type { BoardPlacement } from './types.js';
 
@@ -16,11 +16,10 @@ describe('Hex adjacency and placement — CORE-01-04-05/08', () => {
     expect(isLegalPlacement(board, { q:0, r:0 })).toBe(false);
   });
 
-  it('unplaceable drawn tile would be discarded (simulated via no-adjacency)', () => {
+  it('enumerates only the neighbors from the configured attachment', () => {
     const board: BoardPlacement[] = [{ tileId: 'StartCommittee', coord: { q:0,r:0 } }];
-    const legal = legalPlacementCoords(board, ((): any => false as any));
-    expect(legal.length).toBe(0);
+    const legal = legalPlacementCoords(board, getTopology('orthogonal'));
+    expect(legal).toHaveLength(4);
+    expect(legal).not.toContainEqual({ q: 1, r: -1 });
   });
-});
-
-
+});

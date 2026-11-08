@@ -5,18 +5,21 @@ import { createResolver } from './effects.js';
 
 export { collectProductionModifiers } from './production.plan.js';
 
-export function resolveProductionForTile(state: CoreState, coord: AxialCoord, modules: ExpansionModule[] = []): void {
+export function resolveProductionForTile(state: CoreState, coord: AxialCoord, modules?: readonly ExpansionModule[]): void {
   const resolve = createResolver(modules);
-  resolve(state, { kind: 'applyProductionAt', coord, contextCoord: coord });
+  resolve(state, { kind: 'applyProductionAt', coord });
 }
 
-export function resolveRoundSettlement(state: CoreState, modules: ExpansionModule[] = []): void {
-  // CORE-01-07 Round Settlement: produce for all ResortTiles on Board via resolver
+export function resolveRoundSettlement(state: CoreState, modules?: readonly ExpansionModule[]): void {
+  // CORE-01-07-03: resolve production for each ResortTile on the Board.
+  const resolve = createResolver(modules);
   for (const p of state.tiles.board) {
-    const coord = p.coord;
-    const resolve = createResolver(modules);
-    resolve(state, { kind: 'applyProductionAt', coord, contextCoord: coord });
+    if (state.allTiles[p.tileId]?.kind === 'ResortTile') {
+      resolve(state, { kind: 'applyProductionAt', coord: p.coord });
+    }
   }
+  // CORE-01-07-17: expiring effects remain active through all production in this Settlement.
+  resolve(state, { kind: 'expireProductionEffects', boundary: 'settlementEnd' });
 }
 
 export { planProductionForTile };

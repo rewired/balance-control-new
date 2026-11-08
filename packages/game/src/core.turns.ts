@@ -1,107 +1,117 @@
-import type { Game } from 'boardgame.io';
-import type { CoreState, AxialCoord, Tile } from '@bc/rules';
-import { buildMoveCatalog, corePoliticalMoves, createExpansionRegistry, assertExpansionStateMatchesConfig } from '@bc/rules';
-import { isFullySurrounded, drawUntilPlaceable, adjacent as hexAdjacent } from '@bc/rules';
-import { createResolver } from '@bc/rules';
+import type { Ctx, FnContext, Game, Move } from 'boardgame.io';
+import { INVALID_MOVE } from 'boardgame.io/core';
+import type { AxialCoord, CoreState } from '@bc/rules';
+import {
+  assertExpansionStateMatchesConfig, buildMoveCatalog, corePoliticalMoves,
+  createExpansionRegistry, createResolver, politicalMoveOptions, resolveRoundSettlement, z,
+} from '@bc/rules';
 
-export const Phases = {
+export const CoreStages = {
   DrawAndPlaceTile: 'DrawAndPlaceTile',
   ExactlyOnePoliticalAction: 'ExactlyOnePoliticalAction',
+  AdditionalPoliticalAction: 'AdditionalPoliticalAction',
 } as const;
 
-export type PhaseName = typeof Phases[keyof typeof Phases];
+const PoliticalActionSchema = z.object({ type: z.string(), payload: z.unknown() }).strict();
 
-function neighborsOf(c: AxialCoord): AxialCoord[] {
-  return [
-    { q: c.q + 1, r: c.r + 0 },
-    { q: c.q + 1, r: c.r - 1 },
-    { q: c.q + 0, r: c.r - 1 },
-    { q: c.q - 1, r: c.r + 0 },
-    { q: c.q - 1, r: c.r + 1 },
-    { q: c.q + 0, r: c.r + 1 },
-  ];
+// CORE-01-04-04/-05/-08: place the offered tile at a legal coordinate.
+const placeTile: Move<CoreState> = ({ G, ctx, events }, requested: AxialCoord) => {
+  const drawn = G.tiles.drawResolution;
+  const coord = drawn?.legalCoords.find(c => c.q === requested?.q && c.r === requested?.r);
+  if (!drawn || !coord) return INVALID_MOVE;
+
+  const placed = createResolver()(G, { kind: 'placeTile', tileId: drawn.tileId, coord, playerID: ctx.currentPlayer });
+  if (!placed.ok) return INVALID_MOVE;
+  beginPoliticalSlot({ G, ctx, events }, false);
+};
+
+function settleAndRecordTurn(G: CoreState, ctx: Ctx, settle: boolean): void {
+  if (settle) resolveRoundSettlement(G);
+  // AGENTS 5.3: record the completed state before the next turn begins.
+  createResolver()(G, { kind: 'recordTurnHash', turn: ctx.turn, playerID: ctx.currentPlayer });
 }
 
-export const CorePhases: NonNullable<Game<CoreState>['phases']> = {
-  [Phases.DrawAndPlaceTile]: {
-    start: true,
-    onBegin: ({ G }) => {
-      assertExpansionStateMatchesConfig(G);
-      const res = drawUntilPlaceable(G.tiles.drawPile, G.tiles.discardFaceUp, G.tiles.board, hexAdjacent);
-      const modules = createExpansionRegistry(G.cfg.expansions);
-      const resolve = createResolver(modules);
-      resolve(G, {
-        kind: 'offerTile',
-        drawPile: res.drawPile,
-        discardFaceUp: res.discardFaceUp,
-        pending: res.drawn ? { tileId: res.drawn, legalCoords: res.legalCoords } : undefined,
-      });
-    },
-    moves: {
-      placeTile: ({ G, events }, coord: AxialCoord) => {
-        const p = G.turn?.pending;
-        if (!p) return;
-        if (!p.legalCoords.some((c) => c.q === coord.q && c.r === coord.r)) return;
+function finishMatch({ G, ctx, events }: Pick<FnContext<CoreState>, 'G' | 'ctx' | 'events'>): void {
+  // CORE-01-09-01C and CORE-01-09-02: settle exactly once, then score the Board.
+  settleAndRecordTurn(G, ctx, true);
+  // CORE-01-09-03/-04: compare real Board markers and share ties.
+  const scores = Object.keys(G.players).map(playerID => ({
+    playerID,
+    influence: (G.influencesOnBoard ?? []).filter(marker => marker.owner === playerID).length,
+  }));
+  const highest = Math.max(...scores.map(score => score.influence));
+  events.endGame({ winners: scores.filter(score => score.influence === highest).map(score => score.playerID) });
+}
 
-        // Record neighbor Hotspot enclosure state BEFORE placement
-        const candidates = neighborsOf(coord)
-          .map((c) => ({ c, placement: G.tiles.board.find((bp) => bp.coord.q === c.q && bp.coord.r === c.r) }))
-          .filter((x) => !!x.placement)
-          .map((x) => ({
-            coord: x.c,
-            tile: G.allTiles[x.placement!.tileId] as Tile,
-            was: isFullySurrounded(G, x.c),
-          }))
-          .filter((x) => x.tile && x.tile.kind === 'Hotspot');
+type TurnContext = Pick<FnContext<CoreState>, 'G' | 'ctx' | 'events'>;
 
-        // Apply placement via resolver
-        const modules = createExpansionRegistry(G.cfg.expansions);
-        const resolve = createResolver(modules);
-        resolve(G, { kind: 'placeTile', tileId: p.tileId, coord, contextCoord: coord });
+function completePoliticalSequence({ G, ctx, events }: TurnContext): void {
+  // CORE-01-09-01A: the last placement keeps its full political action sequence.
+  if (G.tiles.drawPile.length === 0) finishMatch({ G, ctx, events });
+  else events.endTurn();
+}
 
-        // CORE-01-06-02..03: resolve any Hotspot that becomes fully surrounded immediately
-        // Check placed tile if it is a Hotspot
-        const placedTile = G.allTiles[p.tileId] as Tile;
-        if (placedTile && placedTile.kind === 'Hotspot' && isFullySurrounded(G, coord)) {
-          resolve(G, { kind: 'resolveHotspotAt', coord, contextCoord: coord });
-        }
-        // Check neighbor Hotspots that changed from not surrounded -> surrounded
-        for (const h of candidates) {
-          if (!h.was && isFullySurrounded(G, h.coord)) {
-            resolve(G, { kind: 'resolveHotspotAt', coord: h.coord, contextCoord: h.coord });
-          }
-        }
+function beginPoliticalSlot(turn: TurnContext, additional: boolean): void {
+  // CORE-01-04-09A..09C: skip an empty slot automatically, after placement or Measure resolution.
+  if (politicalMoveOptions(turn.G, turn.ctx.currentPlayer, additional).next().done) {
+    completePoliticalSequence(turn);
+    return;
+  }
+  turn.events.setStage(additional ? CoreStages.AdditionalPoliticalAction : CoreStages.ExactlyOnePoliticalAction);
+}
 
-        events?.endPhase?.(); // proceed to ExactlyOnePoliticalAction
-      },
-    },
-    next: Phases.ExactlyOnePoliticalAction,
+// CORE-01-04-09 and CORE-01-06-00-12: reject invalid input before spending the slot.
+const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown) => {
+  const input = PoliticalActionSchema.safeParse(action);
+  if (!input.success) return INVALID_MOVE;
+
+  const modules = createExpansionRegistry(G.cfg.expansions);
+  const catalog = buildMoveCatalog(corePoliticalMoves(), modules);
+  const definition = catalog.definitions[input.data.type];
+  if (!definition) return INVALID_MOVE;
+
+  // EXP-01-06-05(c): an additional action cannot be PlayMeasure.
+  if (ctx.activePlayers?.[ctx.currentPlayer] === CoreStages.AdditionalPoliticalAction && definition.isPlayMeasure) {
+    return INVALID_MOVE;
+  }
+
+  const payload = definition.payloadSchema.safeParse(input.data.payload === undefined ? {} : input.data.payload);
+  if (!payload.success) return INVALID_MOVE;
+  if (!definition.execute(G, ctx.currentPlayer, payload.data).ok) return INVALID_MOVE;
+
+  // EXP-01-06-05(b) and CORE-01-07-08: complete the whole action sequence in this turn.
+  if (definition.isPlayMeasure) beginPoliticalSlot({ G, ctx, events }, true);
+  else completePoliticalSequence({ G, ctx, events });
+};
+
+export const CoreTurn: NonNullable<Game<CoreState>['turn']> = {
+  // CORE-01-04-01..03: both phases belong to the same engine turn.
+  activePlayers: { currentPlayer: CoreStages.DrawAndPlaceTile },
+  stages: {
+    [CoreStages.DrawAndPlaceTile]: { moves: { placeTile } },
+    [CoreStages.ExactlyOnePoliticalAction]: { moves: { doPoliticalAction } },
+    [CoreStages.AdditionalPoliticalAction]: { moves: { doPoliticalAction } },
   },
-  [Phases.ExactlyOnePoliticalAction]: {
-    moves: {
-      // CORE-01-04-09: Exactly one political action (placeholder noop)
-      doPoliticalAction: ({ G, ctx, events }, action: { type: string; payload: unknown }) => {
-        const modules = createExpansionRegistry(G.cfg.expansions);
-        const catalog = buildMoveCatalog(corePoliticalMoves(), modules);
-        const def = catalog.definitions[action?.type as string];
-        if (!def) return;
-        const validated = def.payloadSchema.parse(action?.payload ?? {});
-        const ctxLike = ctx as { currentPlayer?: string; playerID?: string } | undefined;
-        const pid = String(ctxLike?.currentPlayer ?? ctxLike?.playerID ?? '0');
-        def.execute(G, pid, validated as unknown as never);
-        type TurnT = NonNullable<import('@bc/rules').CoreState['turn']>;
-        const turn: TurnT = (G.turn ?? (G.turn = {} as TurnT));
-        if (turn.bannedMoveType && def.type === turn.bannedMoveType) {
-          return;
-        }
-        if (turn.allowExtraPoliticalAction) {
-          turn.allowExtraPoliticalAction = false;
-        } else {
-          turn.bannedMoveType = undefined;
-          events?.endTurn?.();
-        }
-      },
-    },
-    next: Phases.DrawAndPlaceTile,
+  onBegin: ({ G, ctx, events }) => {
+    assertExpansionStateMatchesConfig(G);
+    const resolve = createResolver();
+
+    // CORE-01-07-14/-17: expire effects of the player whose next turn actually begins.
+    resolve(G, { kind: 'expireProductionEffects', boundary: 'turnStart', playerID: ctx.currentPlayer });
+
+    // CORE-01-07-17 and EXP-01-07-07: reset usage at the start of the next round.
+    if (ctx.turn > 1 && ctx.playOrderPos === 0 && G.cfg.expansions.exp01) {
+      resolve(G, { kind: 'resetMeasuresRound', expansion: 'exp01' });
+    }
+
+    // CORE-01-04-04/-06/-07: resolve the draw sequence before offering placement.
+    const draw = resolve(G, { kind: 'drawTile', playerID: ctx.currentPlayer, turn: ctx.turn });
+    if (!draw.ok) throw new Error(`Draw failed: ${draw.reason}`);
+    // CORE-01-09-01B and VAR-01-01-08: an exhausted draw omits political action.
+    if (!G.tiles.drawResolution) finishMatch({ G, ctx, events });
+  },
+  onEnd: ({ G, ctx }) => {
+    // CORE-01-07-02/-03: settle once when the last player completes the round.
+    settleAndRecordTurn(G, ctx, ctx.playOrderPos === ctx.playOrder.length - 1);
   },
 };

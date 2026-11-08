@@ -1,23 +1,21 @@
 import type { AxialCoord, BoardPlacement } from './types.js';
-import { hexNeighbors, adjacent as adjacentHex } from './topology/hex.js';
-
-export type AdjacentFn = (a: AxialCoord, b: AxialCoord) => boolean;
+import { getTopology, type Topology } from './topology/index.js';
 
 export function isOccupied(board: BoardPlacement[], coord: AxialCoord): boolean {
   return board.some((p) => p.coord.q === coord.q && p.coord.r === coord.r);
 }
 
-export function isLegalPlacement(board: BoardPlacement[], coord: AxialCoord, adjacent: AdjacentFn = adjacentHex): boolean {
+export function isLegalPlacement(board: BoardPlacement[], coord: AxialCoord, topology: Topology = getTopology()): boolean {
   if (isOccupied(board, coord)) return false; // CORE-01-04-08
   // must be adjacent to at least one existing tile (CORE-01-04-05)
-  return board.some((p) => adjacent(p.coord, coord));
+  return board.some((p) => topology.adjacent(p.coord, coord));
 }
 
-export function legalPlacementCoords(board: BoardPlacement[], adjacent: AdjacentFn = adjacentHex): AxialCoord[] {
+export function legalPlacementCoords(board: BoardPlacement[], topology: Topology = getTopology()): AxialCoord[] {
   const candidates: AxialCoord[] = [];
   for (const p of board) {
-    for (const n of hexNeighbors(p.coord)) {
-      if (!isOccupied(board, n) && !candidates.some((c) => c.q === n.q && c.r === n.r) && isLegalPlacement(board, n, adjacent)) {
+    for (const n of topology.neighbors(p.coord)) {
+      if (!candidates.some((c) => c.q === n.q && c.r === n.r) && isLegalPlacement(board, n, topology)) {
         candidates.push(n);
       }
     }

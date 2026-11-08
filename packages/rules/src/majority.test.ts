@@ -1,78 +1,88 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
-import { computeMajority } from './majority.js';
-import type { CoreState, Tile } from './types.js';
+import { computeMajority, getControl } from './majority.js';
+import { createResolver } from './effects.js';
+import { buildInitialCoreState } from './setup.js';
+import type { BoardPlacement } from './types.js';
 
-function baseState(): CoreState {
-  const start: Tile = { id: 'StartCommittee', kind: 'StartCommittee' } as const;
-  const dom1: Tile = { id: 'DOM-W1-1', kind: 'ResortTile', resort: 'DOM', w: 1 } as const;
-  const lobby1: Tile = { id: 'Lobbyist-1', kind: 'Lobbyist' } as any;
-  const lobby2: Tile = { id: 'Lobbyist-2', kind: 'Lobbyist' } as any;
-  const allTiles: Record<string, Tile> = {
-    [start.id]: start,
-    [dom1.id]: dom1,
-    [lobby1.id]: lobby1,
-    [lobby2.id]: lobby2,
-  };
-  return {
-    matchSeed: 's',
-    tiles: {
-      drawPile: [],
-      discardFaceUp: [],
-      board: [
-        { tileId: start.id, coord: { q: 0, r: 0 } },
-        { tileId: dom1.id, coord: { q: 1, r: 0 } },
-        { tileId: lobby1.id, coord: { q: 2, r: 0 } },
-        { tileId: lobby2.id, coord: { q: 1, r: -1 } },
-      ],
-    },
-    allTiles,
-    players: {
-      '0': { id: '0', personal: { resources: [], influence: [] } },
-      '1': { id: '1', personal: { resources: [], influence: [] } },
-    },
-    resources: { bank: [], noise: [] },
-    influencesOnBoard: [],
-  };
+const resort = { tileId: 'DOM-W3-1', coord: { q: 1, r: 0 } };
+const lobbyist = { tileId: 'Lobbyist-1', coord: { q: 2, r: 0 } };
+const neighboringLobbyist = { tileId: 'Lobbyist-2', coord: { q: 2, r: -1 } };
+
+function stateWithTiles(...placements: BoardPlacement[]) {
+  const G = buildInitialCoreState(2, 'majority');
+  G.tiles.board.push(...placements);
+  G.tiles.drawPile = G.tiles.drawPile.filter(id => !placements.some(placement => placement.tileId === id));
+  return G;
 }
 
-describe('computeMajority â€” CORE-01-05', () => {
-  it('simple majority (no lobbyists)', () => {
-    const G = baseState();
+describe('Canonical majority (CORE-01-05)', () => {
+  it('reports positive tied leaders without assigning control', () => {
+    const G = stateWithTiles(resort);
     G.influencesOnBoard = [
-      { tileId: 'DOM-W1-1', owner: '0', count: 2 },
-      { tileId: 'DOM-W1-1', owner: '1', count: 1 },
+      { tileId: resort.tileId, owner: '0', id: 'test-1' },
+      { tileId: resort.tileId, owner: '1', id: 'test-2' },
     ];
-    expect(computeMajority(G, { q: 1, r: 0 })).toBe('0'); // CORE-01-05-01
+    expect(computeMajority(G, resort.coord, 'details')).toEqual({
+      controller: null, leaders: ['0', '1'], scores: { '0': 1, '1': 1 },
+    });
   });
 
-  it('tie returns null', () => {
-    const G = baseState();
+  it('T01: awards the bonus only to the controller of a contested Lobbyist', () => {
+    const G = stateWithTiles(resort, lobbyist);
     G.influencesOnBoard = [
-      { tileId: 'DOM-W1-1', owner: '0', count: 1 },
-      { tileId: 'DOM-W1-1', owner: '1', count: 1 },
+      { tileId: resort.tileId, owner: '0', id: 'test-3' },
+      { tileId: resort.tileId, owner: '1', id: 'test-4' },
+      { tileId: lobbyist.tileId, owner: '0', id: 'test-5' },
+      { tileId: lobbyist.tileId, owner: '0', id: 'test-6' },
+      { tileId: lobbyist.tileId, owner: '1', id: 'test-7' },
     ];
-    expect(computeMajority(G, { q: 1, r: 0 })).toBeNull(); // CORE-01-05-02
+    expect(computeMajority(G, resort.coord)).toBe('0');
+    expect(computeMajority(G, resort.coord, 'details')).toEqual({
+      controller: '0', leaders: ['0'], scores: { '0': 2, '1': 1 },
+    });
   });
 
-  it('lobbyist adjacency changes outcome (CORE-01-05-04..06)', () => {
-    const G = baseState();
-    G.influencesOnBoard = [
-      { tileId: 'DOM-W1-1', owner: '0', count: 1 },
-      { tileId: 'DOM-W1-1', owner: '1', count: 1 },
-      { tileId: 'Lobbyist-1', owner: '0', count: 1 }, // adjacent at (2,0)
-    ];
-    expect(computeMajority(G, { q: 1, r: 0 })).toBe('0');
+  it('T02: Start Committee stays uncontrolled beside a controlled Lobbyist', () => {
+    const G = stateWithTiles({ ...lobbyist, coord: { q: 1, r: 0 } });
+    G.influencesOnBoard = [{ tileId: lobbyist.tileId, owner: '0', id: 'test-8' }];
+    expect(getControl(G, { q: 1, r: 0 })).toBe('0');
+    expect(getControl(G, { q: 0, r: 0 })).toBeNull();
+    expect(computeMajority(G, { q: 0, r: 0 }, 'details')).toEqual({
+      controller: null, leaders: [], scores: { '0': 0, '1': 0 },
+    });
   });
 
-  it('multiple adjacent lobbyists stack +1 each', () => {
-    const G = baseState();
+  it('neither gives bonuses to a Lobbyist nor receives bonuses from a tied Lobbyist', () => {
+    const G = stateWithTiles(resort, lobbyist, neighboringLobbyist);
     G.influencesOnBoard = [
-      { tileId: 'DOM-W1-1', owner: '0', count: 1 },
-      { tileId: 'DOM-W1-1', owner: '1', count: 1 },
-      { tileId: 'Lobbyist-1', owner: '0', count: 1 }, // (2,0)
-      { tileId: 'Lobbyist-2', owner: '0', count: 1 }, // (1,-1)
+      { tileId: lobbyist.tileId, owner: '0', id: 'test-9' },
+      { tileId: lobbyist.tileId, owner: '1', id: 'test-10' },
+      { tileId: neighboringLobbyist.tileId, owner: '0', id: 'test-11' },
     ];
-    expect(computeMajority(G, { q: 1, r: 0 })).toBe('0');
+    expect(getControl(G, lobbyist.coord)).toBeNull();
+    expect(computeMajority(G, resort.coord, 'details')).toEqual({
+      controller: '0', leaders: ['0'], scores: { '0': 1, '1': 0 },
+    });
+  });
+
+  it('grants control of empty Committees and Grassroots through stacking virtual bonuses', () => {
+    const committee = { tileId: 'Committee-1', coord: { q: 1, r: 0 } };
+    const grassroots = { tileId: 'Grassroots-1', coord: { q: 3, r: -1 } };
+    const G = stateWithTiles(committee, grassroots, lobbyist, neighboringLobbyist);
+    const place = (targetTileId: string) => createResolver()(G, {
+      kind: 'placeOrMoveInfluence', playerID: '0', targetTileId, markerId: G.players['0'].personal.influence[0].id,
+    });
+
+    expect(getControl(G, committee.coord)).toBeNull();
+    expect(place(lobbyist.tileId).ok).toBe(true);
+    expect(getControl(G, committee.coord)).toBe('0');
+    expect(place(neighboringLobbyist.tileId).ok).toBe(true);
+    const markers = structuredClone(G.influencesOnBoard);
+    for (const { coord } of [committee, grassroots]) {
+      expect(getControl(G, coord)).toBe('0');
+      expect(computeMajority(G, coord, 'details').scores).toEqual({ '0': 2, '1': 0 });
+    }
+    expect(G.influencesOnBoard).toEqual(markers);
+    expect(G.players['0'].personal.influence).toHaveLength(2);
   });
 });

@@ -1,46 +1,41 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Client } from 'boardgame.io/client';
+import { InitializeGame } from 'boardgame.io/internal';
 import { describe, it, expect } from 'vitest';
 import { createBCGame } from './factory.js';
 import { buildMoveCatalog, corePoliticalMoves, createExpansionRegistry } from '@bc/rules';
 
 describe('EXP-01 scaffold - Task 0022', () => {
   it('CORE-only: no ECO, no exp01 slice, no exp01 moves', () => {
-    const Game = createBCGame({ expansions: { exp01: false } });
-    const setup = Game.setup as unknown as (ctx: { matchID: string; numPlayers: number; setupData?: unknown }) => any;
-    const G = setup({ matchID: 't', numPlayers: 2, setupData: { expansions: { exp01: false } } });
-    expect((G as any).exp?.exp01).toBeUndefined();
-    expect((G as any).resources.bank.ECO).toBeUndefined();
-    const mods = createExpansionRegistry((G as any).cfg.expansions);
-    const catalog = buildMoveCatalog(corePoliticalMoves(), mods);
-    expect(catalog.types.includes('exp01_noop')).toBe(false);
+    const { G } = InitializeGame({ game: createBCGame(), numPlayers: 2 });
+    expect(G.exp?.exp01).toBeUndefined();
+    expect(G.resources.bank.ECO).toBeUndefined();
+    const catalog = buildMoveCatalog(corePoliticalMoves(), createExpansionRegistry(G.cfg.expansions));
+    expect(catalog.types.some(type => type.startsWith('exp01_'))).toBe(false);
   });
 
-  it('CORE + EXP-01: ECO exists, exp01 slice exists, stub move present and runs', async () => {
-    const Game = createBCGame({ expansions: { exp01: true } });
-    const setup = Game.setup as unknown as (ctx: { matchID: string; numPlayers: number; setupData?: unknown }) => any;
-    const G = setup({ matchID: 't', numPlayers: 2, setupData: { expansions: { exp01: true } } });
-    expect((G as any).exp?.exp01).toBeDefined();
-    expect((G as any).resources.bank.ECO).toBeDefined();
+  it('CORE + EXP-01: ECO and Measure actions are available', () => {
+    const client = Client({ game: createBCGame({ expansions: { exp01: true } }), numPlayers: 2 });
+    const { G } = client.getState()!;
+    expect(G.exp?.exp01).toBeDefined();
+    expect(G.resources.bank.ECO).toBeDefined();
+    const catalog = buildMoveCatalog(corePoliticalMoves(), createExpansionRegistry(G.cfg.expansions));
+    expect(catalog.types).toContain('exp01_takeMeasure');
+    const measureId = G.exp!.exp01!.measures!.open[0];
 
-    const mods = createExpansionRegistry((G as any).cfg.expansions);
-    const catalog = buildMoveCatalog(corePoliticalMoves(), mods);
-    expect(catalog.types.includes('exp01_noop')).toBe(true);
-
-    // run via political action pathway
-    const { CorePhases } = await import('./core.turns.js');
-    const move = (action: any) => (CorePhases as any).ExactlyOnePoliticalAction.moves.doPoliticalAction({ G, ctx: { playOrderPos: 0, playOrder: ['0','1'] } } as any, action);
-    const before = ((G as any).exp.exp01.sentinel === true);
-    move({ type: 'exp01_noop', payload: {} });
-    const after = ((G as any).exp.exp01.sentinel === true);
-    expect(after).toBe(!before);
+    client.moves.placeTile(G.tiles.drawResolution!.legalCoords[0]);
+    client.moves.doPoliticalAction({ type: 'exp01_takeMeasure', payload: { measureId } });
+    expect(client.getState()!.G.exp?.exp01?.measures?.hands['0']).toEqual([measureId]);
   });
 
-  it('EXP-01 move schema is strict (rejects unknown keys)', async () => {
-    const Game = createBCGame({ expansions: { exp01: true } });
-    const setup = Game.setup as unknown as (ctx: { matchID: string; numPlayers: number; setupData?: unknown }) => any;
-    const G = setup({ matchID: 't', numPlayers: 2, setupData: { expansions: { exp01: true } } });
-    const { CorePhases } = await import('./core.turns.js');
-    const move = (action: any) => (CorePhases as any).ExactlyOnePoliticalAction.moves.doPoliticalAction({ G, ctx: { playOrderPos: 0, playOrder: ['0','1'] } } as any, action);
-    expect(() => move({ type: 'exp01_noop', payload: { extra: 1 } })).toThrow();
+  it('rejects unknown payload keys without spending the political action', () => {
+    const client = Client({ game: createBCGame({ expansions: { exp01: true } }), numPlayers: 2 });
+    client.moves.placeTile(client.getState()!.G.tiles.drawResolution!.legalCoords[0]);
+    const before = client.getState()!;
+    const measureId = before.G.exp!.exp01!.measures!.open[0];
+    client.moves.doPoliticalAction({ type: 'exp01_takeMeasure', payload: { measureId, extra: 1 } });
+    const after = client.getState()!;
+    expect(after._stateID).toBe(before._stateID);
+    expect(after.ctx).toEqual(before.ctx);
+    expect(after.G).toEqual(before.G);
   });
 });
