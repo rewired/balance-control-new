@@ -1,6 +1,6 @@
 # BALANCE // CONTROL - Monorepo Skeleton
 
-- Node LTS: 20.11.x (`.nvmrc` provided)
+- Node.js 24 LTS (`.nvmrc` pins 24.22.2)
 - Package manager: pnpm 10
 
 ## Commands

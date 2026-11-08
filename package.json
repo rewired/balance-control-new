@@ -4,7 +4,7 @@
     "version":  "0.0.0",
     "packageManager":  "pnpm@10.18.0",
     "engines":  {
-                    "node":  "\u003e=20.11.0 \u003c23",
+                    "node":  ">=24.11.0 <25",
                     "pnpm":  "\u003e=9"
                 },
     "scripts":  {
