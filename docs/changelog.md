@@ -496,3 +496,9 @@
 
 - Die Spielfabrik registriert `@bc/exp-00-core`, `@bc/exp-01-economy`, `@bc/exp-02-security` und `@bc/exp-03-climate`.
 - Die Pakete liefern ihre eigenen Regeln und Kartenwirkungen. Der kanonische Resolver wertet die Beiträge aktiver Module aus und führt ihre Änderungen atomar aus. Der Paketsplit verwendet weiterhin die gespeicherten Modul- und Karten-IDs.
+
+## 2026-11-08 – Task 0031 – CORE-Hotseat für den Spieltest
+
+- Der Webclient startet direkt eine CORE-Partie zu zweit. Das Hexfeld verwendet die vorhandene Plättchenvorlage, Textur und Icons. Es zeigt reale Marker, virtuellen Einfluss und die kanonisch berechnete Kontrolle.
+- Die legalen Engine-Optionen steuern Platzierungsziele und politische Aktionen. Die Ansicht zeigt Kosten, Vorräte, Endwertung und einen Neustart.
+- Ein automatisierter DOM-Durchlauf deckt 71 Züge bis zur Wertung und zum Neustart ab. Die Anleitung für den Spieltest zu zweit steht in Task 0031.

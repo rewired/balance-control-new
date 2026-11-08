@@ -1,4 +1,4 @@
-# BALANCE // CONTROL - Monorepo Skeleton
+# BALANCE // CONTROL
 
 - Node.js 24 LTS (`.nvmrc` pins 24.22.2)
 - Package manager: pnpm 10
@@ -13,16 +13,16 @@
 ## Packages
 - `@bc/shared` - shared utils (TypeScript lib)
 - `@bc/rules` - domain types & helpers
-- `@bc/game` - boardgame.io game def (later)
-- `@bc/server` - multiplayer server (later)
+- `@bc/game` - boardgame.io game definition
+- `@bc/server` - multiplayer server
 - `@bc/client-web` - React client via Vite
-- `@bc/bot-llm` - LLM bot adapter (later)
-## Running the Hello Game (Task 0002)
+- `@bc/bot-llm` - LLM bot adapter
+## Playing CORE
 
-- Hotseat: `pnpm dev` then open http://localhost:5173 (click -Hotseat-).
-- Network: in one terminal `pnpm --filter @bc/server dev` (runs on 8000). In another terminal `pnpm dev`, switch to -Network-. Optionally set `VITE_SERVER_URL=http://localhost:8000` when running the client.
+- Hotseat: run `pnpm dev` and open http://localhost:5173. The client opens a two-player match on the same device.
+- Network: run `pnpm --filter @bc/server dev` on port 8000, then run `pnpm dev` and choose Network. Set `VITE_SERVER_URL` when using a different server address.
+- For the playtest instructions, see [Task 0031](docs/tasks/0031_core_hotseat_playtest.md).
 
-The example increment move is non-normative and exists only to validate wiring.
 
 ## LLM Bot (Local)
 See docs/llm/local-bot-ollama.md for running a local model (Ollama).

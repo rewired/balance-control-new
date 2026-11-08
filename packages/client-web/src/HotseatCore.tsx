@@ -3,7 +3,7 @@ import { Client } from 'boardgame.io/client';
 import { CoreGame } from '@bc/game';
 import { CoreView, submitCoreOption } from './BoardCore.js';
 
-export default function HotseatCore() {
+function HotseatMatch({ onNewMatch }: { onNewMatch: () => void }) {
   const [client] = useState(() => Client({ game: CoreGame, numPlayers: 2, playerID: '0' }));
   const [state, setState] = useState(() => client.getState());
   useEffect(() => {
@@ -17,10 +17,15 @@ export default function HotseatCore() {
 
   if (!state) return null;
   const { G, ctx, _stateID } = state;
-  const playerID = Object.keys(ctx.activePlayers ?? {})[0];
-  return <CoreView G={G} ctx={ctx} revision={_stateID} playerID={playerID}
+  const playerID = Object.keys(ctx.activePlayers ?? {})[0] ?? ctx.currentPlayer;
+  return <CoreView G={G} ctx={ctx} revision={_stateID} playerID={playerID} onNewMatch={onNewMatch}
     submit={option => {
       client.updatePlayerID(option.playerID);
       submitCoreOption(client.moves, option);
     }} />;
+}
+
+export default function HotseatCore() {
+  const [match, setMatch] = useState(0);
+  return <HotseatMatch key={match} onNewMatch={() => setMatch(previous => previous + 1)} />;
 }
