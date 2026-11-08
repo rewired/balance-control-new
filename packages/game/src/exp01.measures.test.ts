@@ -3,7 +3,7 @@ import { beforeEach, describe, it, expect } from 'vitest';
 import { Client } from 'boardgame.io/client';
 import { exp01Economy } from '@bc/exp-01-economy';
 import { createBCGame, setupCoreMatch } from './factory.js';
-import { __resetRegisteredExpansionsForTest, buildMoveCatalog, corePoliticalMoves, createExpansionRegistry, createResolver, registerExpansion, type CoreState } from '@bc/rules';
+import { __resetRegisteredExpansionsForTest, buildMoveCatalog, createExpansionRegistry, createResolver, registerExpansion, type CoreState } from '@bc/rules';
 
 function setupGame(exp01 = true) {
   const G = setupCoreMatch(2, { matchSeed: 't', expansions: { exp01 } });
@@ -11,7 +11,7 @@ function setupGame(exp01 = true) {
 }
 
 function doAction(G: CoreState, type: string, payload: unknown = {}) {
-  const catalog = buildMoveCatalog(corePoliticalMoves(), createExpansionRegistry(G.cfg.expansions));
+  const catalog = buildMoveCatalog(createExpansionRegistry(G.cfg.expansions));
   const definition = catalog.definitions[type];
   return definition.execute(G, '0', definition.payloadSchema.parse(payload));
 }
@@ -100,14 +100,14 @@ describe('EXP-01 Measures - Task 0027', () => {
 
   it('holds the same engine turn through a Measure and its additional action', () => {
     const client = Client({ game: createBCGame({ matchSeed: 'measure-turn', expansions: { exp01: true } }), numPlayers: 2 });
-    const place = () => client.moves.placeTile(client.getState()!.G.tiles.drawResolution!.legalCoords[0]);
+    const place = () => client.moves.placeTile(client.getState()!.G.exp.core.tiles.drawResolution!.legalCoords[0]);
     const measures = () => client.getState()!.G.exp!.exp01!.measures!;
     const take = () => client.moves.doPoliticalAction({ type: 'exp01_takeMeasure', payload: { measureId: measures().open[0] } });
     const play = (measureId: string) => client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId } });
     const firstPlayerTurn = () => {
       const { G } = client.getState()!;
-      const targetTileId = G.tiles.drawResolution!.tileId;
-      const markerId = G.players['0'].personal.influence[0].id;
+      const targetTileId = G.exp.core.tiles.drawResolution!.tileId;
+      const markerId = G.exp.core.players['0'].personal.influence[0].id;
       place();
       client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId } });
     };
@@ -134,7 +134,7 @@ describe('EXP-01 Measures - Task 0027', () => {
     expect(extra.ctx.turn).toBe(before.ctx.turn);
     expect(extra.ctx.activePlayers).toEqual({ '1': 'AdditionalPoliticalAction' });
     expect(measures().hands['1']).toEqual([second]);
-    expect(extra.G.playedMeasureThisRound!['1']).toBe(true);
+    expect(extra.G.exp.core.playedMeasureThisRound!['1']).toBe(true);
 
     play(second);
     expect(client.getState()!._stateID).toBe(extra._stateID);
@@ -146,13 +146,13 @@ describe('EXP-01 Measures - Task 0027', () => {
     expect(next.ctx.currentPlayer).toBe('0');
     expect(next.ctx.activePlayers).toEqual({ '0': 'DrawAndPlaceTile' });
     expect(measures().hands['1']).toHaveLength(2);
-    expect(next.G.playedMeasureThisRound!['1']).toBe(false);
+    expect(next.G.exp.core.playedMeasureThisRound!['1']).toBe(false);
   });
 
   it('enumerators list legal options only (AGENTS -4.1)', async () => {
     const { G } = setupGame(true);
     const mods = createExpansionRegistry((G as any).cfg.expansions);
-    const catalog = buildMoveCatalog(corePoliticalMoves(), mods);
+    const catalog = buildMoveCatalog(mods);
     const takeDef: any = catalog.definitions['exp01_takeMeasure'];
     const playDef: any = catalog.definitions['exp01_playMeasure'];
     const takeOpts = takeDef.enumerate(G, '0');

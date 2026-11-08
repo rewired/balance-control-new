@@ -22,9 +22,9 @@ describe('Core action picker', () => {
     expect(render('0')).not.toContain('doPoliticalAction');
     expect(render('1')).not.toContain('<select');
     const chosenPlacement = options()[1];
-    const tileId = client.getState()!.G.tiles.drawResolution!.tileId;
+    const tileId = client.getState()!.G.exp.core.tiles.drawResolution!.tileId;
     submit(chosenPlacement);
-    expect(client.getState()!.G.tiles.board).toContainEqual({ tileId, coord: chosenPlacement.parameters[0] });
+    expect(client.getState()!.G.exp.core.tiles.board).toContainEqual({ tileId, coord: chosenPlacement.parameters[0] });
 
     expect(render('0')).toContain('ExactlyOnePoliticalAction');
     expect(render('0')).toContain('placeOrMoveInfluence');
@@ -32,7 +32,7 @@ describe('Core action picker', () => {
     const chosenAction = options()[1];
     const { markerId } = (chosenAction.parameters[0] as { payload: { markerId: string } }).payload;
     submit(chosenAction);
-    expect(client.getState()!.G.influencesOnBoard).toContainEqual(expect.objectContaining({ id: markerId, tileId, owner: '0' }));
+    expect(client.getState()!.G.exp.core.influencesOnBoard).toContainEqual(expect.objectContaining({ id: markerId, tileId, owner: '0' }));
     expect(client.getState()!.ctx.currentPlayer).toBe('1');
     expect(render('0')).not.toContain('<select');
     expect(render('1')).toContain('placeTile');

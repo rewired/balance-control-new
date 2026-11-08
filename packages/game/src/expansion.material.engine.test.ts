@@ -12,11 +12,11 @@ describe('Expansion material through boardgame.io', () => {
     const { G }: { G: CoreState } = InitializeGame({ game: createBCGame({ expansions }), numPlayers: 2 });
     const { exp01, exp02, exp03 } = expansions;
     const activeResources = ['DOM', 'FOR', 'INF', ...(exp01 ? ['ECO'] : []), ...(exp02 ? ['SEC'] : []), ...(exp03 ? ['CLM'] : [])];
-    expect(Object.keys(G.resources.bank)).toEqual(activeResources);
-    expect(Object.keys(G.resources.noise)).toEqual(activeResources);
-    for (const player of Object.values(G.players)) expect(Object.keys(player.personal.resources)).toEqual(activeResources);
+    expect(Object.keys(G.exp.core.resources.bank)).toEqual(activeResources);
+    expect(Object.keys(G.exp.core.resources.noise)).toEqual(activeResources);
+    for (const player of Object.values(G.exp.core.players)) expect(Object.keys(player.personal.resources)).toEqual(activeResources);
 
-    const tileIds = [G.tiles.drawResolution!.tileId, ...G.tiles.drawPile];
+    const tileIds = [G.exp.core.tiles.drawResolution!.tileId, ...G.exp.core.tiles.drawPile];
     expect(tileIds).toHaveLength(71 + (exp01 ? 6 : 0) + (exp02 ? 2 : 0) + (exp03 ? 5 : 0));
     expect(new Set(tileIds).size).toBe(tileIds.length);
     expect(tileIds.includes('InvestmentProgram')).toBe(exp01);
@@ -41,7 +41,7 @@ describe('Expansion material through boardgame.io', () => {
       expect(measures.playCounts).not.toHaveProperty('CLM_M15');
     }
     expect(G.exp?.exp03?.measures?.playCounts.CLM_M11 === 0).toBe(exp01 && exp03);
-    expect(Boolean(G.playedMeasureThisRound)).toBe(exp01 || exp02 || exp03);
+    expect(Boolean(G.exp.core.playedMeasureThisRound)).toBe(exp01 || exp02 || exp03);
     expect(JSON.stringify(G)).not.toMatch(/countdown/i);
   });
 
@@ -49,7 +49,7 @@ describe('Expansion material through boardgame.io', () => {
     const { G }: { G: CoreState } = InitializeGame({
       game: createBCGame({ addOn56: true, expansions: { exp01: true, exp02: true, exp03: true } }), numPlayers,
     });
-    const tiles = Object.values(G.allTiles);
+    const tiles = Object.values(G.exp.core.allTiles);
     const weights = (resource: string) => tiles.flatMap(tile => tile.kind === 'ResortTile' && tile.resort === resource ? [tile.w] : []);
     expect(weights('ECO')).toEqual([1, 1, 1, 2, 2, 3, 3]);
     expect(weights('CLM')).toEqual([1, 1, 1, 2, 2, 2]);

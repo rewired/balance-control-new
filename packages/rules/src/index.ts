@@ -4,11 +4,7 @@ export * from './setup.js';
 
 export * from './topology/hex.js';
 export * from './topology/index.js';
-export * from './placement.js';
-
-export * from './majority.js';
-export * from './hotspot.js';
-export * from './production.js';
+export { computeMajority, getControl, isFullySurrounded, regulationOperations, type MajorityBreakdown, type MajorityResult } from './rule-services.js';
 
 export * from './resources.js';
 export * from './expansion-registry.js';
@@ -18,8 +14,7 @@ export * from './effects.js';
 
 export * from './moves.js';
 export * from './config.js';
-export { budgetDeficitIds, isPoliticalEffect } from './payment.js';
-export { regulationOperations } from './regulations.js';
+export { budgetDeficitIds, greenwashingResources, isPoliticalEffect, paymentPlans, type PlannedPayment } from './payment.js';
 
 export { z } from 'zod';
 export type { ZodTypeAny } from 'zod';

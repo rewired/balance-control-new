@@ -1,7 +1,8 @@
-import type { AxialCoord, CoreState, ExpansionId, MeasureDuration, RegulationOperation, ResourceId, ResortTile, Tile } from './types.js';
+import type { AxialCoord, BoardPlacement, BoardRegulation, CoreState, ExpansionId, MeasureDuration, PendingRegulationChoice, RegulationKind, RegulationOperation, ResourceId, ResortTile, Tile } from './types.js';
 import type { ResourceRegistry, ResourceAmounts } from './resources.js';
-import type { EffectDescriptor } from './effects.js';
+import type { EffectDescriptor, EffectResolver, RegisterMeasureEffect, ResolveRegulationEffect } from './effects.js';
 import type { ExpansionFlags, MatchConfig } from './schemas.js';
+import type { MajorityResult } from './rule-services.js';
 
 export interface ProhibitionsArgs { G: CoreState; effect: EffectDescriptor }
 export interface CostIncreasesArgs { G: CoreState; effect: EffectDescriptor; cost?: Partial<ResourceAmounts> }
@@ -42,37 +43,103 @@ export interface ExpansionHooks {
   outputModifiers?: (args: OutputModifiersArgs) => number | void;
   // CORE-01-06-16-00: report only effects eligible for this tile's production instance.
   productionModifiers?: (args: ProductionModifiersArgs) => readonly ProductionModifier[] | void;
+  suppressMeasureProduction?: (G: CoreState, coord: AxialCoord) => boolean;
+  productionReceiptLimit?: (G: CoreState, playerID: string) => number | undefined;
+  paymentModifiers?: (G: CoreState, effect: EffectDescriptor & { playerID: string }) => PaymentModifiers;
+  budgetDeficits?: (G: CoreState, playerID?: string) => readonly string[];
+  greenwashing?: (G: CoreState) => readonly ('CLM' | 'INF')[] | undefined;
+  beforeHotspot?: (G: CoreState, tileId: string) => readonly { effect: ResolveRegulationEffect; consume: string }[];
+  beforeSettlement?: (G: CoreState) => readonly { effect?: ResolveRegulationEffect; consume: string }[];
 }
 
-export interface ExpansionModule {
-  id: ExpansionId;
+export interface PaymentModifiers {
+  waiveClimateSurcharges?: boolean;
+  replaceSurcharge?: boolean;
+  transferSurchargeIds?: readonly string[];
+  councils?: readonly { id: string; resource: ResourceId }[];
+  partnerships?: readonly { id: string; resource: ResourceId }[];
+}
+
+interface ModuleContributions {
   registerResources(registry: ResourceRegistry): void;
   setupExpansionState?(G: CoreState, ctx: { numPlayers: number; seed: string }): void;
   tiles?: (config: MatchConfig) => readonly Tile[];
-  measureDeck?: (config: MatchConfig) => readonly string[];
-  measureRules?: Readonly<Record<string, MeasureRule | undefined>>;
   conversionAlternatives?: (G: CoreState, playerID: string) => readonly ConversionAlternative[];
   extendMoves?: (builder: import('./moves.js').MoveExtensionBuilder) => void;
   hooks?: ExpansionHooks;
 }
 
-const _registered: ExpansionModule[] = [];
+export interface CoreModule extends ModuleContributions {
+  id: 'core';
+  createResolver(modules?: readonly RulesModule[]): EffectResolver;
+  computeMajority(G: CoreState, coord: AxialCoord): string | null;
+  computeMajority(G: CoreState, coord: AxialCoord, format: 'details'): MajorityResult;
+  isFullySurrounded(G: CoreState, coord: AxialCoord): boolean;
+  initializeMatch(context: {
+    numPlayers: number;
+    matchSeed: string;
+    cfg: MatchConfig;
+    registry: ResourceRegistry;
+    tiles: readonly Tile[];
+  }): CoreState;
+}
 
-export function registerExpansion(module: ExpansionModule): void {
-  if (_registered.find((m) => m.id === module.id)) return;
-  _registered.push(module);
+export interface ExpansionModule extends ModuleContributions {
+  id: ExpansionId;
+  measureDeck?: (config: MatchConfig) => readonly string[];
+  measureRules?: Readonly<Record<string, MeasureRule | undefined>>;
+  measurePrefix?: string;
+  canRegisterMeasure?: (G: CoreState, instance: RegisterMeasureEffect['instance']) => boolean;
+  regulations?: RegulationRules;
+}
+
+export interface RegulationRules {
+  initialize(G: CoreState): void;
+  attached(G: CoreState): readonly BoardRegulation[];
+  mayAttach(tile: Tile, kind: RegulationKind): boolean;
+  context(G: CoreState, operation: RegulationOperation): BoardPlacement | undefined;
+  authorityContext(G: CoreState, request: ResolveRegulationEffect): BoardPlacement | undefined;
+  operations(G: CoreState, kind: RegulationOperation['operation']): Iterable<RegulationOperation>;
+  plan(G: CoreState, operation: RegulationOperation, playerID: string, authorityTileId?: string):
+    { cost?: Partial<ResourceAmounts>; commit(): void } | undefined;
+  followUpOperations(G: CoreState, pending: PendingRegulationChoice): readonly RegulationOperation[];
+  permitsFollowUp(pending: PendingRegulationChoice, operation: RegulationOperation): boolean;
+  followUpContext(G: CoreState, pending: PendingRegulationChoice): string | null;
+}
+
+export type RulesModule = CoreModule | ExpansionModule;
+
+const registered: ExpansionModule[] = [];
+let core: CoreModule | undefined;
+
+export function registerExpansion(module: RulesModule): void {
+  if (module.id === 'core') {
+    core ??= module;
+    return;
+  }
+  if (registered.some(m => m.id === module.id)) return;
+  registered.push(module);
+  registered.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
 export function __resetRegisteredExpansionsForTest() {
-  _registered.length = 0;
+  registered.length = 0;
 }
 
-export function createExpansionRegistry(flags: ExpansionFlags | undefined): ExpansionModule[] {
-  const enabled: ExpansionId[] = [];
-  if (flags?.exp01) enabled.push('exp01');
-  if (flags?.exp02) enabled.push('exp02');
-  if (flags?.exp03) enabled.push('exp03');
-  const filtered = _registered.filter((m) => enabled.includes(m.id));
-  filtered.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  return filtered;
+export function getCoreExpansion(): CoreModule {
+  if (!core) throw new Error('Register the mandatory CORE expansion before using the rules engine');
+  return core;
+}
+
+export function createExpansionRegistry(
+  flags: ExpansionFlags | undefined,
+  candidates: readonly RulesModule[] = registered,
+): [CoreModule, ...ExpansionModule[]] {
+  const enabled = candidates.filter((module): module is ExpansionModule =>
+    module.id !== 'core' && flags?.[module.id] === true);
+  return [getCoreExpansion(), ...enabled];
+}
+
+export function getRegulationRules(G: CoreState, modules: readonly RulesModule[] = createExpansionRegistry(G.cfg.expansions)) {
+  return modules.find((module): module is ExpansionModule => module.id !== 'core' && !!module.regulations)?.regulations;
 }

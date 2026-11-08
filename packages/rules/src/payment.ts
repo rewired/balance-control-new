@@ -1,6 +1,6 @@
-import type { ActiveMeasureEffect, CoreState, ResourceId } from './types.js';
+import type { CoreState, ResourceId } from './types.js';
 import type { EffectDescriptor } from './effects.js';
-import type { Surcharge } from './expansion-registry.js';
+import { createExpansionRegistry, type ExpansionHooks, type Surcharge } from './expansion-registry.js';
 import type { PaymentSelection } from './schemas.js';
 import type { ResourceAmounts, ResourceRegistry } from './resources.js';
 
@@ -10,9 +10,8 @@ type Council = NonNullable<PaymentSelection['council']>;
 type Partnership = NonNullable<PaymentSelection['partnership']>;
 type SurchargePayment = Surcharge & { payer: string; resource?: ResourceId };
 
-export function budgetDeficitIds(G: CoreState, playerID: string): string[] {
-  return G.activeMeasureEffects?.filter(instance => instance.sourceCardId === 'ECO_M06' && instance.targetPlayerID === playerID)
-    .map(instance => instance.id) ?? [];
+export function budgetDeficitIds(G: CoreState, playerID?: string, hooks: readonly ExpansionHooks[] = activeHooks(G)): string[] {
+  return hooks.flatMap(hook => hook.budgetDeficits?.(G, playerID) ?? []);
 }
 
 export function isPoliticalEffect(effect: EffectDescriptor): boolean {
@@ -20,13 +19,17 @@ export function isPoliticalEffect(effect: EffectDescriptor): boolean {
 }
 
 // EXP-03-08-M05-04..09: one suppression fee per eligible gain, even with multiple instances.
-export function isGreenwashingActive(G: CoreState): boolean {
-  return G.cfg.expansions.exp03 && Boolean(G.activeMeasureEffects?.some(instance => instance.sourceCardId === 'CLM_M05'));
+function activeHooks(G: CoreState): ExpansionHooks[] {
+  return createExpansionRegistry(G.cfg.expansions).flatMap(module => module.hooks ?? []);
+}
+
+export function greenwashingResources(G: CoreState, hooks: readonly ExpansionHooks[] = activeHooks(G)): readonly ('CLM' | 'INF')[] {
+  return hooks.flatMap(hook => hook.greenwashing?.(G) ?? []);
 }
 
 function* transferChoices(
   costs: readonly Surcharge[],
-  pacts: readonly ActiveMeasureEffect[],
+  pacts: readonly string[],
   players: string[],
   start = 0,
   chosen: Transfer[] = [],
@@ -40,7 +43,7 @@ function* transferChoices(
     if (chosen.some(transfer => transfer.costId === cost.id)) continue;
     for (const playerID of players) {
       yield* transferChoices(costs, pacts, players, start + 1, [
-        ...chosen, { effectId: pacts[start].id, costId: cost.id, playerID },
+        ...chosen, { effectId: pacts[start], costId: cost.id, playerID },
       ]);
     }
   }
@@ -61,6 +64,7 @@ export function* paymentPlans(
   base: Partial<ResourceAmounts>,
   raw: readonly Surcharge[],
   immune: boolean,
+  hooks: readonly ExpansionHooks[],
   explore = false,
   unpaidDeficits?: ReadonlySet<string>,
 ): Generator<PlannedPayment> {
@@ -69,19 +73,14 @@ export function* paymentPlans(
   const greenwashing = effect.payment?.greenwashing;
   if (greenwashing && effect.kind !== 'formalizeInfluence') return;
   const resources = registry.list();
-  const effects = immune ? [] : G.activeMeasureEffects ?? [];
-  const owned = effects.filter(instance => instance.owner === original);
-  // EXP-03-08-M08/-M09/-M10: protection checks the original payer and only Climate surcharges.
-  const protection = effects.some(instance => instance.sourceCardId === 'CLM_M08'
-    || (instance.owner === original && (instance.sourceCardId === 'CLM_M10'
-      || (instance.sourceCardId === 'CLM_M09' && isPoliticalEffect(effect) && effect.kind !== 'playMeasure'))));
+  const modifiers = immune ? [] : hooks.flatMap(hook => hook.paymentModifiers?.(G, effect) ?? []);
+  const protection = modifiers.some(modifier => modifier.waiveClimateSurcharges);
   const costs = raw.filter(cost => !cost.climate || !protection);
-  const pacts = owned.filter(instance => instance.sourceCardId === 'CLM_M13');
-  const councils = owned.filter(instance => instance.sourceCardId === 'ECO_M08' && !instance.used);
-  const partnerships = effect.kind === 'playMeasure' || effect.kind === 'regulationOperation' || effect.kind === 'activateAuthorityApparatus'
-    ? effects.filter(instance => instance.sourceCardId === 'SEC_M06') : [];
-  const supplemental = isPoliticalEffect(effect) && owned.some(instance => instance.sourceCardId === 'ECO_M10');
-  const others = Object.keys(G.players).filter(playerID => playerID !== original);
+  const pacts = modifiers.flatMap(modifier => modifier.transferSurchargeIds ?? []);
+  const councils = modifiers.flatMap(modifier => modifier.councils ?? []);
+  const partnerships = modifiers.flatMap(modifier => modifier.partnerships ?? []);
+  const supplemental = modifiers.some(modifier => modifier.replaceSurcharge);
+  const others = Object.keys(G.exp.core.players).filter(playerID => playerID !== original);
   const replacements: (Replacement | undefined)[] = selected ? [selected.replacement] : [
     undefined,
     ...(supplemental ? costs.flatMap(cost => resources.map(resource => ({ costId: cost.id, resource }))) : []),
@@ -95,7 +94,7 @@ export function* paymentPlans(
       const byCost = new Map(transfer.map(item => [item.costId, item.playerID]));
       const consumed = new Set(transfer.map(item => item.effectId));
       if (byCost.size !== transfer.length || consumed.size !== transfer.length || transfer.some(item =>
-        !eligible.some(cost => cost.id === item.costId) || !pacts.some(pact => pact.id === item.effectId) || !others.includes(item.playerID))) continue;
+        !eligible.some(cost => cost.id === item.costId) || !pacts.includes(item.effectId) || !others.includes(item.playerID))) continue;
       const requested = selected?.surcharges ?? {};
       if (Object.keys(requested).some(id => !eligible.some(cost => cost.id === id))) continue;
       const units: SurchargePayment[] = eligible.map(cost => ({
@@ -103,43 +102,45 @@ export function* paymentPlans(
       }));
 
       const councilChoices: (Council | undefined)[] = selected ? [selected.council] : [
-        undefined, ...councils.flatMap(instance => resources.filter(resource => resource !== 'ECO').map(resource => ({ effectId: instance.id, resource }))),
+        undefined, ...councils.flatMap(instance => resources.filter(resource => resource !== instance.resource).map(resource => ({ effectId: instance.id, resource }))),
       ];
       const partnershipChoices: (Partnership | undefined)[] = selected ? [selected.partnership] : [
-        undefined, ...partnerships.flatMap(instance => resources.filter(resource => resource !== 'SEC')
+        undefined, ...partnerships.flatMap(instance => resources.filter(resource => resource !== instance.resource)
           .map(replacedResource => ({ effectId: instance.id, replacedResource }))),
       ];
       for (const [council, partnership] of councilChoices.flatMap(council => partnershipChoices.map(partnership => [council, partnership] as const))) {
-        if (council && (!councils.some(instance => instance.id === council.effectId) || council.resource === 'ECO' || !registry.has(council.resource))) continue;
-        if (partnership && (!partnerships.some(instance => instance.id === partnership.effectId)
-            || partnership.replacedResource === 'SEC' || !registry.has(partnership.replacedResource))) continue;
+        const councilRule = council && councils.find(instance => instance.id === council.effectId);
+        const partnershipRule = partnership && partnerships.find(instance => instance.id === partnership.effectId);
+        if (council && (!councilRule || council.resource === councilRule.resource || !registry.has(council.resource))) continue;
+        if (partnership && (!partnershipRule || partnership.replacedResource === partnershipRule.resource
+            || !registry.has(partnership.replacedResource))) continue;
         const accounts = new Map<string, ResourceAmounts>([[original, Object.assign(Object.create(null), base)]]);
         if (replacement && !unpaidDeficits?.has(replacement.costId)) {
           const cost = accounts.get(original)!;
           cost[replacement.resource] = (cost[replacement.resource] ?? 0) + 1;
         }
         // EXP-01-08-M08-04: account for one ECO substitution during the search without paying anything yet.
-        if (council) {
+        if (council && councilRule) {
           const cost = accounts.get(original)!;
-          cost.ECO = (cost.ECO ?? 0) - 1;
+          cost[councilRule.resource] = (cost[councilRule.resource] ?? 0) - 1;
           cost[council.resource] = (cost[council.resource] ?? 0) + 1;
         }
         // EXP-02-08-M06-03: substitute one original Resource with SEC for a Regulation or Measure.
-        if (partnership) {
+        if (partnership && partnershipRule) {
           const cost = accounts.get(original)!;
           cost[partnership.replacedResource] = (cost[partnership.replacedResource] ?? 0) - 1;
-          cost.SEC = (cost.SEC ?? 0) + 1;
+          cost[partnershipRule.resource] = (cost[partnershipRule.resource] ?? 0) + 1;
         }
         const affordable = (payer: string, amounts: ResourceAmounts) => Object.entries(amounts)
           .every(([resource, amount]) => registry.has(resource) && Number.isSafeInteger(amount)
-            && amount <= (G.players[payer].personal.resources[resource] ?? 0));
+            && amount <= (G.exp.core.players[payer].personal.resources[resource] ?? 0));
         if (!affordable(original, accounts.get(original)!)) continue;
 
         const allocate = function* (index: number, chosen: Record<string, ResourceId>): Generator<Record<string, ResourceId>> {
           if (index === units.length) {
             const cost = accounts.get(original)!;
             // CORE-01-06-00-10: a Resource created by one substitution cannot satisfy the other.
-            if ((!council || cost.ECO >= 0) && (!partnership || cost[partnership.replacedResource]
+            if ((!councilRule || cost[councilRule.resource] >= 0) && (!partnership || cost[partnership.replacedResource]
               >= (council?.resource === partnership.replacedResource ? 1 : 0))) yield { ...chosen };
             return;
           }

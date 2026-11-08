@@ -4,6 +4,8 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+packageExtensionsChecksum: sha256-rUFxTJ9P+Atb6wli2SSqJz0/aQAoKw2KQLVAeNWmugE=
+
 importers:
 
   .:
@@ -98,6 +100,28 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1(@types/node@25.2.3)
 
+  packages/exp-00-core:
+    dependencies:
+      '@bc/rules':
+        specifier: workspace:*
+        version: link:../rules
+      '@bc/shared':
+        specifier: workspace:*
+        version: link:../shared
+      boardgame.io:
+        specifier: ^0.50.2
+        version: 0.50.2
+    devDependencies:
+      eslint:
+        specifier: ^8.57.1
+        version: 8.57.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@25.2.3)
+
   packages/exp-01-economy:
     dependencies:
       '@bc/rules':
@@ -117,11 +141,52 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1(@types/node@25.2.3)
 
+  packages/exp-02-security:
+    dependencies:
+      '@bc/rules':
+        specifier: workspace:*
+        version: link:../rules
+    devDependencies:
+      eslint:
+        specifier: ^8.57.1
+        version: 8.57.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@25.2.3)
+
+  packages/exp-03-climate:
+    dependencies:
+      '@bc/rules':
+        specifier: workspace:*
+        version: link:../rules
+    devDependencies:
+      eslint:
+        specifier: ^8.57.1
+        version: 8.57.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@25.2.3)
+
   packages/game:
     dependencies:
+      '@bc/exp-00-core':
+        specifier: workspace:*
+        version: link:../exp-00-core
       '@bc/exp-01-economy':
         specifier: workspace:*
         version: link:../exp-01-economy
+      '@bc/exp-02-security':
+        specifier: workspace:*
+        version: link:../exp-02-security
+      '@bc/exp-03-climate':
+        specifier: workspace:*
+        version: link:../exp-03-climate
       '@bc/rules':
         specifier: workspace:*
         version: link:../rules
@@ -1755,6 +1820,10 @@ packages:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
     engines: {node: '>= 0.6'}
 
+  node-persist@3.1.3:
+    resolution: {integrity: sha512-CaFv+kSZtsc+VeDRldK1yR47k1vPLBpzYB9re2z7LIwITxwBtljMq3s8VQnnr+x3E8pQfHbc5r2IyJsBLJhtXg==}
+    engines: {node: '>=10.12.0'}
+
   npm-run-path@5.3.0:
     resolution: {integrity: sha512-ppwTtiJZq0O/ai0z7yfudtBpWIoxM8yE6nHi1X47eFR2EWORqfbu6CnPlNsjeN683eT0qG6H/Pyf9fCcvjnnnQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
@@ -3060,6 +3129,7 @@ snapshots:
       koa-socket-2: 2.0.0
       lodash.isplainobject: 4.0.6
       nanoid: 3.3.11
+      node-persist: 3.1.3
       p-queue: 6.6.2
       prop-types: 15.8.1
       react-cookies: 0.1.1
@@ -4093,6 +4163,8 @@ snapshots:
   natural-compare@1.4.0: {}
 
   negotiator@0.6.3: {}
+
+  node-persist@3.1.3: {}
 
   npm-run-path@5.3.0:
     dependencies:

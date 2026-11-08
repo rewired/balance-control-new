@@ -1,0 +1,108 @@
+import { z } from '@bc/rules';
+import type { CoreState } from '@bc/rules';
+import { createExpansionRegistry } from '@bc/rules';
+import { createResolver, type PoliticalActionEffect } from '@bc/rules';
+import type { MoveDefinition, MoveExtensionBuilder } from '@bc/rules';
+import { matchResourceIds } from '@bc/rules';
+import { PaymentSelectionSchema } from '@bc/rules';
+import { greenwashingResources } from '@bc/rules';
+
+function corePoliticalMove<P extends object>(
+  type: PoliticalActionEffect['kind'],
+  payloadSchema: z.ZodType<P>,
+  describe: (playerID: string, payload: P) => PoliticalActionEffect,
+  candidates: (G: CoreState, playerID: string) => Iterable<P>,
+): MoveDefinition<unknown> {
+  const resolve = createResolver();
+  return {
+    type,
+    payloadSchema,
+    execute: (G, playerID, input) => {
+      const parsed = payloadSchema.safeParse(input);
+      return parsed.success ? resolve(G, describe(playerID, parsed.data)) : { ok: false, reason: 'invalid-payload' };
+    },
+    quotes: (G, playerID) => Array.from(candidates(G, playerID)).flatMap(payload =>
+      resolve.actionQuotes(G, describe(playerID, payload))
+        .map(({ payment, ...quote }) => ({ ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } }))),
+  };
+}
+
+function* paymentCombinations(resources: string[], size: number, offset = 0): Generator<string[]> {
+  if (size === 0) {
+    yield [];
+    return;
+  }
+  for (let i = offset; i < resources.length; i++) {
+    for (const rest of paymentCombinations(resources, size - 1, i)) yield [resources[i], ...rest];
+  }
+}
+
+const id = z.string().min(1);
+
+// CORE-01-04-09/-09A: enumerate targets and payments using the same plan as execution.
+export function registerCorePoliticalMoves({ add }: MoveExtensionBuilder): void {
+  const moves = [
+    corePoliticalMove(
+      'placeOrMoveInfluence',
+      z.object({ markerId: id, targetTileId: id, sourceTileId: id.optional(), payment: PaymentSelectionSchema.optional() }).strict(),
+      (playerID, payload) => ({ kind: 'placeOrMoveInfluence', playerID, ...payload }),
+      function* (G, playerID) {
+        for (const { tileId: targetTileId } of G.exp.core.tiles.board) {
+          if (G.exp.core.allTiles[targetTileId].kind === 'StartCommittee') continue;
+          for (const marker of G.exp.core.players[playerID]?.personal.influence ?? []) {
+            yield { markerId: marker.id, targetTileId };
+          }
+          for (const marker of G.exp.core.influencesOnBoard ?? []) {
+            if (marker.owner === playerID && marker.tileId !== targetTileId) {
+              yield { markerId: marker.id, sourceTileId: marker.tileId, targetTileId };
+            }
+          }
+        }
+      },
+    ),
+    corePoliticalMove(
+      'formalizeInfluence',
+      z.object({ tileId: id, resources: z.array(id).min(2).max(4), payment: PaymentSelectionSchema.optional() }).strict(),
+      (playerID, payload) => ({ kind: 'formalizeInfluence', playerID, ...payload }),
+      function* (G) {
+        const resources = matchResourceIds(G);
+        const fees = greenwashingResources(G);
+        for (const { tileId } of G.exp.core.tiles.board) {
+          const kind = G.exp.core.allTiles[tileId].kind;
+          if (kind !== 'Committee' && kind !== 'StartCommittee') continue;
+          for (const payment of paymentCombinations(resources, kind === 'Committee' ? 2 : 4)) {
+            if (kind === 'Committee' && fees.length) {
+              for (const greenwashing of fees) yield { tileId, resources: payment, payment: { greenwashing } };
+            } else {
+              yield { tileId, resources: payment };
+            }
+          }
+        }
+      },
+    ),
+    corePoliticalMove(
+      'convertResources',
+      z.object({ tileId: id, input: id, output: id, alternative: id.optional(), payment: PaymentSelectionSchema.optional() }).strict(),
+      (playerID, payload) => ({ kind: 'convertResources', playerID, ...payload }),
+      function* (G, playerID) {
+        const resources = matchResourceIds(G);
+        const alternatives = createExpansionRegistry(G.cfg.expansions)
+          .flatMap(module => module.conversionAlternatives?.(G, playerID) ?? []);
+        for (const { tileId } of G.exp.core.tiles.board) {
+          if (G.exp.core.allTiles[tileId].kind !== 'Grassroots') continue;
+          for (const input of resources) {
+            for (const output of resources) {
+              if (input !== output) yield { tileId, input, output };
+            }
+          }
+          for (const option of alternatives) {
+            for (const output of resources) {
+              if (option.input !== output) yield { tileId, input: option.input, output, alternative: option.id };
+            }
+          }
+        }
+      },
+    ),
+  ];
+  moves.forEach(add);
+}

@@ -7,7 +7,8 @@ export function isExpansionEnabled(cfg: Pick<MatchConfig, 'expansions'>, id: Exp
 
 export function assertExpansionStateMatchesConfig(G: CoreState): void {
   const flags: ExpansionFlags = G.cfg.expansions;
-  const exp = G.exp ?? {};
+  const exp = G.exp;
+  if (!exp?.core) throw new Error('Missing mandatory CORE slice');
   for (const id of ['exp01','exp02','exp03'] as const) {
     const enabled = !!flags[id];
     const present = Object.hasOwn(exp, id);

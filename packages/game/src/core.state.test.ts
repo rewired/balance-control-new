@@ -8,25 +8,25 @@ const setup = (numPlayers: number) => InitializeGame({ game: CoreGame, numPlayer
 describe('CoreGame setup — CORE-01-03/02', () => {
   it.each([[2, 4], [3, 3], [4, 2]])('sets up %i engine players with %i Starting Influence each', (numPlayers, startingInfluence) => {
     const { G, ctx } = setup(numPlayers);
-    expect(Object.keys(G.players)).toEqual(ctx.playOrder);
-    expect(Object.keys(G.players)).toHaveLength(numPlayers);
-    for (const player of Object.values(G.players)) {
+    expect(Object.keys(G.exp.core.players)).toEqual(ctx.playOrder);
+    expect(Object.keys(G.exp.core.players)).toHaveLength(numPlayers);
+    for (const player of Object.values(G.exp.core.players)) {
       expect(player.personal.influence).toHaveLength(startingInfluence);
     }
   });
 
   it('places Start Committee on Board and excludes it from DrawPile (CORE-01-02-01..03, CORE-01-03-01..02)', () => {
     const { G } = setup(2);
-    const onBoard = G.tiles.board.find(p => p.tileId === 'StartCommittee');
+    const onBoard = G.exp.core.tiles.board.find(p => p.tileId === 'StartCommittee');
     expect(onBoard).toBeTruthy();
-    expect(G.tiles.drawPile.includes('StartCommittee')).toBe(false);
+    expect(G.exp.core.tiles.drawPile.includes('StartCommittee')).toBe(false);
   });
 
   it('produces correct DrawPile tile counts (CORE-01-02-10..16)', () => {
     const { G } = setup(2);
-    const offered = G.tiles.drawResolution!.tileId;
-    expect(G.tiles.drawPile).not.toContain(offered);
-    const tiles = [...G.tiles.drawPile, offered].map(id => G.allTiles[id]);
+    const offered = G.exp.core.tiles.drawResolution!.tileId;
+    expect(G.exp.core.tiles.drawPile).not.toContain(offered);
+    const tiles = [...G.exp.core.tiles.drawPile, offered].map(id => G.exp.core.allTiles[id]);
 
     const count = (pred: (t: Tile) => boolean) => tiles.filter(pred).length;
     const r = (resort: 'DOM'|'FOR'|'INF', w: 1|2|3|4|5) => count(t => t.kind === 'ResortTile' && t.resort === resort && t.w === w);

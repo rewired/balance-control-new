@@ -481,3 +481,18 @@
 - Blockade läuft vor den übrigen Verboten. Surveillance prüft das tatsächliche Regulation-Objekt, und gleichzeitige Emergency-Decree-Instanzen lösen in Registrierungsreihenfolge auf. Situation Assessment ermäßigt die nächste Regulation-Platzierung dieser Runde.
 - Acht Golden-Replays belegen aktive Erweiterungsstapel, Kosten, Blockade, Produktion, Noise und Empfängerlimits. Der Mutation-Check erkennt direkte Schreibzugriffe und typische Aliase außerhalb des Resolvers.
 - Unter Node.js 24.22.2 bestehen 176 Workspace-Tests, Lint, Encoding- und Mutation-Check, Workspace-Build, Web-Typcheck und der lokale Bot-Runner.
+
+## 2026-11-08 — CORE als Pflichterweiterung
+
+- Die Registry lädt CORE in jeder Partie zuerst. CORE registriert Ressourcen, Tiles und politische Aktionen über die gemeinsamen Modulbeiträge und erstellt den Startzustand aus dem Material aller aktiven Module.
+- Die Match-Konfiguration schaltet EXP-01 bis EXP-03. Alle acht Kombinationen verwenden ihre bisherigen Golden-Replay-Hashes.
+
+## 2026-11-08 — CORE-Zustand und alte Spielstände
+
+- CORE speichert seine Zonen und laufenden Entscheidungen in `G.exp.core`. Optionale Slices entstehen weiterhin erst bei aktivierter Erweiterung.
+- `FLATFILE_DIR`-Spielstände werden beim Laden einschließlich Startzustand und Undo-/Redo-Verlauf migriert. Bestehende Zug- und Vorschauhashes bleiben vergleichbar.
+
+## 2026-11-08 — Eigene Workspace-Pakete für alle Erweiterungen
+
+- Die Spielfabrik registriert `@bc/exp-00-core`, `@bc/exp-01-economy`, `@bc/exp-02-security` und `@bc/exp-03-climate`.
+- Die Pakete liefern ihre eigenen Regeln und Kartenwirkungen. Der kanonische Resolver wertet die Beiträge aktiver Module aus und führt ihre Änderungen atomar aus. Der Paketsplit verwendet weiterhin die gespeicherten Modul- und Karten-IDs.

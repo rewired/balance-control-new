@@ -13,19 +13,29 @@ function mod(id: 'exp01'|'exp02'|'exp03'): ExpansionModule {
 describe('Expansion registry — Task 0013', () => {
   beforeEach(() => {
     __resetRegisteredExpansionsForTest();
+    registerExpansion({
+      id: 'core',
+      registerResources: () => {},
+      initializeMatch: () => { throw new Error('Registry test does not initialize a match'); },
+      createResolver: () => { throw new Error('Registry test does not resolve effects'); },
+      computeMajority: () => { throw new Error('Registry test does not compute majority'); },
+      isFullySurrounded: () => false,
+    });
   });
 
-  it('returns empty list for CORE-only flags', () => {
+  it('keeps CORE active without optional expansions or candidates', () => {
     registerExpansion(mod('exp03'));
     const list = createExpansionRegistry({ exp01: false, exp02: false, exp03: false });
-    expect(list).toEqual([]);
+    expect(list.map(m => m.id)).toEqual(['core']);
+    expect(createExpansionRegistry(undefined, [])).toEqual(list);
+    expect(createExpansionRegistry(undefined, list)).toEqual(list);
   });
 
   it('filters by enabled flags', () => {
     registerExpansion(mod('exp01'));
     registerExpansion(mod('exp02'));
     const list = createExpansionRegistry({ exp01: true, exp02: false, exp03: false });
-    expect(list.map(m => m.id)).toEqual(['exp01']);
+    expect(list.map(m => m.id)).toEqual(['core', 'exp01']);
   });
 
   it('ordering is deterministic (sorted by id)', () => {
@@ -33,6 +43,6 @@ describe('Expansion registry — Task 0013', () => {
     registerExpansion(mod('exp01'));
     registerExpansion(mod('exp02'));
     const list = createExpansionRegistry({ exp01: true, exp02: true, exp03: true });
-    expect(list.map(m => m.id)).toEqual(['exp01','exp02','exp03']);
+    expect(list.map(m => m.id)).toEqual(['core', 'exp01', 'exp02', 'exp03']);
   });
 });

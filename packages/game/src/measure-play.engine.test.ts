@@ -5,7 +5,7 @@ import {
 } from '@bc/rules';
 import { exp01Economy } from '@bc/exp-01-economy';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { exp03Climate } from './expansions/climate.js';
+import { exp03Climate } from '@bc/exp-03-climate';
 import { createBCGame } from './factory.js';
 
 type CoreClient = ReturnType<typeof Client<CoreState>>;
@@ -28,21 +28,21 @@ function bargainingFixture(eco: number): CoreClient {
     for (const card of deck.finalDiscard) deck.playCounts[card] = 2;
     deck.open.fill(null);
     deck.drawPile = [];
-    G.players['0'].personal.resources.ECO = eco;
+    G.exp.core.players['0'].personal.resources.ECO = eco;
     return G;
   };
   return Client({ game, numPlayers: 2 });
 }
 
 function place(client: CoreClient): string {
-  const offer = client.getState()!.G.tiles.drawResolution!;
+  const offer = client.getState()!.G.exp.core.tiles.drawResolution!;
   client.moves.placeTile(offer.legalCoords[0]);
   return offer.tileId;
 }
 
 function mark(client: CoreClient, tileId: string): void {
   const { G, ctx } = client.getState()!;
-  const markerId = G.players[ctx.currentPlayer].personal.influence[0].id;
+  const markerId = G.exp.core.players[ctx.currentPlayer].personal.influence[0].id;
   client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId: tileId } });
 }
 
@@ -81,19 +81,19 @@ describe('Paid Measures through boardgame.io', () => {
     client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId: 'ECO_M03' } });
     const { G, ctx } = client.getState()!;
     const deck = G.exp!.exp01!.measures!;
-    expect(G.players['0'].personal.resources.ECO).toBe(0);
-    expect(G.resources.bank.ECO).toBe(2);
+    expect(G.exp.core.players['0'].personal.resources.ECO).toBe(0);
+    expect(G.exp.core.resources.bank.ECO).toBe(2);
     expect(deck.open).toEqual(['ECO_M03', null, null]);
     expect(deck.playCounts.ECO_M03).toBe(1);
     expect(deck.recycle).toEqual([]);
-    expect(G.activeMeasureEffects?.map(instance => instance.id)).toEqual(['ECO_M03:1']);
+    expect(G.exp.core.activeMeasureEffects?.map(instance => instance.id)).toEqual(['ECO_M03:1']);
     expect(ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
     client.moves.doPoliticalAction({ type: 'exp01_takeMeasure', payload: { measureId: 'ECO_M03' } });
     expect(client.getState()!.G.exp!.exp01!.measures!.hands['0']).toEqual(['ECO_M03']);
-    expect(client.getState()!.G.activeMeasureEffects?.map(instance => instance.id)).toEqual(['ECO_M03:1']);
-    expect(client.getState()!.G.tiles.board.some(placed => placed.tileId === tile)).toBe(true);
+    expect(client.getState()!.G.exp.core.activeMeasureEffects?.map(instance => instance.id)).toEqual(['ECO_M03:1']);
+    expect(client.getState()!.G.exp.core.tiles.board.some(placed => placed.tileId === tile)).toBe(true);
     mark(client, place(client));
-    expect(client.getState()!.G.activeMeasureEffects).toBeUndefined();
+    expect(client.getState()!.G.exp.core.activeMeasureEffects).toBeUndefined();
   });
 
   it('plays and pays Investment Freeze and Supply Chain Disruption through their actual decks', () => {
@@ -103,15 +103,15 @@ describe('Paid Measures through boardgame.io', () => {
       const G = setup(context, data);
       takeIntoFixtureHand(G.exp!.exp01!.measures!, 'ECO_M09', '0');
       takeIntoFixtureHand(G.exp!.exp03!.measures!, 'CLM_M11', '1');
-      Object.assign(G.players['0'].personal.resources, { ECO: 2, INF: 1 });
-      Object.assign(G.players['1'].personal.resources, { ECO: 1, CLM: 1 });
-      G.resources.bank.DOM = 5;
+      Object.assign(G.exp.core.players['0'].personal.resources, { ECO: 2, INF: 1 });
+      Object.assign(G.exp.core.players['1'].personal.resources, { ECO: 1, CLM: 1 });
+      G.exp.core.resources.bank.DOM = 5;
       const resortId = 'DOM-W5-1';
       const draw = ['Committee-1', 'Committee-2'];
-      G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => id !== resortId && !draw.includes(id));
-      G.tiles.drawPile = draw;
-      G.tiles.board.push({ tileId: resortId, coord: { q: 0, r: 1 } });
-      G.influencesOnBoard = [{ ...G.players['1'].personal.influence.shift()!, tileId: resortId }];
+      G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(id => id !== resortId && !draw.includes(id));
+      G.exp.core.tiles.drawPile = draw;
+      G.exp.core.tiles.board.push({ tileId: resortId, coord: { q: 0, r: 1 } });
+      G.exp.core.influencesOnBoard = [{ ...G.exp.core.players['1'].personal.influence.shift()!, tileId: resortId }];
       return G;
     };
     const client = Client({ game, numPlayers: 2 });
@@ -120,19 +120,19 @@ describe('Paid Measures through boardgame.io', () => {
     client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId: 'ECO_M09', targetPlayerID: '0' } });
     expect(client.getState()!._stateID).toBe(before._stateID);
     client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId: 'ECO_M09', targetPlayerID: '1' } });
-    expect(client.getState()!.G.activeMeasureEffects?.[0].id).toBe('ECO_M09:1');
+    expect(client.getState()!.G.exp.core.activeMeasureEffects?.[0].id).toBe('ECO_M09:1');
     mark(client, first);
 
     const second = place(client);
     client.moves.doPoliticalAction({ type: 'exp03_playMeasure', payload: { measureId: 'CLM_M11', targetPlayerID: '1' } });
-    expect(client.getState()!.G.activeMeasureEffects?.map(effect => effect.id)).toEqual(['ECO_M09:1', 'CLM_M11:1']);
+    expect(client.getState()!.G.exp.core.activeMeasureEffects?.map(effect => effect.id)).toEqual(['ECO_M09:1', 'CLM_M11:1']);
     mark(client, second);
 
     const { G, ctx } = client.getState()!;
     expect(ctx.gameover).toEqual({ winners: ['1'] });
-    expect(G.resources.bank).toMatchObject({ ECO: 3, INF: 1, CLM: 1, DOM: 4 });
-    expect(G.players['1'].personal.resources).toMatchObject({ DOM: 1, ECO: 0, CLM: 0 });
-    expect(G.activeMeasureEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1']);
+    expect(G.exp.core.resources.bank).toMatchObject({ ECO: 3, INF: 1, CLM: 1, DOM: 4 });
+    expect(G.exp.core.players['1'].personal.resources).toMatchObject({ DOM: 1, ECO: 0, CLM: 0 });
+    expect(G.exp.core.activeMeasureEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1']);
   });
 
   it('offers the Investment Program alternative at a virtually controlled Grassroots only', () => {
@@ -154,10 +154,10 @@ describe('Paid Measures through boardgame.io', () => {
         { tileId: 'InvestmentProgram', coord: { q: 2, r: 0 } },
         { tileId: 'Grassroots-1', coord: { q: 1, r: -1 } },
       ];
-      G.tiles.drawPile = G.tiles.drawPile.filter(id => !board.some(placement => placement.tileId === id));
-      G.tiles.board.push(...board);
-      G.influencesOnBoard = [{ ...G.players['0'].personal.influence.shift()!, tileId: 'Lobbyist-1' }];
-      Object.assign(G.players['0'].personal.resources, { ECO: 2, FOR: 1 });
+      G.exp.core.tiles.drawPile = G.exp.core.tiles.drawPile.filter(id => !board.some(placement => placement.tileId === id));
+      G.exp.core.tiles.board.push(...board);
+      G.exp.core.influencesOnBoard = [{ ...G.exp.core.players['0'].personal.influence.shift()!, tileId: 'Lobbyist-1' }];
+      Object.assign(G.exp.core.players['0'].personal.resources, { ECO: 2, FOR: 1 });
       return G;
     };
     const client = Client({ game, numPlayers: 2 });
@@ -171,8 +171,8 @@ describe('Paid Measures through boardgame.io', () => {
     client.moves.doPoliticalAction(alternative);
     const { G, ctx } = client.getState()!;
     expect(ctx.currentPlayer).toBe('1');
-    expect(G.players['0'].personal.resources).toMatchObject({ ECO: 0, FOR: 0, DOM: 1 });
-    expect(G.resources.bank).toMatchObject({ ECO: 2, FOR: 1, DOM: 0 });
+    expect(G.exp.core.players['0'].personal.resources).toMatchObject({ ECO: 0, FOR: 0, DOM: 1 });
+    expect(G.exp.core.resources.bank).toMatchObject({ ECO: 2, FOR: 1, DOM: 0 });
   });
 
   it.each([
@@ -186,12 +186,12 @@ describe('Paid Measures through boardgame.io', () => {
     game.setup = (context, data) => {
       const G = setup(context, data);
       takeIntoFixtureHand(G.exp!.exp01!.measures!, measureId, '0');
-      Object.assign(G.players['0'].personal.resources, { ECO: 1, DOM: 1, FOR: 1, INF: 1 });
+      Object.assign(G.exp.core.players['0'].personal.resources, { ECO: 1, DOM: 1, FOR: 1, INF: 1 });
       const draw = ['Committee-1', 'Committee-2'];
-      G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => id !== targetTileId && !draw.includes(id));
-      G.tiles.drawPile = draw;
-      G.tiles.board.push({ tileId: targetTileId, coord: { q: 0, r: 1 } });
-      G.influencesOnBoard = [{ ...G.players['1'].personal.influence.shift()!, tileId: targetTileId }];
+      G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(id => id !== targetTileId && !draw.includes(id));
+      G.exp.core.tiles.drawPile = draw;
+      G.exp.core.tiles.board.push({ tileId: targetTileId, coord: { q: 0, r: 1 } });
+      G.exp.core.influencesOnBoard = [{ ...G.exp.core.players['1'].personal.influence.shift()!, tileId: targetTileId }];
       return G;
     };
     const client = Client({ game, numPlayers: 2 });
@@ -200,12 +200,12 @@ describe('Paid Measures through boardgame.io', () => {
     client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId, targetTileId: first } });
     expect(client.getState()!._stateID).toBe(before._stateID);
     client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId, targetTileId } });
-    expect(client.getState()!.G.activeMeasureEffects?.[0].targetTileId).toBe(targetTileId);
-    expect(client.getState()!.G.players['1'].personal.resources.ECO).toBe(0);
+    expect(client.getState()!.G.exp.core.activeMeasureEffects?.[0].targetTileId).toBe(targetTileId);
+    expect(client.getState()!.G.exp.core.players['1'].personal.resources.ECO).toBe(0);
     mark(client, first);
     mark(client, place(client));
-    expect(client.getState()!.G.players['1'].personal.resources.ECO).toBe(expected);
-    expect(client.getState()!.G.activeMeasureEffects).toBeUndefined();
+    expect(client.getState()!.G.exp.core.players['1'].personal.resources.ECO).toBe(expected);
+    expect(client.getState()!.G.exp.core.activeMeasureEffects).toBeUndefined();
   });
 
   it('activates Debt Brake only in the next actual round and expires it after that Settlement', () => {
@@ -214,10 +214,10 @@ describe('Paid Measures through boardgame.io', () => {
     game.setup = (context, data) => {
       const G = setup(context, data);
       takeIntoFixtureHand(G.exp!.exp01!.measures!, 'ECO_M07', '0');
-      G.tiles.drawPile = G.tiles.drawPile.filter(id => id !== 'Grassroots-1');
-      G.tiles.board.push({ tileId: 'Grassroots-1', coord: { q: 0, r: 1 } });
-      G.influencesOnBoard = [{ ...G.players['0'].personal.influence.shift()!, tileId: 'Grassroots-1' }];
-      Object.assign(G.players['0'].personal.resources, { DOM: 1, ECO: 2, FOR: 6 });
+      G.exp.core.tiles.drawPile = G.exp.core.tiles.drawPile.filter(id => id !== 'Grassroots-1');
+      G.exp.core.tiles.board.push({ tileId: 'Grassroots-1', coord: { q: 0, r: 1 } });
+      G.exp.core.influencesOnBoard = [{ ...G.exp.core.players['0'].personal.influence.shift()!, tileId: 'Grassroots-1' }];
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 1, ECO: 2, FOR: 6 });
       return G;
     };
     const client = Client({ game, numPlayers: 2 });
@@ -226,22 +226,22 @@ describe('Paid Measures through boardgame.io', () => {
     });
     place(client);
     client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId: 'ECO_M07' } });
-    expect(client.getState()!.G.activeMeasureEffects?.[0].waitingForRound).toBe(true);
+    expect(client.getState()!.G.exp.core.activeMeasureEffects?.[0].waitingForRound).toBe(true);
     convert();
-    expect(client.getState()!.G.players['0'].personal.resources.INF).toBe(1);
+    expect(client.getState()!.G.exp.core.players['0'].personal.resources.INF).toBe(1);
     mark(client, place(client));
 
     const third = place(client);
     const blocked = client.getState()!;
-    expect(blocked.G.activeMeasureEffects?.[0].id).toBe('ECO_M07:1');
-    expect(blocked.G.activeMeasureEffects?.[0].waitingForRound).toBeUndefined();
+    expect(blocked.G.exp.core.activeMeasureEffects?.[0].id).toBe('ECO_M07:1');
+    expect(blocked.G.exp.core.activeMeasureEffects?.[0].waitingForRound).toBeUndefined();
     convert();
     expect(client.getState()!._stateID).toBe(blocked._stateID);
     mark(client, third);
     mark(client, place(client));
-    expect(client.getState()!.G.activeMeasureEffects).toBeUndefined();
+    expect(client.getState()!.G.exp.core.activeMeasureEffects).toBeUndefined();
     place(client);
     convert();
-    expect(client.getState()!.G.players['0'].personal.resources.INF).toBe(2);
+    expect(client.getState()!.G.exp.core.players['0'].personal.resources.INF).toBe(2);
   });
 });

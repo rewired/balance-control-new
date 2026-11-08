@@ -13,9 +13,9 @@ function setupSecurity(board: BoardPlacement[], prepare: (G: CoreState) => void)
   game.setup = (context, data) => {
     const G = setup(context, data);
     const draw = ['Committee-7', 'Committee-8', 'Committee-9', 'Committee-10'];
-    G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(tile => tile.tileId === id));
-    G.tiles.drawPile = draw;
-    G.tiles.board.push(...board);
+    G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(tile => tile.tileId === id));
+    G.exp.core.tiles.drawPile = draw;
+    G.exp.core.tiles.board.push(...board);
     prepare(G);
     return G;
   };
@@ -31,7 +31,7 @@ function takeIntoFixtureHand(G: CoreState, card: string, owner = '0'): void {
 }
 
 function mark(G: CoreState, owner: string, tileId: string): void {
-  (G.influencesOnBoard ??= []).push({ ...G.players[owner].personal.influence.shift()!, tileId });
+  (G.exp.core.influencesOnBoard ??= []).push({ ...G.exp.core.players[owner].personal.influence.shift()!, tileId });
 }
 
 describe('Regulation operations through boardgame.io', () => {
@@ -39,7 +39,7 @@ describe('Regulation operations through boardgame.io', () => {
     const client = setupSecurity([apparatus, grassroots], G => {
       takeIntoFixtureHand(G, 'SEC_M01');
       mark(G, '0', grassroots.tileId);
-      Object.assign(G.players['0'].personal.resources, { SEC: 3, INF: 1, DOM: 3 });
+      Object.assign(G.exp.core.players['0'].personal.resources, { SEC: 3, INF: 1, DOM: 3 });
     });
     client.moves.placeTile({ q: -1, r: 0 });
     const before = client.getState()!;
@@ -53,14 +53,14 @@ describe('Regulation operations through boardgame.io', () => {
     const placed = client.getState()!;
     expect(placed.ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
     expect(placed.G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId }]);
-    expect(placed.G.resources.bank).toMatchObject({ SEC: 3, INF: 1 });
+    expect(placed.G.exp.core.resources.bank).toMatchObject({ SEC: 3, INF: 1 });
     client.moves.doPoliticalAction({
       type: 'convertResources', payload: { tileId: grassroots.tileId, input: 'DOM', output: 'FOR' },
     });
     const after = client.getState()!;
     expect(after.ctx.currentPlayer).toBe('1');
-    expect(after.G.resources.bank.DOM).toBe(3);
-    expect(after.G.players['0'].personal.resources).toMatchObject({ DOM: 0, FOR: 0, SEC: 0, INF: 0 });
+    expect(after.G.exp.core.resources.bank.DOM).toBe(3);
+    expect(after.G.exp.core.players['0'].personal.resources).toMatchObject({ DOM: 0, FOR: 0, SEC: 0, INF: 0 });
   });
 
   it('uses Authority Apparatus as its only local context when moving an existing Regulation', () => {
@@ -90,7 +90,7 @@ describe('Regulation operations through boardgame.io', () => {
     const client = setupSecurity([apparatus, grassroots], G => {
       takeIntoFixtureHand(G, 'SEC_M13');
       mark(G, '0', apparatus.tileId);
-      Object.assign(G.players['0'].personal.resources, { SEC: 1, INF: 1 });
+      Object.assign(G.exp.core.players['0'].personal.resources, { SEC: 1, INF: 1 });
       const zones = G.exp!.exp02!.regulations!;
       zones.attached.push(
         { id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId },
@@ -102,7 +102,7 @@ describe('Regulation operations through boardgame.io', () => {
     client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: { measureId: 'SEC_M13', targetTileId: grassroots.tileId } });
     const locked = client.getState()!;
     expect(locked.ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
-    expect(locked.G.activeMeasureEffects?.[0]?.targetTileId).toBe(grassroots.tileId);
+    expect(locked.G.exp.core.activeMeasureEffects?.[0]?.targetTileId).toBe(grassroots.tileId);
     const options = engineMoveOptions(locked.G, locked.ctx, '0');
     expect(options.some(option => JSON.stringify(option.parameters).includes('reg-1'))).toBe(false);
     expect(options.some(option => JSON.stringify(option.parameters).includes('reg-2') && option.contextTile === apparatus.tileId)).toBe(true);
@@ -121,8 +121,8 @@ describe('Regulation operations through boardgame.io', () => {
     const client = setupSecurity([], G => {
       takeIntoFixtureHand(G, 'SEC_M15');
       takeIntoFixtureHand(G, 'SEC_M01', '1');
-      G.players['0'].personal.resources.SEC = 1;
-      Object.assign(G.players['1'].personal.resources, { SEC: 2, INF: 1 });
+      G.exp.core.players['0'].personal.resources.SEC = 1;
+      Object.assign(G.exp.core.players['1'].personal.resources, { SEC: 2, INF: 1 });
     });
     client.moves.placeTile({ q: -1, r: 0 });
     client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: { measureId: 'SEC_M15' } });
@@ -135,8 +135,8 @@ describe('Regulation operations through boardgame.io', () => {
     const { G, ctx } = client.getState()!;
     expect(ctx.activePlayers).toEqual({ '1': 'AdditionalPoliticalAction' });
     expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'Control', tileId: 'Committee-7' }]);
-    expect(G.activeMeasureEffects?.find(instance => instance.sourceCardId === 'SEC_M15')?.used).toBe(true);
-    expect(G.resources.bank).toMatchObject({ SEC: 3, INF: 1 });
+    expect(G.exp.core.activeMeasureEffects?.find(instance => instance.sourceCardId === 'SEC_M15')?.used).toBe(true);
+    expect(G.exp.core.resources.bank).toMatchObject({ SEC: 3, INF: 1 });
   });
 
   it('resolves simultaneous registered Decrees in registration order and consumes both attempts', () => {
@@ -151,7 +151,7 @@ describe('Regulation operations through boardgame.io', () => {
       mark(G, '0', hotspot.tileId);
       for (const playNumber of [2, 1] as const) {
         const owner = String(playNumber - 1);
-        G.players[owner].personal.resources.SEC = 2;
+        G.exp.core.players[owner].personal.resources.SEC = 2;
         createResolver()(G, { kind: 'registerMeasureEffect', instance: {
           sourceCardId: 'SEC_M02', playNumber, owner, targetTileId: hotspot.tileId, duration: 'untilConsumed',
         } });
@@ -159,12 +159,12 @@ describe('Regulation operations through boardgame.io', () => {
     });
     client.moves.placeTile({ q: 2, r: 0 });
     const { G } = client.getState()!;
-    expect(G.activeMeasureEffects).toBeUndefined();
-    expect(G.players['1'].personal.resources.SEC).toBe(0);
-    expect(G.players['0'].personal.resources.SEC).toBe(2);
+    expect(G.exp.core.activeMeasureEffects).toBeUndefined();
+    expect(G.exp.core.players['1'].personal.resources.SEC).toBe(0);
+    expect(G.exp.core.players['0'].personal.resources.SEC).toBe(2);
     expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'Blockade', tileId: hotspot.tileId }]);
-    expect(G.tiles.board.find(tile => tile.tileId === hotspot.tileId)?.enclosureProcessed).toBe(true);
-    expect(G.influencesOnBoard!.filter(marker => marker.tileId === hotspot.tileId)).toHaveLength(1);
+    expect(G.exp.core.tiles.board.find(tile => tile.tileId === hotspot.tileId)?.enclosureProcessed).toBe(true);
+    expect(G.exp.core.influencesOnBoard!.filter(marker => marker.tileId === hotspot.tileId)).toHaveLength(1);
   });
 
   it.each([false, true])('consumes Emergency Decree at enclosure after a payable=%s placement attempt', payable => {
@@ -179,21 +179,21 @@ describe('Regulation operations through boardgame.io', () => {
     const client = setupSecurity(board, G => {
       takeIntoFixtureHand(G, 'SEC_M02');
       mark(G, '1', hotspot.tileId);
-      G.players['0'].personal.resources.SEC = payable ? 4 : 2;
+      G.exp.core.players['0'].personal.resources.SEC = payable ? 4 : 2;
     });
     client.moves.placeTile({ q: -1, r: 0 });
     client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: { measureId: 'SEC_M02', targetTileId: hotspot.tileId } });
-    expect(client.getState()!.G.activeMeasureEffects?.[0].sourceCardId).toBe('SEC_M02');
+    expect(client.getState()!.G.exp.core.activeMeasureEffects?.[0].sourceCardId).toBe('SEC_M02');
     client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-1', targetTileId: 'Committee-7' } });
     client.moves.placeTile({ q: 2, r: 0 });
 
     const { G, ctx } = client.getState()!;
     expect(ctx.activePlayers).toEqual({ '1': 'ExactlyOnePoliticalAction' });
-    expect(G.activeMeasureEffects).toBeUndefined();
-    expect(G.tiles.board.find(tile => tile.tileId === hotspot.tileId)?.enclosureProcessed).toBe(true);
-    expect(G.resources.bank.SEC).toBe(payable ? 4 : 2);
+    expect(G.exp.core.activeMeasureEffects).toBeUndefined();
+    expect(G.exp.core.tiles.board.find(tile => tile.tileId === hotspot.tileId)?.enclosureProcessed).toBe(true);
+    expect(G.exp.core.resources.bank.SEC).toBe(payable ? 4 : 2);
     expect(G.exp!.exp02!.regulations!.attached).toHaveLength(payable ? 1 : 0);
-    expect(G.influencesOnBoard!.filter(marker => marker.tileId === hotspot.tileId)).toHaveLength(payable ? 1 : 2);
+    expect(G.exp.core.influencesOnBoard!.filter(marker => marker.tileId === hotspot.tileId)).toHaveLength(payable ? 1 : 2);
   });
 
   it('lets the majority player resolve Inner Order before the current player acts', () => {
@@ -206,13 +206,13 @@ describe('Regulation operations through boardgame.io', () => {
       { tileId: 'Committee-4', coord: { q: 1, r: 1 } },
     ], G => {
       mark(G, '1', hotspot.tileId);
-      G.players['1'].personal.resources.SEC = 2;
+      G.exp.core.players['1'].personal.resources.SEC = 2;
     });
     client.moves.placeTile({ q: 2, r: 0 });
     const pending = client.getState()!;
     expect(pending.ctx.currentPlayer).toBe('0');
     expect(pending.ctx.activePlayers).toEqual({ '1': 'ResolveHotspot' });
-    expect(pending.G.pendingHotspot).toEqual({ tileId: hotspot.tileId, playerID: '1', outcome: 'regulation' });
+    expect(pending.G.exp.core.pendingHotspot).toEqual({ tileId: hotspot.tileId, playerID: '1', outcome: 'regulation' });
     const choice = { kind: 'regulation', regulation: { operation: 'place', regulationKind: 'Control', tileId: 'Committee-7' } };
     client.moves.chooseHotspotOutcome(choice);
     expect(client.getState()!._stateID).toBe(pending._stateID);
@@ -221,18 +221,18 @@ describe('Regulation operations through boardgame.io', () => {
 
     const { G, ctx } = client.getState()!;
     expect(ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
-    expect(G.pendingHotspot).toBeUndefined();
-    expect(G.resources.bank.SEC).toBe(2);
+    expect(G.exp.core.pendingHotspot).toBeUndefined();
+    expect(G.exp.core.resources.bank.SEC).toBe(2);
     expect(G.exp!.exp02!.regulations!.attached).toContainEqual({ id: 'reg-1', kind: 'Control', tileId: 'Committee-7' });
-    expect(G.tiles.board.find(tile => tile.tileId === hotspot.tileId)?.enclosureProcessed).toBe(true);
-    expect(G.influencesOnBoard).toHaveLength(1);
+    expect(G.exp.core.tiles.board.find(tile => tile.tileId === hotspot.tileId)?.enclosureProcessed).toBe(true);
+    expect(G.exp.core.influencesOnBoard).toHaveLength(1);
   });
 
   it('resumes the additional slot only after a registered Deployment Order moves the new Regulation', () => {
     const client = setupSecurity([apparatus, grassroots], G => {
       takeIntoFixtureHand(G, 'SEC_M03');
       takeIntoFixtureHand(G, 'SEC_M01');
-      Object.assign(G.players['0'].personal.resources, { SEC: 4, INF: 1 });
+      Object.assign(G.exp.core.players['0'].personal.resources, { SEC: 4, INF: 1 });
     });
     client.moves.placeTile({ q: -1, r: 0 });
     client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: { measureId: 'SEC_M03' } });
@@ -253,8 +253,8 @@ describe('Regulation operations through boardgame.io', () => {
     const { G, ctx } = client.getState()!;
     expect(ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
     expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'SecurityLevel', tileId: 'Committee-9' }]);
-    expect(G.resources.bank).toMatchObject({ SEC: 4, INF: 1 });
-    expect(G.activeMeasureEffects).toBeUndefined();
+    expect(G.exp.core.resources.bank).toMatchObject({ SEC: 4, INF: 1 });
+    expect(G.exp.core.activeMeasureEffects).toBeUndefined();
   });
 
   it('offers and charges Competence Conflict separately after Authority activation', () => {
@@ -264,7 +264,7 @@ describe('Regulation operations through boardgame.io', () => {
       const zones = G.exp!.exp02!.regulations!;
       zones.attached.push({ id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId });
       zones.serial = 1;
-      Object.assign(G.players['0'].personal.resources, { SEC: 3, DOM: 1 });
+      Object.assign(G.exp.core.players['0'].personal.resources, { SEC: 3, DOM: 1 });
     });
     client.moves.placeTile({ q: -1, r: 0 });
     client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: { measureId: 'SEC_M05' } });
@@ -273,14 +273,14 @@ describe('Regulation operations through boardgame.io', () => {
     } });
     const pending = client.getState()!;
     expect(pending.ctx.activePlayers).toEqual({ '0': 'ResolveRegulationFollowUp' });
-    expect(pending.G.resources.bank).toMatchObject({ SEC: 1, DOM: 1 });
+    expect(pending.G.exp.core.resources.bank).toMatchObject({ SEC: 1, DOM: 1 });
     expect(pending.G.exp!.exp02!.regulations!.supply).toContainEqual({ id: 'reg-1', kind: 'SecurityLevel' });
     client.moves.chooseRegulationFollowUp({ kind: 'regulation', regulation: {
       operation: 'place', regulationKind: 'Control', tileId: apparatus.tileId,
     } });
     const { G, ctx } = client.getState()!;
     expect(ctx.currentPlayer).toBe('1');
-    expect(G.resources.bank).toMatchObject({ SEC: 3, DOM: 1 });
+    expect(G.exp.core.resources.bank).toMatchObject({ SEC: 3, DOM: 1 });
     expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-2', kind: 'Control', tileId: apparatus.tileId }]);
   });
 
@@ -290,7 +290,7 @@ describe('Regulation operations through boardgame.io', () => {
     const client = setupSecurity([hotspot, resort], G => {
       takeIntoFixtureHand(G, 'SEC_M12');
       mark(G, '0', resort.tileId);
-      G.players['0'].personal.resources.SEC = 4;
+      G.exp.core.players['0'].personal.resources.SEC = 4;
       createResolver()(G, {
         kind: 'registerMeasureEffect',
         instance: { sourceCardId: 'SEC_M03', playNumber: 1, owner: '0', duration: 'untilConsumed' },
@@ -306,8 +306,8 @@ describe('Regulation operations through boardgame.io', () => {
     const pending = client.getState()!;
     expect(pending.ctx.currentPlayer).toBe('1');
     expect(pending.ctx.activePlayers).toEqual({ '0': 'ResolveRegulationFollowUp' });
-    expect(pending.G.players['0'].personal.resources.DOM).toBe(0);
-    expect(pending.G.resources.bank.SEC).toBe(4);
+    expect(pending.G.exp.core.players['0'].personal.resources.DOM).toBe(0);
+    expect(pending.G.exp.core.resources.bank.SEC).toBe(4);
 
     client.updatePlayerID('0');
     client.moves.chooseRegulationFollowUp({
@@ -315,10 +315,10 @@ describe('Regulation operations through boardgame.io', () => {
     });
     const { G, ctx } = client.getState()!;
     expect(ctx.turn).toBe(3);
-    expect(G.resources.bank.SEC).toBe(4);
-    expect(G.players['0'].personal.resources.DOM).toBe(1);
+    expect(G.exp.core.resources.bank.SEC).toBe(4);
+    expect(G.exp.core.players['0'].personal.resources.DOM).toBe(1);
     expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'SecurityLevel', tileId: 'Committee-7' }]);
-    expect(G.decisionContinuation).toBeUndefined();
-    expect(G.activeMeasureEffects).toBeUndefined();
+    expect(G.exp.core.decisionContinuation).toBeUndefined();
+    expect(G.exp.core.activeMeasureEffects).toBeUndefined();
   });
 });

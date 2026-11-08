@@ -12,7 +12,10 @@
                        },
                        {
                            "path":  "../exp-01-economy"
-                       }
+                       },
+                       { "path": "../exp-00-core" },
+                       { "path": "../exp-02-security" },
+                       { "path": "../exp-03-climate" }
                    ],
     "include":  [
                     "src"

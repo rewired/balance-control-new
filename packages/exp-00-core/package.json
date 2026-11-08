@@ -1,0 +1,32 @@
+{
+  "name": "@bc/exp-00-core",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bc/rules": "workspace:*",
+    "@bc/shared": "workspace:*",
+    "boardgame.io": "^0.50.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "typescript": "^5.9.3",
+    "vitest": "^1.6.1"
+  },
+  "imports": {
+    "#boardgame-core": {
+      "types": "boardgame.io/dist/types/packages/core.js",
+      "node": "boardgame.io/dist/cjs/core.js",
+      "default": "boardgame.io/core"
+    }
+  }
+}

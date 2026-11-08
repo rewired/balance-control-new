@@ -10,7 +10,6 @@ export type Zone =
 
 // Resources (CORE-01-02-04A..G) — registry-based. Do not hardcode resource types in core logic (AGENTS §1.6).
 export type ResourceId = string; // e.g., 'DOM' | 'FOR' | 'INF' in CORE registry
-export const CoreResorts: readonly ResourceId[] = ['DOM', 'FOR', 'INF'];
 
 // Influence objects (CORE-01-01-01, CORE-01-03-04..06)
 export interface Influence {
@@ -85,7 +84,8 @@ export interface ResourceZonesState {
 export interface InfluenceOnBoard extends Influence { tileId: string }
 
 export interface ExpansionsState {
-  // Namespaced expansion state; only created when enabled (AGENTS §3.4, §3.8, §5.5)
+  core: CoreExpansionState;
+  // Optional slices are created only when enabled (AGENTS §3.4, §3.8, §5.5).
   exp01?: Exp01State;
   exp02?: Exp02State;
   exp03?: Exp03State;
@@ -153,14 +153,11 @@ export type PendingRegulationChoice = { instanceId: string; playerID: string } &
 );
 export type DecisionContinuation = 'enclosures' | 'additional' | 'turnEnd' | 'finalSettlement';
 
-export interface CoreState {
-  cfg: import('./schemas.js').MatchConfig;
-  matchSeed: string;
+export interface CoreExpansionState {
   tiles: TileZonesState;
   allTiles: Record<string, Tile>;
   players: Record<string, PlayerState>;
   resources: ResourceZonesState;
-  lastTurnHash?: string; // AGENTS 5.3: SHA-256 at the most recent completed turn
   influencesOnBoard?: InfluenceOnBoard[];
   activeMeasureEffects?: ActiveMeasureEffect[];
   pendingHotspot?: PendingHotspot;
@@ -168,5 +165,11 @@ export interface CoreState {
   pendingRegulationChoices?: PendingRegulationChoice[];
   decisionContinuation?: DecisionContinuation;
   playedMeasureThisRound?: Record<string, boolean>;
-  exp?: ExpansionsState;
+}
+
+export interface CoreState {
+  cfg: import('./schemas.js').MatchConfig;
+  matchSeed: string;
+  lastTurnHash?: string; // AGENTS 5.3: SHA-256 at the most recent completed turn
+  exp: ExpansionsState;
 }

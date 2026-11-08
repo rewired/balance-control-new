@@ -9,15 +9,15 @@ describe('Bot match through boardgame.io', () => {
     game.setup = (context, data) => {
       const G = setup(context, data);
       const draw = ['Committee-1'];
-      G.tiles.discardFaceUp = G.tiles.drawPile.filter(tile => !draw.includes(tile));
-      G.tiles.drawPile = draw;
+      G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(tile => !draw.includes(tile));
+      G.exp.core.tiles.drawPile = draw;
       const deck = G.exp!.exp01!.measures!;
       const card = 'ECO_M03';
       deck.drawPile = deck.drawPile.filter(id => id !== card);
       const slot = deck.open.indexOf(card);
       if (slot >= 0) deck.open[slot] = null;
       deck.hands['0'].push(card);
-      G.players['0'].personal.resources.ECO = 2;
+      G.exp.core.players['0'].personal.resources.ECO = 2;
       return G;
     };
     const seen: (LegalMoveOption & { index: number })[][] = [];

@@ -11,12 +11,12 @@ function gameWithDrawPile(ids: string[], config: unknown = {}, withControlledRes
     const G = setup(context, data);
     if (withControlledResort) {
       const tileId = 'DOM-W1-1';
-      G.tiles.board.push({ tileId, coord: { q: 0, r: 1 } });
-      const marker = G.players['0'].personal.influence.pop()!;
-      G.influencesOnBoard = [{ ...marker, tileId }];
+      G.exp.core.tiles.board.push({ tileId, coord: { q: 0, r: 1 } });
+      const marker = G.exp.core.players['0'].personal.influence.pop()!;
+      G.exp.core.influencesOnBoard = [{ ...marker, tileId }];
     }
-    G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => !ids.includes(id) && !G.tiles.board.some(p => p.tileId === id));
-    G.tiles.drawPile = ids.slice();
+    G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(id => !ids.includes(id) && !G.exp.core.tiles.board.some(p => p.tileId === id));
+    G.exp.core.tiles.drawPile = ids.slice();
     return G;
   };
   return game;
@@ -30,8 +30,8 @@ function registerPlacementCost() {
     hooks: {
       costIncreases: ({ G, effect }) => {
         if (effect.kind !== 'placeTile' || effect.tileId !== 'Committee-1') return;
-        expect(G.tiles.drawResolution?.tileId).toBe(effect.tileId);
-        expect(G.tiles.drawPile).not.toContain(effect.tileId);
+        expect(G.exp.core.tiles.drawResolution?.tileId).toBe(effect.tileId);
+        expect(G.exp.core.tiles.drawPile).not.toContain(effect.tileId);
         return { DOM: 1 };
       },
     },
@@ -45,18 +45,18 @@ describe('DrawResolution through boardgame.io', () => {
   it('offers orthogonal neighbors and transfers the drawn tile into Board on placement', () => {
     const client = Client({ game: createBCGame({ topology: 'orthogonal' }), numPlayers: 2 });
     const start = client.getState()!;
-    const drawn = start.G.tiles.drawResolution!;
+    const drawn = start.G.exp.core.tiles.drawResolution!;
     expect(drawn.legalCoords).toHaveLength(4);
-    expect(start.G.tiles.drawPile).not.toContain(drawn.tileId);
-    expect(start.G.tiles.discardFaceUp).not.toContain(drawn.tileId);
+    expect(start.G.exp.core.tiles.drawPile).not.toContain(drawn.tileId);
+    expect(start.G.exp.core.tiles.discardFaceUp).not.toContain(drawn.tileId);
 
     client.moves.placeTile({ q: 1, r: -1 });
     expect(client.getState()!._stateID).toBe(start._stateID);
 
     client.moves.placeTile({ q: 1, r: 0 });
     const placed = client.getState()!;
-    expect(placed.G.tiles.drawResolution).toBeNull();
-    expect(placed.G.tiles.board).toContainEqual({ tileId: drawn.tileId, coord: { q: 1, r: 0 } });
+    expect(placed.G.exp.core.tiles.drawResolution).toBeNull();
+    expect(placed.G.exp.core.tiles.board).toContainEqual({ tileId: drawn.tileId, coord: { q: 1, r: 0 } });
     expect(placed.ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
   });
 
@@ -70,20 +70,20 @@ describe('DrawResolution through boardgame.io', () => {
         { tileId: 'Committee-2', coord: { q: 2, r: 0 } },
         { tileId: 'Committee-3', coord: { q: 1, r: -1 } },
       ];
-      G.tiles.discardFaceUp = G.tiles.discardFaceUp.filter(id => !placed.some(tile => tile.tileId === id));
-      G.tiles.board.push(...placed);
-      const marker = G.players['0'].personal.influence.pop()!;
-      G.influencesOnBoard = [{ ...marker, tileId: 'Hotspot-1' }];
+      G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.discardFaceUp.filter(id => !placed.some(tile => tile.tileId === id));
+      G.exp.core.tiles.board.push(...placed);
+      const marker = G.exp.core.players['0'].personal.influence.pop()!;
+      G.exp.core.influencesOnBoard = [{ ...marker, tileId: 'Hotspot-1' }];
       return G;
     };
     const client = Client({ game, numPlayers: 2 });
-    const supply = client.getState()!.G.players['0'].personal.influence;
+    const supply = client.getState()!.G.exp.core.players['0'].personal.influence;
     const payout = supply[supply.length - 1];
     client.moves.placeTile({ q: 1, r: 1 });
-    expect(client.getState()!.G.tiles.board.find(tile => tile.tileId === 'Hotspot-1')?.enclosureProcessed).toBe(true);
-    expect(client.getState()!.G.influencesOnBoard).toHaveLength(2);
-    expect(client.getState()!.G.influencesOnBoard).toContainEqual({ ...payout, tileId: 'Hotspot-1' });
-    expect(client.getState()!.G.players['0'].personal.influence).not.toContainEqual(payout);
+    expect(client.getState()!.G.exp.core.tiles.board.find(tile => tile.tileId === 'Hotspot-1')?.enclosureProcessed).toBe(true);
+    expect(client.getState()!.G.exp.core.influencesOnBoard).toHaveLength(2);
+    expect(client.getState()!.G.exp.core.influencesOnBoard).toContainEqual({ ...payout, tileId: 'Hotspot-1' });
+    expect(client.getState()!.G.exp.core.players['0'].personal.influence).not.toContainEqual(payout);
   });
 
   it('discards an unaffordable tile and redraws in the same turn even with recycling', () => {
@@ -91,10 +91,10 @@ describe('DrawResolution through boardgame.io', () => {
     const game = gameWithDrawPile(['Committee-1', 'Grassroots-1'], { expansions: { exp01: true }, variants: { tileRecycling: true } });
     const client = Client({ game, numPlayers: 2 });
     const { G, ctx } = client.getState()!;
-    expect(G.tiles.discardFaceUp).toContain('Committee-1');
-    expect(G.tiles.drawResolution?.tileId).toBe('Grassroots-1');
-    expect(G.tiles.drawPile).toEqual([]);
-    expect(G.resources.bank.DOM).toBe(0);
+    expect(G.exp.core.tiles.discardFaceUp).toContain('Committee-1');
+    expect(G.exp.core.tiles.drawResolution?.tileId).toBe('Grassroots-1');
+    expect(G.exp.core.tiles.drawPile).toEqual([]);
+    expect(G.exp.core.resources.bank.DOM).toBe(0);
     expect(ctx.turn).toBe(1);
     expect(ctx.gameover).toBeUndefined();
   });
@@ -105,19 +105,19 @@ describe('DrawResolution through boardgame.io', () => {
     const setup = game.setup!;
     game.setup = (context, data) => {
       const G = setup(context, data);
-      G.players['0'].personal.resources.DOM = 1;
+      G.exp.core.players['0'].personal.resources.DOM = 1;
       return G;
     };
     const client = Client({ game, numPlayers: 2 });
-    expect(client.getState()!.G.players['0'].personal.resources.DOM).toBe(1);
-    expect(client.getState()!.G.resources.bank.DOM).toBe(0);
+    expect(client.getState()!.G.exp.core.players['0'].personal.resources.DOM).toBe(1);
+    expect(client.getState()!.G.exp.core.resources.bank.DOM).toBe(0);
 
     client.moves.placeTile({ q: 1, r: 0 });
     const { G } = client.getState()!;
-    expect(G.tiles.drawResolution).toBeNull();
-    expect(G.players['0'].personal.resources.DOM).toBe(0);
-    expect(G.resources.bank.DOM).toBe(1);
-    expect(G.tiles.board).toContainEqual({ tileId: 'Committee-1', coord: { q: 1, r: 0 } });
+    expect(G.exp.core.tiles.drawResolution).toBeNull();
+    expect(G.exp.core.players['0'].personal.resources.DOM).toBe(0);
+    expect(G.exp.core.resources.bank.DOM).toBe(1);
+    expect(G.exp.core.tiles.board).toContainEqual({ tileId: 'Committee-1', coord: { q: 1, r: 0 } });
   });
 
   it.each([false, true])('ends an unplaceable draw once with tileRecycling=%s', (tileRecycling) => {
@@ -127,18 +127,18 @@ describe('DrawResolution through boardgame.io', () => {
     const run = () => Client({ game: gameWithDrawPile(ids, { matchSeed: 'recycle', variants: { tileRecycling } }, true), numPlayers: 2 }).getState()!;
     const { G, ctx } = run();
 
-    expect(G.tiles.drawResolution).toBeNull();
+    expect(G.exp.core.tiles.drawResolution).toBeNull();
     expect(ctx.gameover).toEqual({ winners: ['0'] });
     expect(ctx.turn).toBe(1);
-    expect(G.players['0'].personal.resources.DOM).toBe(1);
+    expect(G.exp.core.players['0'].personal.resources.DOM).toBe(1);
     expect(G.lastTurnHash).toMatch(/^[0-9a-f]{64}$/);
     if (tileRecycling) {
-      expect(G.tiles.drawPile.slice().sort()).toEqual(ids);
-      expect(G.tiles.drawPile).toEqual(run().G.tiles.drawPile);
-      for (const id of ids) expect(G.tiles.discardFaceUp).not.toContain(id);
+      expect(G.exp.core.tiles.drawPile.slice().sort()).toEqual(ids);
+      expect(G.exp.core.tiles.drawPile).toEqual(run().G.exp.core.tiles.drawPile);
+      for (const id of ids) expect(G.exp.core.tiles.discardFaceUp).not.toContain(id);
     } else {
-      expect(G.tiles.drawPile).toEqual([]);
-      expect(G.tiles.discardFaceUp.slice(-ids.length)).toEqual(ids);
+      expect(G.exp.core.tiles.drawPile).toEqual([]);
+      expect(G.exp.core.tiles.discardFaceUp.slice(-ids.length)).toEqual(ids);
     }
   });
 
@@ -149,8 +149,8 @@ describe('DrawResolution through boardgame.io', () => {
     client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-1', targetTileId: 'Committee-1' } });
 
     const drawn = client.getState()!;
-    expect(drawn.G.tiles.drawPile).toEqual([]);
-    expect(drawn.G.tiles.drawResolution?.tileId).toBe('Committee-2');
+    expect(drawn.G.exp.core.tiles.drawPile).toEqual([]);
+    expect(drawn.G.exp.core.tiles.drawResolution?.tileId).toBe('Committee-2');
     expect(drawn.ctx.gameover).toBeUndefined();
     client.moves.placeTile({ q: 2, r: 0 });
     expect(client.getState()!.ctx.gameover).toBeUndefined();
@@ -159,7 +159,7 @@ describe('DrawResolution through boardgame.io', () => {
     const final = client.getState()!;
     expect(final.ctx.gameover).toEqual({ winners: ['0'] });
     expect(final.ctx.turn).toBe(2);
-    expect(final.G.players['0'].personal.resources.DOM).toBe(1);
-    expect(final.G.tiles.drawResolution).toBeNull();
+    expect(final.G.exp.core.players['0'].personal.resources.DOM).toBe(1);
+    expect(final.G.exp.core.tiles.drawResolution).toBeNull();
   });
 });

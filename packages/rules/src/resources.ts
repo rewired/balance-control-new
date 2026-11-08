@@ -1,5 +1,5 @@
-import type { ResourceId } from './types.js';
-import type { ExpansionModule } from './expansion-registry.js';
+import type { CoreState, ResourceId } from './types.js';
+import { createExpansionRegistry, type RulesModule } from './expansion-registry.js';
 
 export interface ResourceMeta { label?: string; icon?: string }
 
@@ -25,19 +25,18 @@ export function createResourceRegistry(): ResourceRegistry {
 }
 
 export function createCoreResourceRegistry(): ResourceRegistry {
-  const r = createResourceRegistry();
-  // Deterministic insertion order
-  r.register('DOM');
-  r.register('FOR');
-  r.register('INF');
-  return r;
+  return createMatchResourceRegistry(createExpansionRegistry(undefined));
 }
 
 // CORE-01-00-04C: only the modules enabled for this match contribute resorts.
-export function createMatchResourceRegistry(modules: readonly ExpansionModule[]): ResourceRegistry {
-  const registry = createCoreResourceRegistry();
+export function createMatchResourceRegistry(modules: readonly RulesModule[]): ResourceRegistry {
+  const registry = createResourceRegistry();
   for (const module of modules) module.registerResources(registry);
   return registry;
+}
+
+export function matchResourceIds(G: CoreState): ResourceId[] {
+  return createMatchResourceRegistry(createExpansionRegistry(G.cfg.expansions)).list();
 }
 
 export type ResourceAmounts = Record<ResourceId, number>;

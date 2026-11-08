@@ -1,9 +1,12 @@
 import type { Game } from 'boardgame.io';
 import type { CoreState } from '@bc/rules';
-import { MatchSetupDataSchema, buildInitialCoreState, createExpansionRegistry, createResolver, assertExpansionStateMatchesConfig, validateMatchPlayerCount } from '@bc/rules';
-import { CoreTurn } from './core.turns.js';
+import { MatchSetupDataSchema, buildInitialCoreState, createExpansionRegistry, createResolver, assertExpansionStateMatchesConfig, registerExpansion, validateMatchPlayerCount } from '@bc/rules';
+import { createCoreExpansion, CoreTurn } from '@bc/exp-00-core';
+import { exp01Economy } from '@bc/exp-01-economy';
+import { exp02Security } from '@bc/exp-02-security';
+import { exp03Climate } from '@bc/exp-03-climate';
 
-import './expansions.bootstrap.js';
+for (const module of [createCoreExpansion(), exp01Economy(), exp02Security(), exp03Climate()]) registerExpansion(module);
 
 export function setupCoreMatch(numPlayers: number, setupData: unknown = {}): CoreState {
   // CORE-01-03-01..08: build match state before the engine begins the first turn.
@@ -13,7 +16,7 @@ export function setupCoreMatch(numPlayers: number, setupData: unknown = {}): Cor
   const resolve = createResolver(modules);
   for (const module of modules) {
     module.setupExpansionState?.(G, { numPlayers, seed: matchSeed });
-    if (module.measureDeck) {
+    if ('measureDeck' in module && module.measureDeck) {
       const deck = resolve(G, { kind: 'initMeasures', expansion: module.id, deck: module.measureDeck(cfg) });
       if (!deck.ok) throw new Error(`Measure setup failed for ${module.id}: ${deck.reason}`);
     }

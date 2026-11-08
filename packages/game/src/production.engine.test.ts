@@ -24,11 +24,11 @@ function setupSettlement(expansions: Partial<Record<ExpansionId, boolean>>, tied
   game.setup = (context, data) => {
     const G = setup(context, data);
     const draw = ['Committee-1', 'Committee-2', 'Committee-3'];
-    G.tiles.board.push(...board);
-    G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => !board.some(placement => placement.tileId === id) && !draw.includes(id));
-    G.tiles.drawPile = draw;
-    G.influencesOnBoard = (tied ? ['0', '1'] : ['0']).map(id => ({
-      ...G.players[id].personal.influence.shift()!, tileId: resort.tileId,
+    G.exp.core.tiles.board.push(...board);
+    G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(id => !board.some(placement => placement.tileId === id) && !draw.includes(id));
+    G.exp.core.tiles.drawPile = draw;
+    G.exp.core.influencesOnBoard = (tied ? ['0', '1'] : ['0']).map(id => ({
+      ...G.exp.core.players[id].personal.influence.shift()!, tileId: resort.tileId,
     }));
     return G;
   };
@@ -37,7 +37,7 @@ function setupSettlement(expansions: Partial<Record<ExpansionId, boolean>>, tied
 
 function placeMarker(client: CoreClient, targetTileId: string): void {
   const { G, ctx } = client.getState()!;
-  const markerId = G.players[ctx.currentPlayer].personal.influence[0].id;
+  const markerId = G.exp.core.players[ctx.currentPlayer].personal.influence[0].id;
   client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId } });
 }
 
@@ -60,8 +60,8 @@ describe('Canonical Resort Production through boardgame.io', () => {
     const client = setupSettlement({ exp02: true });
     openLastTurnOfRound(client);
     const before = client.getState()!;
-    expect(before.G.players['0'].personal.resources.DOM).toBe(0);
-    expect(before.G.resources.bank.DOM).toBe(0);
+    expect(before.G.exp.core.players['0'].personal.resources.DOM).toBe(0);
+    expect(before.G.exp.core.resources.bank.DOM).toBe(0);
 
     costs.mockClear();
     placeMarker(client, resort.tileId);
@@ -74,10 +74,10 @@ describe('Canonical Resort Production through boardgame.io', () => {
     const settled = client.getState()!;
     expect(settled.ctx.turn).toBe(3);
     expect(settled.ctx.gameover).toBeUndefined();
-    expect(settled.G.players['0'].personal.resources.DOM).toBe(3);
-    expect(settled.G.players['1'].personal.resources.DOM).toBe(0);
-    expect(settled.G.resources.noise.DOM).toBe(0);
-    expect(settled.G.resources.bank.DOM).toBe(0);
+    expect(settled.G.exp.core.players['0'].personal.resources.DOM).toBe(3);
+    expect(settled.G.exp.core.players['1'].personal.resources.DOM).toBe(0);
+    expect(settled.G.exp.core.resources.noise.DOM).toBe(0);
+    expect(settled.G.exp.core.resources.bank.DOM).toBe(0);
     expect(costs.mock.calls.some(([{ effect }]) => effect.kind === 'applyProductionAt' || effect.kind === 'addResources')).toBe(false);
   });
 
@@ -97,9 +97,9 @@ describe('Canonical Resort Production through boardgame.io', () => {
     const { G, ctx } = client.getState()!;
     expect(ctx.turn).toBe(3);
     expect(climateModifiers).toHaveBeenCalledTimes(exp03 ? 1 : 0);
-    expect(G.players['0'].personal.resources.DOM).toBe(share);
-    expect(G.players['1'].personal.resources.DOM).toBe(share);
-    expect(G.resources.noise.DOM).toBe(noise);
+    expect(G.exp.core.players['0'].personal.resources.DOM).toBe(share);
+    expect(G.exp.core.players['1'].personal.resources.DOM).toBe(share);
+    expect(G.exp.core.resources.noise.DOM).toBe(noise);
   });
 
   it('checks the producing tile prohibition before collecting output modifiers', () => {
@@ -119,8 +119,8 @@ describe('Canonical Resort Production through boardgame.io', () => {
     expect(ctx.turn).toBe(3);
     expect(otherProhibitions.mock.calls.some(([{ effect }]) => effect.kind === 'applyProductionAt')).toBe(false);
     expect(productionModifiers).not.toHaveBeenCalled();
-    expect(G.players['0'].personal.resources.DOM).toBe(0);
-    expect(G.resources.noise.DOM).toBe(0);
+    expect(G.exp.core.players['0'].personal.resources.DOM).toBe(0);
+    expect(G.exp.core.resources.noise.DOM).toBe(0);
   });
 
   it('T18: settles ResortTiles in ordinal Tile ID order even with reversed board insertion', () => {

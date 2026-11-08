@@ -1,4 +1,7 @@
 import { Client } from 'boardgame.io/client';
+import { exp01Economy } from '@bc/exp-01-economy';
+import { exp02Security } from '@bc/exp-02-security';
+import { exp03Climate } from '@bc/exp-03-climate';
 import {
   __resetRegisteredExpansionsForTest, createResolver, ensureExpansionSlice, getControl, registerExpansion, z,
   type BoardPlacement, type CoreState, type ExpansionHooks, type ExpansionId,
@@ -17,9 +20,12 @@ const registerPayload = z.object({
 type RegisterPayload = z.infer<typeof registerPayload>;
 
 function installModule(id: ExpansionId, hooks: ExpansionHooks): void {
+  const base = { exp01: exp01Economy, exp02: exp02Security, exp03: exp03Climate }[id]();
   registerExpansion({
-    id,
-    hooks,
+    ...base,
+    hooks: { ...base.hooks, ...hooks },
+    tiles: undefined,
+    measureDeck: undefined,
     registerResources: () => {},
     setupExpansionState: G => { ensureExpansionSlice(G, id, {}); },
     extendMoves: id === 'exp01' ? ({ add }) => add({
@@ -47,11 +53,11 @@ function setupMatch(
   game.setup = (context, data) => {
     const G = setup(context, data);
     const draw = Array.from({ length: remaining }, (_, index) => `Committee-${index + 1}`);
-    G.tiles.board.push(...board);
-    G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(p => p.tileId === id));
-    G.tiles.drawPile = draw;
-    G.influencesOnBoard = Object.entries(owned).flatMap(([id, tileIds]) => tileIds.map(tileId => ({
-      ...G.players[id].personal.influence.shift()!, tileId,
+    G.exp.core.tiles.board.push(...board);
+    G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(p => p.tileId === id));
+    G.exp.core.tiles.drawPile = draw;
+    G.exp.core.influencesOnBoard = Object.entries(owned).flatMap(([id, tileIds]) => tileIds.map(tileId => ({
+      ...G.exp.core.players[id].personal.influence.shift()!, tileId,
     })));
     seed?.(G);
     return G;
@@ -61,14 +67,14 @@ function setupMatch(
 
 function placeTile(client: CoreClient): string {
   const { G, ctx } = client.getState()!;
-  const tileId = G.tiles.drawResolution!.tileId;
+  const tileId = G.exp.core.tiles.drawResolution!.tileId;
   client.moves.placeTile({ q: -ctx.turn, r: 0 });
   return tileId;
 }
 
 function placeMarker(client: CoreClient, targetTileId: string): void {
   const { G, ctx } = client.getState()!;
-  const markerId = G.players[ctx.currentPlayer].personal.influence[0].id;
+  const markerId = G.exp.core.players[ctx.currentPlayer].personal.influence[0].id;
   client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId } });
 }
 
@@ -97,7 +103,7 @@ describe('Production effects through boardgame.io', () => {
     register(client, 'ECO_M09', '1');
     const armed = client.getState()!;
     expect(armed.ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
-    expect(armed.G.activeMeasureEffects).toEqual([
+    expect(armed.G.exp.core.activeMeasureEffects).toEqual([
       { id: 'ECO_M09:1', sourceCardId: 'ECO_M09', playNumber: 1, owner: '0', targetPlayerID: '1', duration: 'thisRound' },
     ]);
     expect(getControl(armed.G, dom.coord)).toBeNull();
@@ -108,13 +114,13 @@ describe('Production effects through boardgame.io', () => {
     const firstSettlement = client.getState()!;
     expect(firstSettlement.ctx.turn).toBe(3);
     expect(getControl(firstSettlement.G, dom.coord)).toBe('1');
-    expect(firstSettlement.G.players['1'].personal.resources).toMatchObject({ DOM: 4, FOR: 3 });
-    expect(firstSettlement.G.players['0'].personal.resources).toMatchObject({ FOR: 3, INF: 10 });
-    expect(firstSettlement.G.activeMeasureEffects).toBeUndefined();
+    expect(firstSettlement.G.exp.core.players['1'].personal.resources).toMatchObject({ DOM: 4, FOR: 3 });
+    expect(firstSettlement.G.exp.core.players['0'].personal.resources).toMatchObject({ FOR: 3, INF: 10 });
+    expect(firstSettlement.G.exp.core.activeMeasureEffects).toBeUndefined();
 
     placeMarker(client, placeTile(client));
     placeMarker(client, placeTile(client));
-    expect(client.getState()!.G.players['1'].personal.resources.DOM).toBe(14);
+    expect(client.getState()!.G.exp.core.players['1'].personal.resources.DOM).toBe(14);
   });
 
   it('caps only final receipts per tile, preserving the original remainder and unissued bank stock', () => {
@@ -125,7 +131,7 @@ describe('Production effects through boardgame.io', () => {
     const zeroShare = { tileId: 'INF-W1-1', coord: { q: 2, r: -1 } };
     const client = setupMatch([dom, lobbyist, tied, zeroShare], {
       '1': [lobbyist.tileId, tied.tileId], '2': [tied.tileId, zeroShare.tileId],
-    }, 3, 3, G => { Object.assign(G.resources.bank, { DOM: 5, FOR: 7, INF: 1 }); });
+    }, 3, 3, G => { Object.assign(G.exp.core.resources.bank, { DOM: 5, FOR: 7, INF: 1 }); });
 
     const first = placeTile(client);
     register(client, 'CLM_M11', '1');
@@ -135,17 +141,17 @@ describe('Production effects through boardgame.io', () => {
     placeMarker(client, second);
     const third = placeTile(client);
     register(client, 'ECO_M09', '1');
-    expect(client.getState()!.G.activeMeasureEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1', 'CLM_M11:2', 'ECO_M09:1']);
+    expect(client.getState()!.G.exp.core.activeMeasureEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1', 'CLM_M11:2', 'ECO_M09:1']);
     placeMarker(client, third);
 
     const { G, ctx } = client.getState()!;
     expect(ctx.gameover).toEqual({ winners: ['1', '2'] });
-    expect(G.players['0'].personal.resources).toEqual({ DOM: 0, FOR: 0, INF: 0 });
-    expect(G.players['1'].personal.resources).toEqual({ DOM: 1, FOR: 1, INF: 0 });
-    expect(G.players['2'].personal.resources).toEqual({ DOM: 0, FOR: 2, INF: 0 });
-    expect(G.resources.noise).toEqual({ DOM: 0, FOR: 1, INF: 1 });
-    expect(G.resources.bank).toEqual({ DOM: 4, FOR: 3, INF: 0 });
-    expect(G.activeMeasureEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1', 'CLM_M11:2']);
+    expect(G.exp.core.players['0'].personal.resources).toEqual({ DOM: 0, FOR: 0, INF: 0 });
+    expect(G.exp.core.players['1'].personal.resources).toEqual({ DOM: 1, FOR: 1, INF: 0 });
+    expect(G.exp.core.players['2'].personal.resources).toEqual({ DOM: 0, FOR: 2, INF: 0 });
+    expect(G.exp.core.resources.noise).toEqual({ DOM: 0, FOR: 1, INF: 1 });
+    expect(G.exp.core.resources.bank).toEqual({ DOM: 4, FOR: 3, INF: 0 });
+    expect(G.exp.core.activeMeasureEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1', 'CLM_M11:2']);
   });
 
   it('expires the cap immediately before its owner actually begins the next turn', () => {
@@ -157,14 +163,14 @@ describe('Production effects through boardgame.io', () => {
     const second = placeTile(client);
     register(client, 'CLM_M11', '0');
     placeMarker(client, second);
-    expect(client.getState()!.G.players['0'].personal.resources.DOM).toBe(1);
-    expect(client.getState()!.G.activeMeasureEffects?.[0].owner).toBe('1');
+    expect(client.getState()!.G.exp.core.players['0'].personal.resources.DOM).toBe(1);
+    expect(client.getState()!.G.exp.core.activeMeasureEffects?.[0].owner).toBe('1');
 
     placeMarker(client, placeTile(client));
     expect(client.getState()!.ctx.currentPlayer).toBe('1');
-    expect(client.getState()!.G.activeMeasureEffects).toBeUndefined();
+    expect(client.getState()!.G.exp.core.activeMeasureEffects).toBeUndefined();
     placeMarker(client, placeTile(client));
-    expect(client.getState()!.G.players['0'].personal.resources.DOM).toBe(6);
+    expect(client.getState()!.G.exp.core.players['0'].personal.resources.DOM).toBe(6);
   });
 
   it('rejects Supply Chain Disruption when its source expansion is disabled', () => {

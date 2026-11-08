@@ -39,12 +39,12 @@ describe('Resolver enforcement via engine move routing', () => {
     client.moves.doPoliticalAction({ type: 'testAddDom', payload: { contextCoord: { q: 1, r: 0 } } });
     const rejected = client.getState()!;
     expect(rejected._stateID).toBe(before._stateID);
-    expect(rejected.G.players['0'].personal.resources.DOM).toBe(0);
+    expect(rejected.G.exp.core.players['0'].personal.resources.DOM).toBe(0);
     expect(rejected.ctx).toEqual(before.ctx);
 
     client.moves.doPoliticalAction({ type: 'testAddDom', payload: { contextCoord: { q: 0, r: 0 } } });
     const accepted = client.getState()!;
-    expect(accepted.G.players['0'].personal.resources.DOM).toBe(1);
+    expect(accepted.G.exp.core.players['0'].personal.resources.DOM).toBe(1);
     expect(accepted.ctx.currentPlayer).toBe('1');
     expect(accepted.ctx.activePlayers).toEqual({ '1': 'DrawAndPlaceTile' });
   });

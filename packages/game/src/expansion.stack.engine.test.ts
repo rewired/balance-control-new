@@ -31,13 +31,13 @@ function replay(expansions: (typeof configurations)[number]) {
     const G = setup(context, data);
     const board = [tied, blocked, costed, empty];
     const draw = ['Committee-7', 'Committee-8'];
-    G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(tile => tile.tileId === id));
-    G.tiles.drawPile = draw;
-    G.tiles.board.push(...board);
-    G.influencesOnBoard = [['0', tied.tileId], ['1', tied.tileId], ['0', blocked.tileId]].map(([owner, tileId]) => ({
-      ...G.players[owner].personal.influence.shift()!, tileId,
+    G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(tile => tile.tileId === id));
+    G.exp.core.tiles.drawPile = draw;
+    G.exp.core.tiles.board.push(...board);
+    G.exp.core.influencesOnBoard = [['0', tied.tileId], ['1', tied.tileId], ['0', blocked.tileId]].map(([owner, tileId]) => ({
+      ...G.exp.core.players[owner].personal.influence.shift()!, tileId,
     }));
-    Object.assign(G.players['0'].personal.resources, { FOR: 4, DOM: 1, ...(exp03 ? { CLM: 1 } : {}) });
+    Object.assign(G.exp.core.players['0'].personal.resources, { FOR: 4, DOM: 1, ...(exp03 ? { CLM: 1 } : {}) });
 
     const resolve = createResolver();
     const register = (instance: Instance) => expect(resolve(G, { kind: 'registerMeasureEffect', instance }).ok).toBe(true);
@@ -67,7 +67,7 @@ function replay(expansions: (typeof configurations)[number]) {
         if (slot >= 0) deck.open[slot] = null;
         else deck.drawPile.splice(deck.drawPile.indexOf('CLM_M11'), 1);
         deck.hands['1'].push('CLM_M11');
-        Object.assign(G.players['1'].personal.resources, { CLM: 1, ECO: 1 });
+        Object.assign(G.exp.core.players['1'].personal.resources, { CLM: 1, ECO: 1 });
       }
     }
     return G;
@@ -75,7 +75,7 @@ function replay(expansions: (typeof configurations)[number]) {
   const client = Client({ game, numPlayers: 2 });
   client.moves.placeTile({ q: -1, r: 0 });
   const before = client.getState()!;
-  const markerId = before.G.players['0'].personal.influence[0].id;
+  const markerId = before.G.exp.core.players['0'].personal.influence[0].id;
   const options = engineMoveOptions(before.G, before.ctx, '0');
   expect(options.some(option => option.contextTile === blocked.tileId)).toBe(!exp02);
   if (exp02) {
@@ -106,8 +106,8 @@ function replay(expansions: (typeof configurations)[number]) {
   client.moves.doPoliticalAction(...parameters);
   const paid = client.getState()!;
   expect(paid.ctx.currentPlayer).toBe('1');
-  expect(paid.G.resources.bank).toMatchObject({ FOR: forCost, DOM: Number(exp03), ...(exp03 ? { CLM: 1 } : {}) });
-  expect(paid.G.activeMeasureEffects?.some(effect => effect.sourceCardId === 'ECO_M06') ?? false).toBe(false);
+  expect(paid.G.exp.core.resources.bank).toMatchObject({ FOR: forCost, DOM: Number(exp03), ...(exp03 ? { CLM: 1 } : {}) });
+  expect(paid.G.exp.core.activeMeasureEffects?.some(effect => effect.sourceCardId === 'ECO_M06') ?? false).toBe(false);
   client.moves.placeTile({ q: -2, r: 0 });
   if (exp01 && exp03) {
     client.moves.doPoliticalAction({ type: 'exp03_playMeasure', payload: { measureId: 'CLM_M11', targetPlayerID: '0' } });
@@ -127,17 +127,17 @@ describe('Cross-expansion cost and Settlement matrix through boardgame.io', () =
     // CORE-01-06-16/-16A: apply doubling and reductions before tied shares and the receipt cap.
     const output = (exp01 ? 9 : 5) - (exp02 ? 2 : 0);
     const share = Math.floor(output / 2);
-    expect(G.players['0'].personal.resources).toMatchObject({
+    expect(G.exp.core.players['0'].personal.resources).toMatchObject({
       DOM: Number(!exp03) + (exp01 && exp03 ? 1 : share),
       FOR: 4 - Number(exp01) - (exp02 ? 2 : 0) + (exp02 ? 0 : exp01 && exp03 ? 1 : 5), INF: 1,
     });
-    expect(G.players['1'].personal.resources).toMatchObject({ DOM: share, FOR: 0, INF: 0 });
-    expect(G.resources.noise).toMatchObject({ DOM: 1, FOR: 0, INF: 0 });
+    expect(G.exp.core.players['1'].personal.resources).toMatchObject({ DOM: share, FOR: 0, INF: 0 });
+    expect(G.exp.core.resources.noise).toMatchObject({ DOM: 1, FOR: 0, INF: 0 });
     const activeIds = Object.entries(expansions).filter(([, enabled]) => enabled).map(([id]) => id);
-    expect(createExpansionRegistry(G.cfg.expansions).map(module => module.id)).toEqual(activeIds);
-    expect(Object.keys(G.exp ?? {})).toEqual(activeIds);
+    expect(createExpansionRegistry(G.cfg.expansions).map(module => module.id)).toEqual(['core', ...activeIds]);
+    expect(Object.keys(G.exp)).toEqual(['core', ...activeIds]);
     expect(G.exp?.exp02?.regulations !== undefined).toBe(exp02);
-    expect(G.activeMeasureEffects?.every(instance => instance.sourceCardId.startsWith('CLM_')) ?? true).toBe(true);
+    expect(G.exp.core.activeMeasureEffects?.every(instance => instance.sourceCardId.startsWith('CLM_')) ?? true).toBe(true);
     expect(JSON.stringify(G)).not.toMatch(/countdown/i);
     const expected = endHashes[configurations.indexOf(expansions)];
     expect(G.lastTurnHash).toBe(expected);

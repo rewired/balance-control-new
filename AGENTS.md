@@ -165,6 +165,10 @@ If an expansion is disabled:
 /packages
   /rules          Domain types + pure helper logic (no boardgame.io)
   /game           boardgame.io Game definition (moves, phases, end)
+  /exp-00-core    Mandatory CORE material and rules
+  /exp-01-economy Economy & Labor
+  /exp-02-security Security & Order
+  /exp-03-climate Climate & Future
   /server         boardgame.io server + lobby + persistence (SQLite)
   /client-web     React UI (hotseat + online)
   /bot-llm        LLM bot adapter (local model)
@@ -221,8 +225,11 @@ No alternative implementations allowed.
 Each expansion:
 
 * May introduce new zones
-* Must be toggled via match config flag
+* Must be toggled via match config flag if optional
 * Must not contaminate core state when disabled
+
+The game factory registers the four workspace expansion packages. CORE is mandatory and is registered first. Match config flags control EXP-01, EXP-02 and EXP-03.
+The mandatory state slice is `G.exp.core`. Persisted matches from before namespacing are migrated when loaded.
 
 ---
 
@@ -292,13 +299,13 @@ registerExpansion({
 })
 ```
 
-When disabled:
+When an optional expansion is disabled:
 
 * No expansion state exists
 * No hooks execute
 * No modifier placeholders remain
 
-Engine must behave as pure CORE.
+With all optional expansions disabled, only CORE contributes to the match.
 
 ---
 

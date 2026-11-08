@@ -27,7 +27,7 @@ describe('PlaceTile prohibitions via the engine', () => {
     expect(options.map(option => option.parameters[0])).not.toContainEqual({ q: 1, r: 0 });
 
     client.moves.doPoliticalAction({
-      type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-1', targetTileId: before.G.tiles.drawResolution!.tileId },
+      type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-1', targetTileId: before.G.exp.core.tiles.drawResolution!.tileId },
     });
     client.moves.placeTile({ q: 1, r: 0 });
     const rejected = client.getState()!;
@@ -37,7 +37,7 @@ describe('PlaceTile prohibitions via the engine', () => {
 
     client.moves.placeTile({ q: 0, r: 1 });
     const accepted = client.getState()!;
-    expect(accepted.G.tiles.board).toContainEqual({ tileId: before.G.tiles.drawResolution!.tileId, coord: { q: 0, r: 1 } });
+    expect(accepted.G.exp.core.tiles.board).toContainEqual({ tileId: before.G.exp.core.tiles.drawResolution!.tileId, coord: { q: 0, r: 1 } });
     expect(accepted.ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
   });
 });

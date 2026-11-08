@@ -17,14 +17,14 @@ function act(client: CoreClient, expansion: ExpansionId, action: 'takeMeasure' |
 }
 
 function place(client: CoreClient): string {
-  const offer = client.getState()!.G.tiles.drawResolution!;
+  const offer = client.getState()!.G.exp.core.tiles.drawResolution!;
   client.moves.placeTile(offer.legalCoords[0]);
   return offer.tileId;
 }
 
 function mark(client: CoreClient, targetTileId: string): void {
   const { G, ctx } = client.getState()!;
-  const markerId = G.players[ctx.currentPlayer].personal.influence[0].id;
+  const markerId = G.exp.core.players[ctx.currentPlayer].personal.influence[0].id;
   client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId } });
 }
 
@@ -38,7 +38,7 @@ describe('Shared Measure lifecycle through boardgame.io', () => {
     const { G } = client.getState()!;
     const { open, drawPile } = G.exp!.exp02!.measures!;
     expect(G.exp?.exp01).toBeUndefined();
-    expect(G.playedMeasureThisRound).toEqual({ '0': false, '1': false });
+    expect(G.exp.core.playedMeasureThisRound).toEqual({ '0': false, '1': false });
     expect(Object.values(G.exp!.exp02!.measures!.playCounts)).toEqual([0, 0, 0, 0]);
 
     place(client);
@@ -72,7 +72,7 @@ describe('Shared Measure lifecycle through boardgame.io', () => {
     expect(deck.recycle).toEqual([]);
     expect(deck.playCounts).toEqual({ 'SEC-1': 1 });
     expect(deck.cycle).toBe(1);
-    expect(extra.G.playedMeasureThisRound!['0']).toBe(true);
+    expect(extra.G.exp.core.playedMeasureThisRound!['0']).toBe(true);
 
     act(client, 'exp02', 'takeMeasure', 'SEC-1');
     expect(client.getState()!.G.exp!.exp02!.measures!.hands['0']).toEqual(['SEC-1']);
@@ -100,15 +100,15 @@ describe('Shared Measure lifecycle through boardgame.io', () => {
     act(client, 'exp01', 'playMeasure', 'ECO-1');
     const extra = client.getState()!;
     expect(extra.ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
-    expect(extra.G.playedMeasureThisRound!['0']).toBe(true);
+    expect(extra.G.exp.core.playedMeasureThisRound!['0']).toBe(true);
     expect([...politicalMoveOptions(extra.G, '0')].some(move => move.type === 'exp02_playMeasure')).toBe(false);
     act(client, 'exp02', 'playMeasure', 'SEC-1');
     expect(client.getState()!._stateID).toBe(extra._stateID);
 
     act(client, 'exp03', 'takeMeasure', 'CLM-1');
-    expect(client.getState()!.G.playedMeasureThisRound!['0']).toBe(true);
+    expect(client.getState()!.G.exp.core.playedMeasureThisRound!['0']).toBe(true);
     mark(client, place(client));
-    expect(client.getState()!.G.playedMeasureThisRound!['0']).toBe(false);
+    expect(client.getState()!.G.exp.core.playedMeasureThisRound!['0']).toBe(false);
     place(client);
     act(client, 'exp02', 'playMeasure', 'SEC-1');
     expect(client.getState()!.G.exp!.exp02!.measures!.playCounts['SEC-1']).toBe(1);

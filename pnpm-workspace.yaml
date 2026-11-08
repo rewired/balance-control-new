@@ -3,3 +3,8 @@ packages:
 
 onlyBuiltDependencies:
   - esbuild
+
+packageExtensions:
+  'boardgame.io@0.50.2':
+    dependencies:
+      node-persist: ^3.1.0

@@ -1,11 +1,10 @@
 import { z, ZodFirstPartyTypeKind, type ZodTypeAny } from 'zod';
 import type { CoreState } from './types.js';
-import { createExpansionRegistry, type ExpansionModule } from './expansion-registry.js';
-import { createResolver, type PaymentQuote, type PoliticalActionEffect, type ResolveResult } from './effects.js';
-import { createMatchResourceRegistry } from './resources.js';
+import { createExpansionRegistry, getRegulationRules, type ExpansionModule, type RulesModule } from './expansion-registry.js';
+import { createResolver, type PaymentQuote, type ResolveResult } from './effects.js';
+import { matchResourceIds } from './resources.js';
 import { PaymentSelectionSchema, RegulationOperationSchema } from './schemas.js';
-import { regulationOperations } from './regulations.js';
-import { isGreenwashingActive } from './payment.js';
+import { regulationOperations } from './rule-services.js';
 
 // MoveDefinition is rules-only (no boardgame.io types here per AGENTS §1.2)
 export type MoveQuote<P> = Omit<PaymentQuote, 'payment'> & { payload: P };
@@ -29,7 +28,7 @@ export interface MoveExtensionBuilder {
   add<P>(def: MoveDefinition<P>): void;
 }
 
-export function buildMoveCatalog(coreMoves: MoveDefinition<unknown>[], modules: ExpansionModule[]): MoveCatalog {
+export function buildMoveCatalog(modules: readonly RulesModule[]): MoveCatalog {
   const defs: Record<string, MoveDefinition<unknown>> = Object.create(null);
   const schemas: Record<string, ZodTypeAny> = Object.create(null);
 
@@ -51,12 +50,9 @@ export function buildMoveCatalog(coreMoves: MoveDefinition<unknown>[], modules: 
     schemas[def.type] = s;
   };
 
-  // Seed with core moves
-  for (const m of coreMoves) add(m);
-
-  // Let enabled expansion modules extend moves (AGENTS §3.8)
+  // All active modules contribute moves through the same builder (AGENTS §3.8).
   for (const mod of modules) {
-    if (mod.measureDeck) {
+    if ('measureDeck' in mod && mod.measureDeck) {
       add(measureMove(mod, 'takeMeasure'));
       add(measureMove(mod, 'playMeasure'));
     }
@@ -92,11 +88,11 @@ function measureMove(module: ExpansionModule, kind: 'takeMeasure' | 'playMeasure
         if (!measureId) return [];
         const rule = kind === 'playMeasure' ? module.measureRules?.[measureId] : undefined;
         const players = rule?.targetPlayer
-          ? Object.keys(G.players).filter(id => rule.targetPlayer !== 'opponent' || id !== playerID) : [undefined];
-        const tiles = rule?.targetTile ? G.tiles.board.map(tile => tile.tileId) : [undefined];
-        const resorts = rule?.targetResort ? matchResources(G) : [undefined];
+          ? Object.keys(G.exp.core.players).filter(id => rule.targetPlayer !== 'opponent' || id !== playerID) : [undefined];
+        const tiles = rule?.targetTile ? G.exp.core.tiles.board.map(tile => tile.tileId) : [undefined];
+        const resorts = rule?.targetResort ? matchResourceIds(G) : [undefined];
         const regulationIds = rule?.targetRegulation
-          ? G.exp?.exp02?.regulations?.attached.map(item => item.id) ?? [] : [undefined];
+          ? getRegulationRules(G)?.attached(G).map(item => item.id) ?? [] : [undefined];
         const operations = rule?.regulation ? [...regulationOperations(G, rule.regulation.operation)] : [undefined];
         const choices = players.flatMap(targetPlayerID => tiles.flatMap(targetTileId => resorts.flatMap(targetResort =>
           regulationIds.flatMap(targetRegulationId => operations.map(regulation => ({
@@ -112,111 +108,8 @@ function measureMove(module: ExpansionModule, kind: 'takeMeasure' | 'playMeasure
   };
 }
 
-function corePoliticalMove<P extends object>(
-  type: PoliticalActionEffect['kind'],
-  payloadSchema: z.ZodType<P>,
-  describe: (playerID: string, payload: P) => PoliticalActionEffect,
-  candidates: (G: CoreState, playerID: string) => Iterable<P>,
-): MoveDefinition<unknown> {
-  const resolve = createResolver();
-  return {
-    type,
-    payloadSchema,
-    execute: (G, playerID, input) => {
-      const parsed = payloadSchema.safeParse(input);
-      return parsed.success ? resolve(G, describe(playerID, parsed.data)) : { ok: false, reason: 'invalid-payload' };
-    },
-    quotes: (G, playerID) => Array.from(candidates(G, playerID)).flatMap(payload =>
-      resolve.actionQuotes(G, describe(playerID, payload))
-        .map(({ payment, ...quote }) => ({ ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } }))),
-  };
-}
-
-function* paymentCombinations(resources: string[], size: number, offset = 0): Generator<string[]> {
-  if (size === 0) {
-    yield [];
-    return;
-  }
-  for (let i = offset; i < resources.length; i++) {
-    for (const rest of paymentCombinations(resources, size - 1, i)) yield [resources[i], ...rest];
-  }
-}
-
-function matchResources(G: CoreState): string[] {
-  return createMatchResourceRegistry(createExpansionRegistry(G.cfg.expansions)).list();
-}
-
-const id = z.string().min(1);
-
-// CORE-01-04-09/-09A: enumerate targets and payments using the same plan as execution.
-export function corePoliticalMoves(): MoveDefinition<unknown>[] {
-  return [
-    corePoliticalMove(
-      'placeOrMoveInfluence',
-      z.object({ markerId: id, targetTileId: id, sourceTileId: id.optional(), payment: PaymentSelectionSchema.optional() }).strict(),
-      (playerID, payload) => ({ kind: 'placeOrMoveInfluence', playerID, ...payload }),
-      function* (G, playerID) {
-        for (const { tileId: targetTileId } of G.tiles.board) {
-          if (G.allTiles[targetTileId].kind === 'StartCommittee') continue;
-          for (const marker of G.players[playerID]?.personal.influence ?? []) {
-            yield { markerId: marker.id, targetTileId };
-          }
-          for (const marker of G.influencesOnBoard ?? []) {
-            if (marker.owner === playerID && marker.tileId !== targetTileId) {
-              yield { markerId: marker.id, sourceTileId: marker.tileId, targetTileId };
-            }
-          }
-        }
-      },
-    ),
-    corePoliticalMove(
-      'formalizeInfluence',
-      z.object({ tileId: id, resources: z.array(id).min(2).max(4), payment: PaymentSelectionSchema.optional() }).strict(),
-      (playerID, payload) => ({ kind: 'formalizeInfluence', playerID, ...payload }),
-      function* (G) {
-        const resources = matchResources(G);
-        for (const { tileId } of G.tiles.board) {
-          const kind = G.allTiles[tileId].kind;
-          if (kind !== 'Committee' && kind !== 'StartCommittee') continue;
-          for (const payment of paymentCombinations(resources, kind === 'Committee' ? 2 : 4)) {
-            if (kind === 'Committee' && isGreenwashingActive(G)) {
-              yield { tileId, resources: payment, payment: { greenwashing: 'CLM' as const } };
-              yield { tileId, resources: payment, payment: { greenwashing: 'INF' as const } };
-            } else {
-              yield { tileId, resources: payment };
-            }
-          }
-        }
-      },
-    ),
-    corePoliticalMove(
-      'convertResources',
-      z.object({ tileId: id, input: id, output: id, alternative: id.optional(), payment: PaymentSelectionSchema.optional() }).strict(),
-      (playerID, payload) => ({ kind: 'convertResources', playerID, ...payload }),
-      function* (G, playerID) {
-        const resources = matchResources(G);
-        const alternatives = createExpansionRegistry(G.cfg.expansions)
-          .flatMap(module => module.conversionAlternatives?.(G, playerID) ?? []);
-        for (const { tileId } of G.tiles.board) {
-          if (G.allTiles[tileId].kind !== 'Grassroots') continue;
-          for (const input of resources) {
-            for (const output of resources) {
-              if (input !== output) yield { tileId, input, output };
-            }
-          }
-          for (const option of alternatives) {
-            for (const output of resources) {
-              if (option.input !== output) yield { tileId, input: option.input, output, alternative: option.id };
-            }
-          }
-        }
-      },
-    ),
-  ];
-}
-
 export function* politicalMoveQuotes(G: CoreState, playerID: string, additional = false) {
-  const catalog = buildMoveCatalog(corePoliticalMoves(), createExpansionRegistry(G.cfg.expansions));
+  const catalog = buildMoveCatalog(createExpansionRegistry(G.cfg.expansions));
   for (const type of catalog.types) {
     const definition = catalog.definitions[type];
     if (additional && definition.isPlayMeasure) continue;

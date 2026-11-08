@@ -23,7 +23,7 @@ describe('Task 0021 - Config is source of truth', () => {
     ensureExpansionSlice(G, 'exp01', { __ghost: true });
     // registry must still ignore because flags from cfg
     const mods = createExpansionRegistry(G.cfg.expansions);
-    expect(mods).toEqual([]);
+    expect(mods.map(module => module.id)).toEqual(['core']);
     expect(() => assertExpansionStateMatchesConfig(G)).toThrowError(/present for disabled exp01/);
   });
 

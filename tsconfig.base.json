@@ -43,6 +43,9 @@
                                           "@bc/bot-llm":  [
                                                               "packages/bot-llm/src/index.ts"
                                                           ],
+                                          "@bc/exp-00-core": ["packages/exp-00-core/src/index.ts"],
+                                          "@bc/exp-02-security": ["packages/exp-02-security/src/index.ts"],
+                                          "@bc/exp-03-climate": ["packages/exp-03-climate/src/index.ts"],
                                           "@bc/exp-01-economy":  [
                                                                      "packages/exp-01-economy/src/index.ts"
                                                                  ],

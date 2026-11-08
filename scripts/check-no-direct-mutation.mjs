@@ -13,7 +13,10 @@ const files = project.fileNames.filter(file =>
   /^packages\/[^/]+\/src\/.*\.tsx?$/.test(repoPath(file)) && !/\.(?:test|spec|d)\.tsx?$/.test(file));
 const program = ts.createProgram(files, { ...project.options, jsx: ts.JsxEmit.ReactJSX });
 const checker = program.getTypeChecker();
-const allowed = new Set(['packages/rules/src/effects.ts', 'packages/game/src/counter.ts']);
+const allowed = new Set([
+  'packages/rules/src/effects.ts', 'packages/exp-00-core/src/resolver.ts',
+  'packages/exp-02-security/src/regulations.ts', 'packages/game/src/counter.ts',
+]);
 const collectionMutations = new Set(['add', 'clear', 'copyWithin', 'delete', 'fill', 'pop', 'push',
   'reverse', 'set', 'shift', 'sort', 'splice', 'unshift']);
 const objectMutations = new Set(['Object.assign', 'Object.defineProperty', 'Object.defineProperties',
@@ -21,11 +24,12 @@ const objectMutations = new Set(['Object.assign', 'Object.defineProperty', 'Obje
 const memberReaders = new Set(['at', 'find', 'findLast', 'pop', 'shift']);
 const memberCallbacks = new Set(['every', 'filter', 'find', 'findIndex', 'findLast', 'findLastIndex', 'flatMap',
   'forEach', 'map', 'reduce', 'reduceRight', 'some', 'sort']);
+const stateTypes = new Set(['CoreState', 'CoreExpansionState']);
 
 function stateReference(node, seen = new Set()) {
   if (!node || seen.has(node)) return false;
   seen.add(node);
-  if (checker.getTypeAtLocation(node).getSymbol()?.getName() === 'CoreState') return true;
+  if (stateTypes.has(checker.getTypeAtLocation(node).getSymbol()?.getName())) return true;
   const fromState = expression => stateReference(expression, seen);
   if (ts.isPropertyAccessExpression(node)) return fromState(node.expression);
   if (ts.isElementAccessExpression(node)) return arrayWithStateMembers(node.expression, seen);
@@ -47,7 +51,7 @@ function stateReference(node, seen = new Set()) {
     const field = binding.propertyName ?? binding.name;
     if (ts.isIdentifier(field)) {
       const property = checker.getTypeAtLocation(parent).getProperty(field.text);
-      if (property && checker.getTypeOfSymbolAtLocation(property, parent).getSymbol()?.getName() === 'CoreState') return true;
+      if (property && stateTypes.has(checker.getTypeOfSymbolAtLocation(property, parent).getSymbol()?.getName())) return true;
     }
     declaration = parent;
   }

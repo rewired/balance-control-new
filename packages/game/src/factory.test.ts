@@ -5,7 +5,7 @@ import { createBCGame } from './factory.js';
 
 const deck = (setupData: unknown) => {
   const { G } = InitializeGame({ game: createBCGame(), numPlayers: 2, setupData });
-  return [G.tiles.drawResolution!.tileId, ...G.tiles.drawPile];
+  return [G.exp.core.tiles.drawResolution!.tileId, ...G.exp.core.tiles.drawPile];
 };
 
 describe('boardgame.io match setup', () => {
@@ -19,7 +19,7 @@ describe('boardgame.io match setup', () => {
     const override = InitializeGame({ game, numPlayers: 2, setupData }).G;
     expect(override.matchSeed).toBe('lobby-seed');
     expect(override.cfg.expansions.exp01).toBe(false);
-    expect(override.exp).toBeUndefined();
+    expect(Object.keys(override.exp)).toEqual(['core']);
   });
 
   it('uses the supplied seed for the deck drawn by the engine', () => {
@@ -37,7 +37,7 @@ describe('boardgame.io match setup', () => {
     const setup = game.setup!;
     game.setup = (context, data) => {
       const G = setup(context, data);
-      expect(G.tiles.drawResolution).toBeNull();
+      expect(G.exp.core.tiles.drawResolution).toBeNull();
       return G;
     };
     const { G, ctx } = InitializeGame({
@@ -45,20 +45,20 @@ describe('boardgame.io match setup', () => {
       setupData: { addOn56: true, topology: 'orthogonal', variants: { firstPlayerHandicap: true, tileRecycling: true } },
     });
 
-    expect(ctx.playOrder).toEqual(Object.keys(G.players));
+    expect(ctx.playOrder).toEqual(Object.keys(G.exp.core.players));
     expect(ctx.playOrder).toHaveLength(numPlayers);
     expect(G.cfg).toMatchObject({ addOn56: true, topology: 'orthogonal', variants: { firstPlayerHandicap: true, tileRecycling: true } });
     for (const playerID of ctx.playOrder) {
-      expect(G.players[playerID].personal.influence).toHaveLength(playerID === ctx.currentPlayer ? 1 : 2);
+      expect(G.exp.core.players[playerID].personal.influence).toHaveLength(playerID === ctx.currentPlayer ? 1 : 2);
     }
 
-    const drawn = G.tiles.drawResolution!;
-    const ids = [...G.tiles.drawPile, drawn.tileId];
+    const drawn = G.exp.core.tiles.drawResolution!;
+    const ids = [...G.exp.core.tiles.drawPile, drawn.tileId];
     expect(ids).toHaveLength(89);
     expect(new Set(ids).size).toBe(89);
-    expect(G.tiles.drawPile).not.toContain(drawn.tileId);
-    expect(G.tiles.board).toEqual([{ tileId: 'StartCommittee', coord: { q: 0, r: 0 } }]);
-    const tiles = Object.values<Tile>(G.allTiles);
+    expect(G.exp.core.tiles.drawPile).not.toContain(drawn.tileId);
+    expect(G.exp.core.tiles.board).toEqual([{ tileId: 'StartCommittee', coord: { q: 0, r: 0 } }]);
+    const tiles = Object.values<Tile>(G.exp.core.allTiles);
     expect(tiles).toHaveLength(90);
     for (const resort of ['DOM', 'FOR', 'INF']) {
       const resortTiles = tiles.filter(tile => tile.kind === 'ResortTile' && tile.resort === resort);

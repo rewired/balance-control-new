@@ -19,8 +19,8 @@ const ring: BoardPlacement[] = [
 const nextTile = 'Committee-8';
 
 function seedMarkers(G: CoreState, playerID: string, tileId: string, count: number): void {
-  const markers = G.players[playerID].personal.influence.splice(0, count);
-  (G.influencesOnBoard ??= []).push(...markers.map(marker => ({ ...marker, tileId })));
+  const markers = G.exp.core.players[playerID].personal.influence.splice(0, count);
+  (G.exp.core.influencesOnBoard ??= []).push(...markers.map(marker => ({ ...marker, tileId })));
 }
 
 function setupGame(
@@ -48,10 +48,10 @@ function setupGame(
   const setup = game.setup!;
   game.setup = (context, data) => {
     const G = setup(context, data);
-    G.tiles.board.push(...board.map(placement => ({ ...placement })));
+    G.exp.core.tiles.board.push(...board.map(placement => ({ ...placement })));
     const draw = [firstDraw, nextTile, 'Committee-9'];
-    G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(p => p.tileId === id));
-    G.tiles.drawPile = draw;
+    G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(p => p.tileId === id));
+    G.exp.core.tiles.drawPile = draw;
     seed(G);
     return G;
   };
@@ -68,7 +68,7 @@ function retryFromSave(game: ReturnType<typeof createBCGame>, state: State<CoreS
 }
 
 function processed(G: CoreState, tileId = hotspot.tileId) {
-  return G.tiles.board.find(p => p.tileId === tileId)?.enclosureProcessed;
+  return G.exp.core.tiles.board.find(p => p.tileId === tileId)?.enclosureProcessed;
 }
 
 describe('T04: first Hotspot enclosure through boardgame.io', () => {
@@ -83,8 +83,8 @@ describe('T04: first Hotspot enclosure through boardgame.io', () => {
     const { G, ctx } = client.getState()!;
     expect(ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
     expect(processed(G)).toBeUndefined();
-    expect(G.influencesOnBoard).toEqual(before.influencesOnBoard);
-    expect(G.players['0'].personal.influence).toEqual(before.players['0'].personal.influence);
+    expect(G.exp.core.influencesOnBoard).toEqual(before.exp.core.influencesOnBoard);
+    expect(G.exp.core.players['0'].personal.influence).toEqual(before.exp.core.players['0'].personal.influence);
   });
 
   it('pays exactly one existing marker, then rejects a second payout from restored state', () => {
@@ -96,7 +96,7 @@ describe('T04: first Hotspot enclosure through boardgame.io', () => {
       },
     });
     const before = client.getState()!.G;
-    const supply = before.players['0'].personal.influence;
+    const supply = before.exp.core.players['0'].personal.influence;
     const paid = supply[supply.length - 1];
     expect(processed(before)).toBeUndefined();
 
@@ -104,17 +104,17 @@ describe('T04: first Hotspot enclosure through boardgame.io', () => {
     const state = client.getState()!;
     expect(state.ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
     expect(processed(state.G)).toBe(true);
-    expect(state.G.players['0'].personal.influence).toEqual(supply.slice(0, -1));
-    expect(state.G.influencesOnBoard).toEqual([
-      ...before.influencesOnBoard!,
+    expect(state.G.exp.core.players['0'].personal.influence).toEqual(supply.slice(0, -1));
+    expect(state.G.exp.core.influencesOnBoard).toEqual([
+      ...before.exp.core.influencesOnBoard!,
       { ...paid, tileId: hotspot.tileId },
     ]);
 
     const retried = retryFromSave(game, client.store.getState());
     expect(retried.ctx.turn).toBe(state.ctx.turn + 1);
     expect(processed(retried.G)).toBe(true);
-    expect(retried.G.influencesOnBoard).toEqual(state.G.influencesOnBoard);
-    expect(retried.G.players['0'].personal.influence).toEqual(state.G.players['0'].personal.influence);
+    expect(retried.G.exp.core.influencesOnBoard).toEqual(state.G.exp.core.influencesOnBoard);
+    expect(retried.G.exp.core.players['0'].personal.influence).toEqual(state.G.exp.core.players['0'].personal.influence);
   });
 
   it.each(['tie', 'empty supply', 'prohibition', 'zero output'] as const)(
@@ -125,15 +125,15 @@ describe('T04: first Hotspot enclosure through boardgame.io', () => {
         if (reason === 'tie') seedMarkers(G, '1', hotspot.tileId, 1);
         if (reason === 'empty supply') {
           seedMarkers(G, '1', 'Committee-1', 4);
-          Object.assign(G.players['0'].personal.resources, { DOM: 2, FOR: 1, INF: 1 });
+          Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 2, FOR: 1, INF: 1 });
         }
       }, {
         prohibitions: ({ G, effect }) => reason === 'prohibition' && effect.kind === 'resolveHotspotAt'
           && effect.contextCoord?.q === hotspot.coord.q && effect.contextCoord?.r === hotspot.coord.r
-          && !G.tiles.board.some(p => p.tileId === nextTile),
+          && !G.exp.core.tiles.board.some(p => p.tileId === nextTile),
         outputModifiers: ({ G, effect }) => {
           if (reason === 'zero output' && effect.kind === 'resolveHotspotAt'
-              && !G.tiles.board.some(p => p.tileId === nextTile)) return 0;
+              && !G.exp.core.tiles.board.some(p => p.tileId === nextTile)) return 0;
         },
       });
 
@@ -141,9 +141,9 @@ describe('T04: first Hotspot enclosure through boardgame.io', () => {
       client.moves.placeTile(closingCoord);
       const closed = client.getState()!.G;
       expect(processed(closed)).toBe(true);
-      expect(closed.influencesOnBoard).toEqual(before.influencesOnBoard);
-      expect(closed.players).toEqual(before.players);
-      expect(closed.resources).toEqual(before.resources);
+      expect(closed.exp.core.influencesOnBoard).toEqual(before.exp.core.influencesOnBoard);
+      expect(closed.exp.core.players).toEqual(before.exp.core.players);
+      expect(closed.exp.core.resources).toEqual(before.exp.core.resources);
 
       if (reason === 'empty supply') {
         client.moves.doPoliticalAction({
@@ -153,23 +153,23 @@ describe('T04: first Hotspot enclosure through boardgame.io', () => {
         client.moves.doPoliticalAction({
           type: 'placeOrMoveInfluence',
           payload: {
-            markerId: closed.players['0'].personal.influence[0].id,
+            markerId: closed.exp.core.players['0'].personal.influence[0].id,
             targetTileId: reason === 'tie' ? hotspot.tileId : 'Committee-7',
           },
         });
       }
-      client.moves.placeTile(client.getState()!.G.tiles.drawResolution!.legalCoords[0]);
+      client.moves.placeTile(client.getState()!.G.exp.core.tiles.drawResolution!.legalCoords[0]);
       const ready = client.getState()!;
       expect(ready.ctx.activePlayers).toEqual({ '1': 'ExactlyOnePoliticalAction' });
-      expect(ready.G.tiles.board.some(p => p.tileId === nextTile)).toBe(true);
+      expect(ready.G.exp.core.tiles.board.some(p => p.tileId === nextTile)).toBe(true);
       expect(getControl(ready.G, hotspot.coord)).toBe('0');
-      expect(ready.G.players['0'].personal.influence.length).toBeGreaterThan(0);
+      expect(ready.G.exp.core.players['0'].personal.influence.length).toBeGreaterThan(0);
 
       const retried = retryFromSave(game, client.store.getState());
       expect(retried.ctx.turn).toBe(ready.ctx.turn + 1);
       expect(processed(retried.G)).toBe(true);
-      expect(retried.G.influencesOnBoard).toEqual(ready.G.influencesOnBoard);
-      expect(retried.G.players['0'].personal.influence).toEqual(ready.G.players['0'].personal.influence);
+      expect(retried.G.exp.core.influencesOnBoard).toEqual(ready.G.exp.core.influencesOnBoard);
+      expect(retried.G.exp.core.players['0'].personal.influence).toEqual(ready.G.exp.core.players['0'].personal.influence);
     },
   );
 
@@ -189,7 +189,7 @@ describe('T04: first Hotspot enclosure through boardgame.io', () => {
         seedMarkers(G, '0', existingId, 2);
       });
       const before = client.getState()!.G;
-      const [remaining] = before.players['0'].personal.influence;
+      const [remaining] = before.exp.core.players['0'].personal.influence;
       expect(processed(before, existingId)).toBeUndefined();
 
       client.moves.placeTile(hotspot.coord);
@@ -199,9 +199,9 @@ describe('T04: first Hotspot enclosure through boardgame.io', () => {
       expect(processed(G, existingId)).toBe(true);
       expect(getControl(G, closingCoord)).toBe('0');
       expect(getControl(G, hotspot.coord)).toBe('0');
-      expect(G.players['0'].personal.influence).toEqual([]);
-      expect(G.influencesOnBoard).toEqual([
-        ...before.influencesOnBoard!,
+      expect(G.exp.core.players['0'].personal.influence).toEqual([]);
+      expect(G.exp.core.influencesOnBoard).toEqual([
+        ...before.exp.core.influencesOnBoard!,
         { ...remaining, tileId: 'Hotspot-1' },
       ]);
     },

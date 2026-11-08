@@ -23,9 +23,9 @@ function clientWithBoard(
   const setup = game.setup!;
   game.setup = (context, data) => {
     const G = setup(context, data);
-    G.tiles.board.push(...board);
-    G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(p => p.tileId === id));
-    G.tiles.drawPile = [...draw];
+    G.exp.core.tiles.board.push(...board);
+    G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.drawPile.filter(id => !draw.includes(id) && !board.some(p => p.tileId === id));
+    G.exp.core.tiles.drawPile = [...draw];
     setupFixture(G);
     return G;
   };
@@ -35,7 +35,7 @@ function clientWithBoard(
 type TestClient = ReturnType<typeof clientWithBoard>;
 
 function placeDraw(client: TestClient): string {
-  const offer = client.getState()!.G.tiles.drawResolution!;
+  const offer = client.getState()!.G.exp.core.tiles.drawResolution!;
   client.moves.placeTile(offer.legalCoords[0]);
   return offer.tileId;
 }
@@ -62,7 +62,7 @@ function expectRejected(client: TestClient, action: () => void): void {
 }
 
 function placeStartingMarkers(G: CoreState, leaveUnplacedPlayer?: string): void {
-  G.influencesOnBoard = Object.values(G.players).flatMap(player => {
+  G.exp.core.influencesOnBoard = Object.values(G.exp.core.players).flatMap(player => {
     const supply = player.personal.influence;
     const tileId = player.id === '0' ? lobbyist.tileId : otherGrassroots.tileId;
     return supply.splice(0, supply.length - Number(player.id === leaveUnplacedPlayer)).map(marker => ({ ...marker, tileId }));
@@ -83,16 +83,16 @@ describe('CORE political actions through boardgame.io', () => {
 
   it('places and relocates one specific marker, preserving identity and ownership', () => {
     const client = clientWithBoard();
-    const chosen = client.getState()!.G.players['0'].personal.influence[1];
-    const opponent = client.getState()!.G.players['1'].personal.influence[0];
+    const chosen = client.getState()!.G.exp.core.players['0'].personal.influence[1];
+    const opponent = client.getState()!.G.exp.core.players['1'].personal.influence[0];
     placeDraw(client);
     expectRejected(client, () => client.moves.doPoliticalAction({ type: 'chooseNoop' }));
     expectRejected(client, () => influence(client, opponent.id, committee.tileId));
     expectRejected(client, () => influence(client, chosen.id, 'StartCommittee'));
     expectRejected(client, () => influence(client, chosen.id, 'Committee-3'));
     influence(client, chosen.id, committee.tileId);
-    expect(client.getState()!.G.influencesOnBoard).toEqual([{ ...chosen, tileId: committee.tileId }]);
-    expect(client.getState()!.G.players['0'].personal.influence).not.toContainEqual(chosen);
+    expect(client.getState()!.G.exp.core.influencesOnBoard).toEqual([{ ...chosen, tileId: committee.tileId }]);
+    expect(client.getState()!.G.exp.core.players['0'].personal.influence).not.toContainEqual(chosen);
 
     placeDraw(client);
     influence(client, opponent.id, grassroots.tileId);
@@ -103,7 +103,7 @@ describe('CORE political actions through boardgame.io', () => {
     expectRejected(client, () => influence(client, chosen.id, grassroots.tileId));
     expectRejected(client, () => influence(client, chosen.id, grassroots.tileId, lobbyist.tileId));
     influence(client, chosen.id, grassroots.tileId, committee.tileId);
-    expect(client.getState()!.G.influencesOnBoard).toEqual([
+    expect(client.getState()!.G.exp.core.influencesOnBoard).toEqual([
       { ...chosen, tileId: grassroots.tileId }, { ...opponent, tileId: grassroots.tileId },
     ]);
   });
@@ -121,7 +121,7 @@ describe('CORE political actions through boardgame.io', () => {
     });
     const client = clientWithBoard(G => {
       placeStartingMarkers(G);
-      Object.assign(G.players['0'].personal.resources, { DOM: 1, FOR: 1 });
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 1, FOR: 1 });
     }, { expansions: { exp02: true } });
     placeDraw(client);
     const markerId = 'INF-0-1';
@@ -129,8 +129,8 @@ describe('CORE political actions through boardgame.io', () => {
     influence(client, markerId, grassroots.tileId, lobbyist.tileId);
     const { G } = client.getState()!;
     expect(costs.mock.calls.filter(([args]) => args.effect.kind === 'placeOrMoveInfluence')).toHaveLength(1);
-    expect(G.resources.bank).toMatchObject({ DOM: 1, FOR: 1 });
-    expect(G.influencesOnBoard).toContainEqual({ id: markerId, owner: '0', starting: true, tileId: grassroots.tileId });
+    expect(G.exp.core.resources.bank).toMatchObject({ DOM: 1, FOR: 1 });
+    expect(G.exp.core.influencesOnBoard).toContainEqual({ id: markerId, owner: '0', starting: true, tileId: grassroots.tileId });
 
     placeDraw(client);
     influence(client, 'INF-1-1', committee.tileId, otherGrassroots.tileId);
@@ -142,7 +142,7 @@ describe('CORE political actions through boardgame.io', () => {
   it('requires all starting markers before either kind of Committee can formalize', () => {
     const client = clientWithBoard(G => {
       placeStartingMarkers(G, '1');
-      Object.assign(G.players['0'].personal.resources, { DOM: 2, FOR: 1, INF: 1 });
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 2, FOR: 1, INF: 1 });
     });
     placeDraw(client);
     expectRejected(client, () => formalize(client, committee.tileId, ['DOM', 'FOR']));
@@ -155,9 +155,9 @@ describe('CORE political actions through boardgame.io', () => {
     expectRejected(client, () => formalize(client, committee.tileId, ['DOM', 'ECO']));
     formalize(client, committee.tileId, ['DOM', 'FOR']);
     const { G } = client.getState()!;
-    expect(G.players['0'].personal.influence).toEqual([{ id: 'INF-0-F1', owner: '0' }]);
-    expect(G.players['0'].personal.resources).toEqual({ DOM: 1, FOR: 0, INF: 1 });
-    expect(G.resources.bank).toEqual({ DOM: 1, FOR: 1, INF: 0 });
+    expect(G.exp.core.players['0'].personal.influence).toEqual([{ id: 'INF-0-F1', owner: '0' }]);
+    expect(G.exp.core.players['0'].personal.resources).toEqual({ DOM: 1, FOR: 0, INF: 1 });
+    expect(G.exp.core.resources.bank).toEqual({ DOM: 1, FOR: 1, INF: 0 });
   });
 
   it.each([
@@ -166,22 +166,22 @@ describe('CORE political actions through boardgame.io', () => {
   ])('uses virtual control and respects the $numPlayers-player cap of $cap markers', ({ numPlayers, addOn56, cap }) => {
     const client = clientWithBoard(G => {
       placeStartingMarkers(G);
-      const owned = G.influencesOnBoard!.filter(marker => marker.owner === '0').length;
-      G.players['0'].personal.influence.push(...Array.from({ length: cap - owned - 1 }, (_, i) => ({
+      const owned = G.exp.core.influencesOnBoard!.filter(marker => marker.owner === '0').length;
+      G.exp.core.players['0'].personal.influence.push(...Array.from({ length: cap - owned - 1 }, (_, i) => ({
         id: `INF-0-F${i + 1}`, owner: '0',
       })));
-      Object.assign(G.players['0'].personal.resources, { DOM: 2, FOR: 2 });
-      G.tiles.drawPile.push('Committee-6', 'Committee-7', 'Committee-8');
-      G.tiles.discardFaceUp = G.tiles.discardFaceUp.filter(id => !G.tiles.drawPile.includes(id));
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 2, FOR: 2 });
+      G.exp.core.tiles.drawPile.push('Committee-6', 'Committee-7', 'Committee-8');
+      G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.discardFaceUp.filter(id => !G.exp.core.tiles.drawPile.includes(id));
     }, { addOn56 }, numPlayers);
     placeDraw(client);
     const before = client.getState()!.G;
-    expect(before.influencesOnBoard!.some(marker => marker.tileId === committee.tileId)).toBe(false);
+    expect(before.exp.core.influencesOnBoard!.some(marker => marker.tileId === committee.tileId)).toBe(false);
     expectRejected(client, () => formalize(client, otherGrassroots.tileId, ['DOM', 'FOR']));
     expectRejected(client, () => formalize(client, committee.tileId, ['DOM', 'INF']));
     formalize(client, committee.tileId, ['DOM', 'FOR']);
     const after = client.getState()!.G;
-    const owned = [...after.players['0'].personal.influence, ...after.influencesOnBoard!.filter(marker => marker.owner === '0')];
+    const owned = [...after.exp.core.players['0'].personal.influence, ...after.exp.core.influencesOnBoard!.filter(marker => marker.owner === '0')];
     expect(owned).toHaveLength(cap);
     expect(new Set(owned.map(marker => marker.id)).size).toBe(cap);
 
@@ -198,7 +198,7 @@ describe('CORE political actions through boardgame.io', () => {
     });
     const client = clientWithBoard(G => {
       placeStartingMarkers(G);
-      Object.assign(G.players['0'].personal.resources, { DOM: 4, FOR: 2, INF: 2 });
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 4, FOR: 2, INF: 2 });
     }, { expansions: { exp02: true } });
     placeDraw(client);
     expectRejected(client, () => formalize(client, committee.tileId, ['DOM', 'FOR']));
@@ -207,11 +207,11 @@ describe('CORE political actions through boardgame.io', () => {
     const cost = ['DOM', 'FOR', 'INF', 'DOM'];
     formalize(client, 'StartCommittee', cost);
     const { G } = client.getState()!;
-    expect(G.players['0'].usedStartCommittee).toBe(true);
-    expect(G.players['1'].usedStartCommittee).toBeUndefined();
-    expect(G.players['0'].personal.influence).toEqual([{ id: 'INF-0-F1', owner: '0' }]);
-    expect(G.players['0'].personal.resources).toMatchObject({ DOM: 2, FOR: 1, INF: 1 });
-    expect(G.resources.bank).toMatchObject({ DOM: 2, FOR: 1, INF: 1 });
+    expect(G.exp.core.players['0'].usedStartCommittee).toBe(true);
+    expect(G.exp.core.players['1'].usedStartCommittee).toBeUndefined();
+    expect(G.exp.core.players['0'].personal.influence).toEqual([{ id: 'INF-0-F1', owner: '0' }]);
+    expect(G.exp.core.players['0'].personal.resources).toMatchObject({ DOM: 2, FOR: 1, INF: 1 });
+    expect(G.exp.core.resources.bank).toMatchObject({ DOM: 2, FOR: 1, INF: 1 });
     influence(client, 'INF-1-1', placeDraw(client), otherGrassroots.tileId);
     placeDraw(client);
     expectRejected(client, () => formalize(client, 'StartCommittee', cost));
@@ -222,7 +222,7 @@ describe('CORE political actions through boardgame.io', () => {
     enableHooks({ costIncreases: ({ effect }) => effect.kind === 'convertResources' ? { FOR: 1 } : undefined });
     const client = clientWithBoard(G => {
       placeStartingMarkers(G);
-      Object.assign(G.players['0'].personal.resources, { ECO: 3, DOM: 3, FOR: 1 });
+      Object.assign(G.exp.core.players['0'].personal.resources, { ECO: 3, DOM: 3, FOR: 1 });
     }, { expansions: { exp01: true, exp02: true } });
     placeDraw(client);
     expectRejected(client, () => convert(client, otherGrassroots.tileId, 'ECO', 'DOM'));
@@ -234,8 +234,8 @@ describe('CORE political actions through boardgame.io', () => {
     expect([...politicalMoveOptions(before, '0')]).toContainEqual(choice);
     client.moves.doPoliticalAction(choice);
     const { G } = client.getState()!;
-    expect(G.players['0'].personal.resources).toMatchObject({ ECO: 0, DOM: 4, FOR: 0 });
-    expect(G.resources.bank).toMatchObject({ ECO: 3, DOM: 0, FOR: 1 });
+    expect(G.exp.core.players['0'].personal.resources).toMatchObject({ ECO: 0, DOM: 4, FOR: 0 });
+    expect(G.exp.core.resources.bank).toMatchObject({ ECO: 3, DOM: 0, FOR: 1 });
     influence(client, 'INF-1-1', placeDraw(client), otherGrassroots.tileId);
     placeDraw(client);
     expectRejected(client, () => convert(client, grassroots.tileId, 'DOM', 'ECO'));
@@ -248,15 +248,15 @@ describe('CORE political actions through boardgame.io', () => {
     });
     const client = clientWithBoard(G => {
       placeStartingMarkers(G);
-      G.players['0'].personal.resources.DOM = 3;
+      G.exp.core.players['0'].personal.resources.DOM = 3;
     }, { expansions: { exp02: true } });
     placeDraw(client);
     expect(client.getState()!.ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
     convert(client, grassroots.tileId, 'DOM', 'FOR');
     const { G, ctx } = client.getState()!;
     expect(ctx.currentPlayer).toBe('1');
-    expect(G.players['0'].personal.resources).toMatchObject({ DOM: 0, FOR: 0 });
-    expect(G.resources.bank).toMatchObject({ DOM: 3, FOR: 0 });
+    expect(G.exp.core.players['0'].personal.resources).toMatchObject({ DOM: 0, FOR: 0 });
+    expect(G.exp.core.resources.bank).toMatchObject({ DOM: 3, FOR: 0 });
   });
 
   it('automatically completes a slot when no legal political action is available', () => {
@@ -266,9 +266,9 @@ describe('CORE political actions through boardgame.io', () => {
     const { G, ctx } = client.getState()!;
     expect(ctx.currentPlayer).toBe('1');
     expect(ctx.turn).toBe(2);
-    expect(G.tiles.board.some(tile => tile.tileId === placed)).toBe(true);
-    expect(G.players['0'].personal.influence).toHaveLength(4);
-    expect(G.resources.bank).toEqual({ DOM: 0, FOR: 0, INF: 0, SEC: 0 });
+    expect(G.exp.core.tiles.board.some(tile => tile.tileId === placed)).toBe(true);
+    expect(G.exp.core.players['0'].personal.influence).toHaveLength(4);
+    expect(G.exp.core.resources.bank).toEqual({ DOM: 0, FOR: 0, INF: 0, SEC: 0 });
     expect(G.lastTurnHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
@@ -290,7 +290,7 @@ describe('CORE political actions through boardgame.io', () => {
     const measures = G.exp!.exp01!.measures!;
     expect(ctx.currentPlayer).toBe('1');
     expect(ctx.turn).toBe(2);
-    expect(G.playedMeasureThisRound!['0']).toBe(true);
+    expect(G.exp.core.playedMeasureThisRound!['0']).toBe(true);
     expect(measures.hands['0']).toHaveLength(1);
     expect(measures.finalDiscard).toContain(measureId);
   });

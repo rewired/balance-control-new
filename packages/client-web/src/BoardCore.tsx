@@ -48,7 +48,7 @@ export function CoreView({ G, ctx, revision, playerID, submit }: CoreViewProps) 
       <div><strong>{ctx.gameover === undefined ? `Core ${stage ?? ''}` : 'Game over'}</strong></div>
       <div>Turn {ctx.turn}, player {ctx.currentPlayer}</div>
       {stage && activePlayer !== ctx.currentPlayer && <div>Decision by player {activePlayer}</div>}
-      {G.tiles.drawResolution && <div>Drawn <code>{G.tiles.drawResolution.tileId}</code></div>}
+      {G.exp.core.tiles.drawResolution && <div>Drawn <code>{G.exp.core.tiles.drawResolution.tileId}</code></div>}
       {options.length > 0 && (
         <OptionPicker key={revision} options={options} submit={submit} />
       )}
