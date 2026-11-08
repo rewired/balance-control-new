@@ -2,6 +2,7 @@ import { Client } from 'boardgame.io/client';
 import { createResolver, type BoardPlacement, type CoreState } from '@bc/rules';
 import { describe, expect, it } from 'vitest';
 import { createBCGame } from './factory.js';
+import { engineMoveOptions } from './legal-options.js';
 
 const apparatus = { tileId: 'AuthorityApparatus', coord: { q: 1, r: 0 } };
 const grassroots = { tileId: 'Grassroots-1', coord: { q: 1, r: -1 } };
@@ -21,12 +22,12 @@ function setupSecurity(board: BoardPlacement[], prepare: (G: CoreState) => void)
   return Client({ game, numPlayers: 2 });
 }
 
-function takeIntoFixtureHand(G: CoreState, card: string): void {
+function takeIntoFixtureHand(G: CoreState, card: string, owner = '0'): void {
   const deck = G.exp!.exp02!.measures!;
   const slot = deck.open.indexOf(card);
   if (slot >= 0) deck.open[slot] = null;
   else deck.drawPile.splice(deck.drawPile.indexOf(card), 1);
-  deck.hands['0'].push(card);
+  deck.hands[owner].push(card);
 }
 
 function mark(G: CoreState, owner: string, tileId: string): void {
@@ -83,6 +84,87 @@ describe('Regulation operations through boardgame.io', () => {
       { id: 'reg-1', kind: 'Blockade', tileId: grassroots.tileId },
       { id: 'reg-2', kind: 'SecurityLevel', tileId: 'Committee-7' },
     ]);
+  });
+
+  it('Surveillance locks the object at its source without adding that tile as an Apparatus context', () => {
+    const client = setupSecurity([apparatus, grassroots], G => {
+      takeIntoFixtureHand(G, 'SEC_M13');
+      mark(G, '0', apparatus.tileId);
+      Object.assign(G.players['0'].personal.resources, { SEC: 1, INF: 1 });
+      const zones = G.exp!.exp02!.regulations!;
+      zones.attached.push(
+        { id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId },
+        { id: 'reg-2', kind: 'SecurityLevel', tileId: apparatus.tileId },
+      );
+      zones.serial = 2;
+    });
+    client.moves.placeTile({ q: -1, r: 0 });
+    client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: { measureId: 'SEC_M13', targetTileId: grassroots.tileId } });
+    const locked = client.getState()!;
+    expect(locked.ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
+    expect(locked.G.activeMeasureEffects?.[0]?.targetTileId).toBe(grassroots.tileId);
+    const options = engineMoveOptions(locked.G, locked.ctx, '0');
+    expect(options.some(option => JSON.stringify(option.parameters).includes('reg-1'))).toBe(false);
+    expect(options.some(option => JSON.stringify(option.parameters).includes('reg-2') && option.contextTile === apparatus.tileId)).toBe(true);
+    const activate = (regulation: unknown) => client.moves.doPoliticalAction({ type: 'activateAuthorityApparatus', payload: { regulation } });
+    activate({ operation: 'move', regulationId: 'reg-1', tileId: 'Committee-7' });
+    activate({ operation: 'remove', regulationId: 'reg-1' });
+    expect(client.getState()!._stateID).toBe(locked._stateID);
+    activate({ operation: 'move', regulationId: 'reg-2', tileId: 'Committee-7' });
+    expect(client.getState()!.G.exp!.exp02!.regulations!.attached).toEqual([
+      { id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId },
+      { id: 'reg-2', kind: 'SecurityLevel', tileId: 'Committee-7' },
+    ]);
+  });
+
+  it('Situation Assessment discounts the next Regulation placement by another player', () => {
+    const client = setupSecurity([], G => {
+      takeIntoFixtureHand(G, 'SEC_M15');
+      takeIntoFixtureHand(G, 'SEC_M01', '1');
+      G.players['0'].personal.resources.SEC = 1;
+      Object.assign(G.players['1'].personal.resources, { SEC: 2, INF: 1 });
+    });
+    client.moves.placeTile({ q: -1, r: 0 });
+    client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: { measureId: 'SEC_M15' } });
+    client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-1', targetTileId: 'Committee-7' } });
+    client.moves.placeTile({ q: -2, r: 0 });
+    client.moves.doPoliticalAction({ type: 'exp02_playMeasure', payload: {
+      measureId: 'SEC_M01', regulation: { operation: 'place', regulationKind: 'Control', tileId: 'Committee-7' },
+    } });
+
+    const { G, ctx } = client.getState()!;
+    expect(ctx.activePlayers).toEqual({ '1': 'AdditionalPoliticalAction' });
+    expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'Control', tileId: 'Committee-7' }]);
+    expect(G.activeMeasureEffects?.find(instance => instance.sourceCardId === 'SEC_M15')?.used).toBe(true);
+    expect(G.resources.bank).toMatchObject({ SEC: 3, INF: 1 });
+  });
+
+  it('resolves simultaneous registered Decrees in registration order and consumes both attempts', () => {
+    const hotspot = { tileId: 'Hotspot-1', coord: { q: 1, r: 0 } };
+    const client = setupSecurity([
+      hotspot,
+      { tileId: 'Committee-1', coord: { q: 2, r: -1 } },
+      { tileId: 'Committee-2', coord: { q: 1, r: -1 } },
+      { tileId: 'Committee-3', coord: { q: 0, r: 1 } },
+      { tileId: 'Committee-4', coord: { q: 1, r: 1 } },
+    ], G => {
+      mark(G, '0', hotspot.tileId);
+      for (const playNumber of [2, 1] as const) {
+        const owner = String(playNumber - 1);
+        G.players[owner].personal.resources.SEC = 2;
+        createResolver()(G, { kind: 'registerMeasureEffect', instance: {
+          sourceCardId: 'SEC_M02', playNumber, owner, targetTileId: hotspot.tileId, duration: 'untilConsumed',
+        } });
+      }
+    });
+    client.moves.placeTile({ q: 2, r: 0 });
+    const { G } = client.getState()!;
+    expect(G.activeMeasureEffects).toBeUndefined();
+    expect(G.players['1'].personal.resources.SEC).toBe(0);
+    expect(G.players['0'].personal.resources.SEC).toBe(2);
+    expect(G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'Blockade', tileId: hotspot.tileId }]);
+    expect(G.tiles.board.find(tile => tile.tileId === hotspot.tileId)?.enclosureProcessed).toBe(true);
+    expect(G.influencesOnBoard!.filter(marker => marker.tileId === hotspot.tileId)).toHaveLength(1);
   });
 
   it.each([false, true])('consumes Emergency Decree at enclosure after a payable=%s placement attempt', payable => {

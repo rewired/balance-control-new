@@ -67,13 +67,11 @@ export function exp02Security(): ExpansionModule {
       SEC_M15: { cost: { SEC: 1 }, duration: 'thisRound' },
     },
     hooks: {
-      prohibitions: ({ G, effect }) => {
-        // EXP-02-02-D-03 and EXP-02-04-B-01: Blockade is evaluated before cost and output.
-        if (attachedAt(G, effect.contextCoord).some(regulation => regulation.kind === 'Blockade')) return true;
-        // EXP-02-08-M11-03.
-        return effect.kind === 'playMeasure' && Boolean(G.activeMeasureEffects?.some(instance =>
-          instance.sourceCardId === 'SEC_M11' && !instance.waitingForRound && instance.targetPlayerID === effect.playerID));
-      },
+      // EXP-02-02-D-03 and EXP-02-04-B-01: evaluate Blockade before other hooks.
+      blockade: ({ G, effect }) => attachedAt(G, effect.contextCoord).some(regulation => regulation.kind === 'Blockade'),
+      // EXP-02-08-M11-03.
+      prohibitions: ({ G, effect }) => effect.kind === 'playMeasure' && Boolean(G.activeMeasureEffects?.some(instance =>
+        instance.sourceCardId === 'SEC_M11' && !instance.waitingForRound && instance.targetPlayerID === effect.playerID)),
       surcharges: ({ G, effect }) => {
         // EXP-02-02-B-03/-05, EXP-02-08-M09-03 and EXP-02-08-M10-03.
         const oversight = G.activeMeasureEffects?.filter(instance => instance.sourceCardId === 'SEC_M09') ?? [];

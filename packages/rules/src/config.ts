@@ -7,12 +7,15 @@ export function isExpansionEnabled(cfg: Pick<MatchConfig, 'expansions'>, id: Exp
 
 export function assertExpansionStateMatchesConfig(G: CoreState): void {
   const flags: ExpansionFlags = G.cfg.expansions;
-  const exp = G.exp ?? {} as NonNullable<CoreState['exp']>;
+  const exp = G.exp ?? {};
   for (const id of ['exp01','exp02','exp03'] as const) {
     const enabled = !!flags[id];
-    const present = !!(exp as Record<string, unknown>)[id];
+    const present = Object.hasOwn(exp, id);
     if (enabled && !present) {
       throw new Error(`Expansion slice missing for enabled ${id}`);
+    }
+    if (!enabled && present) {
+      throw new Error(`Expansion slice present for disabled ${id}`);
     }
   }
 }

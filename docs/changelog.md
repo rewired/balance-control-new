@@ -474,3 +474,10 @@
 
 - Der Webclient bietet die Aktionen der aktuellen Engine-Phase an. Hotseat berücksichtigt auch Entscheidungen, die einem anderen Spieler als dem Zugspieler zustehen.
 - Die Netzwerk-Lobby führt CORE als Spieltyp. Der lokale HTTP-Test erstellt ein CORE-Match auf Node.js 24.22.2.
+
+## 2026-11-08 — Task 0030 — Abschluss des Regelabgleichs
+
+- Ein sonst legaler, nur am Budget-Deficit-Aufschlag gescheiterter Versuch verbraucht die betreffenden Instanzen und lässt den Pflichtslot für eine legale Aktion offen. Ungültige Eingaben und andere Kostenfehler behalten ihren bisherigen Zustand.
+- Blockade läuft vor den übrigen Verboten. Surveillance prüft das tatsächliche Regulation-Objekt, und gleichzeitige Emergency-Decree-Instanzen lösen in Registrierungsreihenfolge auf. Situation Assessment ermäßigt die nächste Regulation-Platzierung dieser Runde.
+- Acht Golden-Replays belegen aktive Erweiterungsstapel, Kosten, Blockade, Produktion, Noise und Empfängerlimits. Der Mutation-Check erkennt direkte Schreibzugriffe und typische Aliase außerhalb des Resolvers.
+- Unter Node.js 24.22.2 bestehen 176 Workspace-Tests, Lint, Encoding- und Mutation-Check, Workspace-Build, Web-Typcheck und der lokale Bot-Runner.

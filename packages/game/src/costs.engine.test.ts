@@ -123,6 +123,40 @@ describe('Cost interactions through boardgame.io', () => {
     expect(G.resources.bank.ECO).toBe(2);
   });
 
+  it('consumes only unpaid Budget Deficits on an otherwise payable attempt and keeps the mandatory slot', () => {
+    const client = setupCosts(['Committee-7', 'Committee-8'], G => {
+      G.players['0'].personal.resources.FOR = 3;
+      const resolve = createResolver();
+      for (const playNumber of [1, 2] as const) {
+        resolve(G, { kind: 'registerMeasureEffect', instance: {
+          sourceCardId: 'ECO_M06', owner: '1', playNumber, duration: 'untilConsumed', targetPlayerID: '0',
+        } });
+      }
+      resolve(G, { kind: 'registerMeasureEffect', instance: {
+        sourceCardId: 'CLM_M13', owner: '0', playNumber: 1, duration: 'untilConsumed',
+      } });
+    });
+    client.moves.placeTile({ q: 1, r: 0 });
+    const before = client.getState()!;
+    client.moves.doPoliticalAction({ type: 'convertResources', payload: { tileId: grass.tileId, input: 'DOM', output: 'INF' } });
+    convert(client, { surcharges: { 'ECO_M06:1': 'UNKNOWN' } });
+    expect(client.getState()!._stateID).toBe(before._stateID);
+
+    convert(client, { transfers: [{ costId: 'ECO_M06:1', effectId: 'CLM_M13:1', playerID: '1' }] });
+    const failed = client.getState()!;
+    expect(failed.ctx.currentPlayer).toBe('0');
+    expect(failed.ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
+    expect(failed.G.players).toEqual(before.G.players);
+    expect(failed.G.resources).toEqual(before.G.resources);
+    expect(failed.G.activeMeasureEffects?.map(instance => instance.id)).toEqual(['CLM_M13:1']);
+
+    convert(client);
+    const after = client.getState()!;
+    expect(after.ctx.currentPlayer).toBe('1');
+    expect(after.G.players['0'].personal.resources).toMatchObject({ FOR: 0, INF: 1 });
+    expect(after.G.resources.bank.FOR).toBe(3);
+  });
+
   it('discards an unaffordable Extreme Weather ResortTile even with recycling', () => {
     const client = setupCosts(['Committee-7', 'DOM-W5-1', 'Committee-8'], G => {
       giveMeasure(G, 'exp03', 'CLM_M12');

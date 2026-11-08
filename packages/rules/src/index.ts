@@ -1,6 +1,3 @@
-// CORE-01-00: Placeholder export for rules module
-export const RULES_MODULE = 'rules-skeleton';
-
 export * from './types.js';
 export * from './schemas.js';
 export * from './setup.js';
@@ -21,7 +18,7 @@ export * from './effects.js';
 
 export * from './moves.js';
 export * from './config.js';
-export { isPoliticalEffect } from './payment.js';
+export { budgetDeficitIds, isPoliticalEffect } from './payment.js';
 export { regulationOperations } from './regulations.js';
 
 export { z } from 'zod';

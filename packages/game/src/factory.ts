@@ -12,7 +12,7 @@ export function setupCoreMatch(numPlayers: number, setupData: unknown = {}): Cor
   const modules = createExpansionRegistry(cfg.expansions);
   const resolve = createResolver(modules);
   for (const module of modules) {
-    module.setupExpansionState(G, { numPlayers, seed: matchSeed });
+    module.setupExpansionState?.(G, { numPlayers, seed: matchSeed });
     if (module.measureDeck) {
       const deck = resolve(G, { kind: 'initMeasures', expansion: module.id, deck: module.measureDeck(cfg) });
       if (!deck.ok) throw new Error(`Measure setup failed for ${module.id}: ${deck.reason}`);

@@ -10,6 +10,11 @@ type Council = NonNullable<PaymentSelection['council']>;
 type Partnership = NonNullable<PaymentSelection['partnership']>;
 type SurchargePayment = Surcharge & { payer: string; resource?: ResourceId };
 
+export function budgetDeficitIds(G: CoreState, playerID: string): string[] {
+  return G.activeMeasureEffects?.filter(instance => instance.sourceCardId === 'ECO_M06' && instance.targetPlayerID === playerID)
+    .map(instance => instance.id) ?? [];
+}
+
 export function isPoliticalEffect(effect: EffectDescriptor): boolean {
   return ['placeOrMoveInfluence', 'formalizeInfluence', 'convertResources', 'takeMeasure', 'playMeasure', 'activateAuthorityApparatus'].includes(effect.kind);
 }
@@ -57,6 +62,7 @@ export function* paymentPlans(
   raw: readonly Surcharge[],
   immune: boolean,
   explore = false,
+  unpaidDeficits?: ReadonlySet<string>,
 ): Generator<PlannedPayment> {
   const original = effect.playerID;
   const selected = explore ? undefined : effect.payment ?? {};
@@ -108,7 +114,7 @@ export function* paymentPlans(
         if (partnership && (!partnerships.some(instance => instance.id === partnership.effectId)
             || partnership.replacedResource === 'SEC' || !registry.has(partnership.replacedResource))) continue;
         const accounts = new Map<string, ResourceAmounts>([[original, Object.assign(Object.create(null), base)]]);
-        if (replacement) {
+        if (replacement && !unpaidDeficits?.has(replacement.costId)) {
           const cost = accounts.get(original)!;
           cost[replacement.resource] = (cost[replacement.resource] ?? 0) + 1;
         }
@@ -144,14 +150,16 @@ export function* paymentPlans(
           accounts.set(unit.payer, amount);
           for (const resource of choices) {
             if (!registry.has(resource)) continue;
-            const before = amount[resource] ?? 0;
-            amount[resource] = before + 1;
+            const before = amount[resource];
+            // EXP-01-08-M06-06/-07: validate a failed attempt with only its Deficit charges unpaid.
+            amount[resource] = (before ?? 0) + (unpaidDeficits?.has(unit.id) ? 0 : 1);
             if (affordable(unit.payer, amount)) {
               if (options.length > 1) chosen[unit.id] = resource;
               yield* allocate(index + 1, chosen);
               delete chosen[unit.id];
             }
-            amount[resource] = before;
+            if (before === undefined) delete amount[resource];
+            else amount[resource] = before;
           }
         };
         for (const surcharges of allocate(0, Object.create(null))) {

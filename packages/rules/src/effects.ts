@@ -1,13 +1,13 @@
 import { shuffleSeeded, stableHash } from '@bc/shared';
 import type { ActiveMeasureEffect, AxialCoord, BoardRegulation, CoreState, DecisionContinuation, Exp02State, Influence, MeasureDeckState, PendingHotspot, PendingRegulationChoice, ResourceId, ExpansionId, RegulationOperation } from './types.js';
 import { createMatchResourceRegistry, type ResourceAmounts, type ResourceRegistry } from './resources.js';
-import { createExpansionRegistry, ensureExpansionSlice, type ExpansionHooks, type ExpansionModule, type Surcharge } from './expansion-registry.js';
+import { createExpansionRegistry, type ExpansionHooks, type ExpansionModule, type Surcharge } from './expansion-registry.js';
 import { isFullySurrounded } from './hotspot.js';
 import { planProductionForTile } from './production.plan.js';
 import { computeMajority, getControl } from './majority.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
 import { getTopology } from './topology/index.js';
-import { isGreenwashingActive, paymentPlans, type PlannedPayment } from './payment.js';
+import { budgetDeficitIds, isGreenwashingActive, paymentPlans, type PlannedPayment } from './payment.js';
 import type { HotspotChoice, PaymentSelection } from './schemas.js';
 import { mayAttachRegulation, regulationContext, regulationOperations } from './regulations.js';
 
@@ -188,7 +188,13 @@ function isStartCommitteeContext(G: CoreState, coord?: AxialCoord): boolean {
   return !!t && t.kind === 'StartCommittee';
 }
 
-export interface ResolveResult { ok: boolean; reason?: string }
+export interface ResolveResult { ok: boolean; reason?: string; budgetDeficitConsumed?: true }
+
+// EXP-01-06-00A/-00B and EXP-02-02-A-03: create each expansion zone at its setup effect.
+export function ensureExpansionSlice<T extends object>(G: CoreState, id: ExpansionId, initial: T): T {
+  const slices = (G.exp ??= {}) as Record<string, unknown>;
+  return (slices[id] ??= initial) as T;
+}
 
 type BankTransfer = { resource: ResourceId; amount: number } & (
   | { from: 'PersonalSupply'; to: 'Bank'; playerID: string }
@@ -260,7 +266,7 @@ export interface PaymentQuote {
   costBreakdown: PlannedPayment['transfers'];
   contextTile: string | null;
 }
-type PaymentPreview = true | ((quote: PaymentQuote) => void);
+type PaymentPreview = true | ((quote: PaymentQuote) => void) | ReadonlySet<string>;
 type DecisionQuote = Omit<PaymentQuote, 'payment'> & { choice: HotspotChoice };
 
 function planPayment(
@@ -285,7 +291,9 @@ function planPayment(
   }
   let first: ReturnType<typeof createBankTransaction> | undefined;
   let reason = effect.payment ? 'invalid-or-unpayable-cost' : 'insufficient';
-  const plans = paymentPlans(G, registry, effect, cost, units, isStartCommitteeContext(G, effect.contextCoord), Boolean(preview));
+  const explore = preview === true || typeof preview === 'function';
+  const unpaidDeficits = typeof preview === 'object' ? preview : undefined;
+  const plans = paymentPlans(G, registry, effect, cost, units, isStartCommitteeContext(G, effect.contextCoord), explore, unpaidDeficits);
   for (const selected of plans) {
     const transaction = createBankTransaction(G, registry);
     const result = selected.transfers.map(route => transaction.transfer({ from: 'PersonalSupply', to: 'Bank', ...route }))
@@ -312,7 +320,9 @@ function planPayment(
 }
 
 function isProhibited(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[]): boolean {
-  return hooks.some(hook => hook.prohibitions?.({ G, effect }));
+  // EXP-02-04-B-01 and CORE-01-06-00-07(c): check Blockade first, then other prohibitions, before pricing.
+  const context = { G, effect };
+  return hooks.some(hook => hook.blockade?.(context)) || hooks.some(hook => hook.prohibitions?.(context));
 }
 
 function modifyOutput(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[], baseAmount: number): number {
@@ -364,6 +374,29 @@ function consumeMeasureEffects(G: CoreState, ids: readonly string[]): void {
   else delete G.activeMeasureEffects;
 }
 
+function executePoliticalPlan(
+  G: CoreState,
+  playerID: string,
+  planAction: (preview?: PaymentPreview) => { ok: true; commit: () => void } | { ok: false; reason?: string },
+): ResolveResult {
+  const deficits = budgetDeficitIds(G, playerID);
+  const plan = planAction();
+  if (plan.ok) {
+    plan.commit();
+    // EXP-01-08-M06-07: a new Deficit registered by this action applies later.
+    consumeMeasureEffects(G, deficits);
+    return { ok: true };
+  }
+  // CORE-01-06-00-11/-12 and EXP-01-08-M06-06/-07: the exception consumes only Deficit
+  // instances and only when the requested action is otherwise legal and payable.
+  if (deficits.length && (plan.reason === 'insufficient' || plan.reason === 'invalid-or-unpayable-cost')
+      && planAction(new Set(deficits)).ok) {
+    consumeMeasureEffects(G, deficits);
+    return { ...plan, budgetDeficitConsumed: true };
+  }
+  return plan;
+}
+
 function queueRegulationFollowUps(G: CoreState, playerID: string, placed?: BoardRegulation | void, apparatusId?: string): void {
   // EXP-02-08-M03-03/-04 and EXP-02-08-M05-03..05: capture the first actual triggering operation.
   const queued = new Set(G.pendingRegulationChoices?.map(choice => choice.instanceId));
@@ -379,17 +412,19 @@ function queueRegulationFollowUps(G: CoreState, playerID: string, placed?: Board
   if (choices.length) (G.pendingRegulationChoices ??= []).unshift(...choices);
 }
 
-function regulationPrice(G: CoreState, operation: RegulationOperation, owner: string): { amount: number; discountId?: string } {
-  if (operation.operation !== 'place') return { amount: 0 };
-  // EXP-02-04-A-01 and EXP-02-08-M15-03: one SEC discount, with a minimum placement price of one.
-  const discount = G.activeMeasureEffects?.find(instance => instance.sourceCardId === 'SEC_M15' && instance.owner === owner && !instance.used);
-  return discount ? { amount: 1, discountId: discount.id } : { amount: 2 };
+function regulationPrice(G: CoreState, operation: RegulationOperation): { amount: number; discounts: string[] } {
+  if (operation.operation !== 'place') return { amount: 0, discounts: [] };
+  // EXP-02-04-A-01 and EXP-02-08-M15-03: discount the next placement this round with a floor of one SEC.
+  const discounts = G.activeMeasureEffects?.filter(instance => instance.sourceCardId === 'SEC_M15' && !instance.used)
+    .map(instance => instance.id) ?? [];
+  return { amount: Math.max(1, 2 - discounts.length), discounts };
 }
 
-function commitRegulationDiscount(G: CoreState, discountId?: string): void {
-  if (!discountId) return;
-  const discount = G.activeMeasureEffects?.find(instance => instance.id === discountId);
-  if (discount) discount.used = true;
+function commitRegulationDiscounts(G: CoreState, discounts: string[] = []): void {
+  if (!discounts.length) return;
+  for (const instance of G.activeMeasureEffects ?? []) {
+    if (discounts.includes(instance.id)) instance.used = true;
+  }
 }
 
 function planRegulationAction(G: CoreState, requested: ResolveRegulationEffect, active: readonly ExpansionModule[], preview?: PaymentPreview) {
@@ -410,13 +445,13 @@ function planRegulationAction(G: CoreState, requested: ResolveRegulationEffect, 
   if (isProhibited(G, effect, hooks)) return { ok: false, reason: 'prohibited' } as const;
   const mutate = planRegulationMutation(G, requested.regulation);
   if (!mutate) return { ok: false, reason: 'invalid-regulation-operation' } as const;
-  const { amount, discountId } = regulationPrice(G, requested.regulation, requested.playerID);
+  const { amount, discounts } = regulationPrice(G, requested.regulation);
   const payment = planPayment(G, createMatchResourceRegistry(active), effect, hooks, amount ? { SEC: amount } : undefined, preview);
   if (!payment.ok) return payment;
   return { ok: true, commit: () => {
     payment.transaction.commit();
     const placed = mutate();
-    commitRegulationDiscount(G, discountId);
+    commitRegulationDiscounts(G, discounts);
     queueRegulationFollowUps(G, requested.playerID, placed, authority?.tileId);
   } } as const;
 }
@@ -587,7 +622,9 @@ function planMeasureRegistration(
   // EXP-01-07-08/-09 and EXP-03-03-02A: keep an eligible card play independent of its card zone.
   const expansion = instance.sourceCardId.startsWith('ECO_') ? 'exp01'
     : instance.sourceCardId.startsWith('SEC_') ? 'exp02' : 'exp03';
-  if (!G.cfg.expansions[expansion] || (instance.sourceCardId === 'CLM_M11' && !G.cfg.expansions.exp01)) {
+  const deck = G.exp?.[expansion]?.measures;
+  if (!G.cfg.expansions[expansion] || (deck && !Object.hasOwn(deck.playCounts, instance.sourceCardId))
+      || (instance.sourceCardId === 'CLM_M11' && !G.cfg.expansions.exp01)) {
     return { ok: false, reason: 'inactive-measure' };
   }
   const target = instance.targetPlayerID;
@@ -711,7 +748,7 @@ function planMeasureAction(
   if (isProhibited(G, effect, hooks)) return { ok: false, reason: 'prohibited' };
   // CORE-01-06-00-08/-09 and EXP-02-04-A-06: immediate placement shares this card's one payment.
   const immediateRegulation = regulation && rule?.regulation?.timing === 'immediate';
-  const price = immediateRegulation ? regulationPrice(G, regulation, playerID) : undefined;
+  const price = immediateRegulation ? regulationPrice(G, regulation) : undefined;
   const cost = price?.amount ? { ...rule?.cost, SEC: (rule?.cost.SEC ?? 0) + price.amount } : rule?.cost;
   const payment = planPayment(G, registry, effect, hooks, cost, preview);
   if (!payment.ok) return payment;
@@ -730,7 +767,7 @@ function planMeasureAction(
     registration?.commit();
     if (immediateRegulation) {
       const placed = operation?.();
-      commitRegulationDiscount(G, price?.discountId);
+      commitRegulationDiscounts(G, price?.discounts);
       queueRegulationFollowUps(G, playerID, placed);
     }
     if (take) {
@@ -868,11 +905,13 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     }
 
     if (effect.kind === 'recordDecisionContinuation') {
+      // CORE-01-06-04(d) and CORE-01-07-04(b): finish the interrupted resolution before advancing.
       if (effect.continuation) G.decisionContinuation = effect.continuation;
       else delete G.decisionContinuation;
       return { ok: true };
     }
     if (effect.kind === 'continueRegisteredDecisions') {
+      // EXP-01-07-14: finish registered decisions in their trigger order.
       continueRegisteredDecisions(G);
       return { ok: true };
     }
@@ -885,12 +924,9 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     }
 
     if (effect.kind === 'consumeBudgetDeficits') {
-      // EXP-01-08-M06-07/-07A: only the applicable instances consume at this attempt boundary.
-      if (effect.ids.length && G.activeMeasureEffects) {
-        G.activeMeasureEffects = G.activeMeasureEffects.filter(instance =>
-          instance.sourceCardId !== 'ECO_M06' || !effect.ids.includes(instance.id));
-        if (!G.activeMeasureEffects.length) delete G.activeMeasureEffects;
-      }
+      // EXP-01-08-M06-07A: complete an empty mandatory slot without reopening it.
+      consumeMeasureEffects(G, G.activeMeasureEffects?.filter(instance =>
+        instance.sourceCardId === 'ECO_M06' && effect.ids.includes(instance.id)).map(instance => instance.id) ?? []);
       return { ok: true };
     }
 
@@ -949,7 +985,11 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     const active = activeModules(G);
     const hooks = active.map(module => module.hooks).filter(hook => hook !== undefined);
 
-    if (effect.kind === 'regulationOperation' || effect.kind === 'activateAuthorityApparatus') {
+    if (effect.kind === 'activateAuthorityApparatus') {
+      return executePoliticalPlan(G, effect.playerID, preview => planRegulationAction(G, effect, active, preview));
+    }
+
+    if (effect.kind === 'regulationOperation') {
       const plan = planRegulationAction(G, effect, active);
       if (!plan.ok) return plan;
       plan.commit();
@@ -970,13 +1010,11 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     }
 
     if (effect.kind === 'takeMeasure' || effect.kind === 'playMeasure') {
-      const plan = planMeasureAction(G, effect, active);
-      if (!plan.ok) return plan;
-      plan.commit();
-      return { ok: true };
+      return executePoliticalPlan(G, effect.playerID, preview => planMeasureAction(G, effect, active, preview));
     }
 
     if (effect.kind === 'chooseRegulationFollowUp') {
+      // EXP-02-08-M03-03/-04 and EXP-02-08-M05-03/-05.
       const pending = G.pendingRegulationChoices?.[0];
       if (!pending || pending.playerID !== effect.playerID) return { ok: false, reason: 'follow-up-unavailable' };
       const { choice } = effect;
@@ -1109,10 +1147,7 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
     }
 
     if (effect.kind === 'placeOrMoveInfluence' || effect.kind === 'formalizeInfluence' || effect.kind === 'convertResources') {
-      const plan = planPoliticalAction(G, effect, active);
-      if (!plan.ok) return plan;
-      plan.commit();
-      return { ok: true };
+      return executePoliticalPlan(G, effect.playerID, preview => planPoliticalAction(G, effect, active, preview));
     }
 
     // 1) Assign ContextTile (already part of descriptor)

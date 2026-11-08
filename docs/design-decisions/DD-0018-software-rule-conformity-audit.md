@@ -1,31 +1,26 @@
 # DD-0018 — Softwareabgleich mit den konsolidierten Regeln
 
 - Prüfdatum: 2026-11-08
-- Status: Audit abgeschlossen. Umsetzung in Task 0030 begonnen.
+- Status: Audit und Umsetzung in Task 0030 abgeschlossen.
 - Basis: `3d6f289` (`docs(rules): consolidate approved core and expansion rulings`)
 - Arbeitsbranch: `codex/rules-software-audit`
 
-Umsetzungsstand vom 2026-11-08. S01/S02 und die Engine-Eingabegrenze aus S04 sind umgesetzt. Die Nachweise für T08/T09/T15/T16/T17 laufen als dauerhafte Engine-Tests. Die folgenden Befunde und Prüfergebnisse beziehen sich auf die Audit-Basis `3d6f289`. [DD-0019](DD-0019-boardgame-turn-stages.md), [Task 0030](../tasks/0030_rules_conformity_implementation.md)
+## Umsetzung und Nachweise vom 2026-11-08
 
-S05 und das stabile JSON-Hashing aus S16 sind umgesetzt. T05/T06/T19 laufen als dauerhafte Tests. Der reguläre Engine-Zug speichert seinen Hash nach dem Settlement, falls dieses am Zugende fällig ist. [DD-0020](DD-0020-resource-transfers-and-turn-hashes.md)
+| Befunde | Umsetzung und dauerhafte Nachweise |
+| --- | --- |
+| S01, S02, S17, S18 | Setup und vollständige Engine-Züge, gebundene Topologie, DrawResolution, Recycling, Handicap und 5–6-Spieler-Material einschließlich Influence-Cap. T15–T17 und Variantenreplays. [DD-0019](DD-0019-boardgame-turn-stages.md), [DD-0021](DD-0021-draw-resolution-and-match-options.md), [Engine-Ziehregressionen](../../packages/game/src/draw.engine.test.ts) |
+| S03, S04, S05 | Politische CORE-Aktionen, Pflichtslots, atomare Transfers und Fehlschlagsfolgen. T05/T06/T08/T09 und Budget-Deficit-Regressionen. [DD-0020](DD-0020-resource-transfers-and-turn-hashes.md), [DD-0023](DD-0023-core-political-actions.md), [Kostentests](../../packages/game/src/costs.engine.test.ts) |
+| S06, S07 | Gemeinsame Mehrheit, Lobbyistenbonus, Kontrollrechte, Verdopplung, additive Modifikatoren, Floor und kanonische Verteilung. T01–T03/T07 und T18. [DD-0022](DD-0022-canonical-majority.md), [DD-0025](DD-0025-canonical-production-pipeline.md), [Produktionstests](../../packages/game/src/production.engine.test.ts) |
+| S08, S09, S16 | Persistente Hotspot-Ereignisse, registrierte Entscheidungen, einmaliges finales Settlement und Wertung. T04/T19, Checkpoints über 71 CORE-Züge und feste Endhashes nach JSON-Roundtrip. [DD-0024](DD-0024-hotspot-enclosure-events.md), [DD-0029](DD-0029-registered-decisions.md), [Endspielreplays](../../packages/game/src/endgame.replay.test.ts) |
+| S10, S11, S12 | Aktives Erweiterungsmaterial, stabile Marktslots, Kartenrezirkulation, globales Handlimit und PlayMeasure-Nutzung. T10–T14. [DD-0027](DD-0027-shared-measure-lifecycle.md), [Setup-Tests](../../packages/game/src/expansion.material.engine.test.ts), [Kartentests](../../packages/game/src/measure-play.engine.test.ts) |
+| S13, S14 | Atomare Zahlungsalternativen, Dauer und Verbrauch unabhängiger Effekte, Regulationen, Climate-Herkunft, Investment Freeze und Supply Chain Disruption. Acht Engine-Replays kombinieren Kosten, Blockade und Produktionsstapel. [DD-0026](DD-0026-production-source-and-receipt.md), [DD-0028](DD-0028-payment-and-measure-windows.md), [Erweiterungsmatrix](../../packages/game/src/expansion.stack.engine.test.ts) |
+| S15, S20 | Bot und Webclient verwenden die Engine-Optionen. Der Runner überprüft den Vorschauhash gegen das ausgeführte Ergebnis. Der Client-Test prüft Phasen und Auswahl. Die lokale HTTP-Lobby erstellt CORE-Partien. [DD-0030](DD-0030-engine-option-previews.md), [Bot-Replay](../../packages/server/src/bot-match.test.ts), [Client-Test](../../packages/client-web/src/BoardCore.test.tsx) |
+| S19 | Kanonischer Schreibpfad, genaue Regelanker, Entfernung produktiver Platzhalter und Mutation-Prüfung für direkte und über Aliase vermittelte Zustandsänderungen. [DD-0031](DD-0031-resolver-write-boundary.md) |
 
-Die explizite DrawResolution, Topologiebindung und Match-Optionen sind umgesetzt. Engine-Tests prüfen Add-on-Setup, Handicap, bezahlbare Platzierungen, begrenztes Recycling und beide Zieh-Ausgänge zum finalen Settlement. Das Add-on-Cap bei der Influence-Erzeugung und die Erweiterungsmaterialien bleiben eigene Schritte. [DD-0021](DD-0021-draw-resolution-and-match-options.md)
+Unter Node.js 24.22.2 bestehen 176 Workspace-Tests, Lint, Build, Web-Typcheck und die Encoding- und Mutation-Prüfungen. Die Checkliste mit den Nachweisen steht in [Task 0030](../tasks/0030_rules_conformity_implementation.md).
 
-S06 und die Mehrheitsverteilung aus S07 sind umgesetzt. T01/T02/T03 prüfen kontrollierte Lobbyisten, das ausgeschlossene Start Committee und Produktion ohne Auszahlung bei Nullmehrheit. [DD-0022](DD-0022-canonical-majority.md)
-
-Die Produktionsrechnung aus S07/S13 bindet Verbote an das produzierende ResortTile und verwendet typisierte Verdopplungen und additive Deltas mit einem gemeinsamen Floor. T07 belegt die automatische Auszahlung ohne Kostenpass über boardgame.io. [DD-0025](DD-0025-canonical-production-pipeline.md)
-
-Investment Freeze und Supply Chain Disruption greifen bei registrierten Produktionswirkungen in getrennten Stufen. Engine-Tests prüfen die Kontrolle zum Produktionszeitpunkt, die Quellentrennung und die endgültigen Transfers samt Bankbestand und Noise. [DD-0026](DD-0026-production-source-and-receipt.md)
-
-S11/S12 verwenden getrennte Deckzonen und drei stabile Marktslots mit gemeinsamem Hand- und Spiellimit. T10 prüft den mittleren Slot, T18 die ResortTile-Reihenfolge im Settlement. Die Prüfung der vollständigen Kartenauflösung in T11/T12 folgt bei Collective Bargaining. [DD-0027](DD-0027-shared-measure-lifecycle.md)
-
-T11 bis T14 sind jetzt über das tatsächliche Engine-Setup und bezahltes Collective Bargaining abgedeckt. Alle acht Setup-Kombinationen und die ECO-/CLM-Ergänzungen für fünf und sechs Spieler sind geprüft. Investment Program, Investment Freeze und Supply Chain Disruption sind an ihre regulären Aktionspfade angebunden. [Setup-Tests](../../packages/game/src/expansion.material.engine.test.ts), [Kartentests](../../packages/game/src/measure-play.engine.test.ts)
-
-Der CORE-Teil von S03 und das Add-on-Cap aus S18 sind umgesetzt. Engine-Tests prüfen Markeridentität, Committee-Formalisierung, Grassroots-Konvertierung und den automatischen Abschluss leerer politischer Slots. [DD-0023](DD-0023-core-political-actions.md)
-
-Der CORE-Teil von S08 ist umgesetzt. T04 prüft den persistenten Abschluss nach Erfolg oder unterbliebener Auszahlung sowie gleichzeitige Einschließungen über boardgame.io. [DD-0024](DD-0024-hotspot-enclosure-events.md)
-
-S09 ist durch drei wiederholte Engine-Endspielreplays belegt. Sie prüfen das einmalige finale Settlement am regulären Rundenende und in einer verkürzten Schlussrunde, Sieg und geteilten Sieg, beide Zieh-Ausgänge sowie den Endhash nach JSON-Roundtrip. [Engine-Replays](../../packages/game/src/endgame.replay.test.ts)
+## Audit auf Basis von 3d6f289
 
 ## Ergebnis und Umfang
 

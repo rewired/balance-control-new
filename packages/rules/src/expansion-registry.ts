@@ -35,6 +35,7 @@ export interface ConversionAlternative {
 }
 
 export interface ExpansionHooks {
+  blockade?: (args: ProhibitionsArgs) => boolean;
   prohibitions?: (args: ProhibitionsArgs) => boolean;
   costIncreases?: (args: CostIncreasesArgs) => Partial<ResourceAmounts> | void;
   surcharges?: (args: CostIncreasesArgs) => readonly Surcharge[] | void;
@@ -46,7 +47,7 @@ export interface ExpansionHooks {
 export interface ExpansionModule {
   id: ExpansionId;
   registerResources(registry: ResourceRegistry): void;
-  setupExpansionState(G: CoreState, ctx: { numPlayers: number; seed: string }): void;
+  setupExpansionState?(G: CoreState, ctx: { numPlayers: number; seed: string }): void;
   tiles?: (config: MatchConfig) => readonly Tile[];
   measureDeck?: (config: MatchConfig) => readonly string[];
   measureRules?: Readonly<Record<string, MeasureRule | undefined>>;
@@ -74,11 +75,4 @@ export function createExpansionRegistry(flags: ExpansionFlags | undefined): Expa
   const filtered = _registered.filter((m) => enabled.includes(m.id));
   filtered.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return filtered;
-}
-
-export function ensureExpansionSlice<T extends object>(G: CoreState, id: ExpansionId, initial: T): T {
-  if (!G.exp) (G as CoreState & { exp: NonNullable<CoreState['exp']> }).exp = {} as NonNullable<CoreState['exp']>;
-  const exp = G.exp as Record<string, unknown>;
-  if (!exp[id]) exp[id] = initial as unknown as NonNullable<CoreState['exp']>[keyof NonNullable<CoreState['exp']>];
-  return exp[id] as T;
 }

@@ -4,7 +4,6 @@ export function exp03Climate(): ExpansionModule {
   return {
     id: 'exp03',
     registerResources: registry => registry.register('CLM'), // EXP-03-01-01
-    setupExpansionState: () => {},
     // EXP-03-02-A-02A and EXP-03-03-04: the extra ResortTiles are already included in these totals.
     tiles: ({ addOn56 }) => [
       ...createResortTiles('CLM', { 1: addOn56 ? 3 : 2, 2: addOn56 ? 3 : 2 }),

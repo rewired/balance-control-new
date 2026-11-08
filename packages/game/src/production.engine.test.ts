@@ -104,17 +104,20 @@ describe('Canonical Resort Production through boardgame.io', () => {
 
   it('checks the producing tile prohibition before collecting output modifiers', () => {
     const productionModifiers = vi.fn(() => [{ kind: 'double', source: 'measure' }] as const);
+    const otherProhibitions = vi.fn(({ effect }: CostIncreasesArgs) => effect.kind === 'applyProductionAt');
+    registerHooks('exp01', { prohibitions: otherProhibitions });
     registerHooks('exp02', {
-      prohibitions: ({ effect }) => effect.kind === 'applyProductionAt'
+      blockade: ({ effect }) => effect.kind === 'applyProductionAt'
         && effect.contextCoord?.q === resort.coord.q && effect.contextCoord?.r === resort.coord.r,
       productionModifiers,
     });
-    const client = setupSettlement({ exp02: true });
+    const client = setupSettlement({ exp01: true, exp02: true });
     openLastTurnOfRound(client);
     placeMarker(client, 'Committee-2');
 
     const { G, ctx } = client.getState()!;
     expect(ctx.turn).toBe(3);
+    expect(otherProhibitions.mock.calls.some(([{ effect }]) => effect.kind === 'applyProductionAt')).toBe(false);
     expect(productionModifiers).not.toHaveBeenCalled();
     expect(G.players['0'].personal.resources.DOM).toBe(0);
     expect(G.resources.noise.DOM).toBe(0);

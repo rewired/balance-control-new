@@ -2,7 +2,7 @@ import type { FnContext, Game, Move } from 'boardgame.io';
 import { INVALID_MOVE } from '#boardgame-core';
 import type { AxialCoord, CoreState, DecisionContinuation } from '@bc/rules';
 import {
-  assertExpansionStateMatchesConfig, buildMoveCatalog, corePoliticalMoves,
+  assertExpansionStateMatchesConfig, budgetDeficitIds, buildMoveCatalog, corePoliticalMoves,
   createExpansionRegistry, createResolver, HotspotChoiceSchema, PaymentSelectionSchema, politicalMoveOptions, resolveRoundSettlement, z,
 } from '@bc/rules';
 
@@ -29,6 +29,7 @@ const placeTile: Move<CoreState> = ({ G, ctx, events }, requested: AxialCoord, p
   afterEnclosure({ G, ctx, events });
 };
 
+// CORE-01-06-04(d), EXP-02-02-G-04 and EXP-03-08-M05-05.
 const chooseHotspotOutcome: Move<CoreState> = ({ G, ctx, events, playerID }, action: unknown) => {
   const parsed = HotspotChoiceSchema.safeParse(action);
   if (!parsed.success || playerID == null) return INVALID_MOVE;
@@ -37,6 +38,7 @@ const chooseHotspotOutcome: Move<CoreState> = ({ G, ctx, events, playerID }, act
   afterEnclosure({ G, ctx, events });
 };
 
+// EXP-02-08-M03-03/-04 and EXP-02-08-M05-03/-05.
 const chooseRegulationFollowUp: Move<CoreState> = ({ G, ctx, events, playerID }, action: unknown) => {
   const parsed = HotspotChoiceSchema.safeParse(action);
   if (!parsed.success || playerID == null || !G.decisionContinuation) return INVALID_MOVE;
@@ -108,15 +110,10 @@ function completePoliticalSequence({ G, ctx, events }: TurnContext): void {
   finishTurn({ G, ctx, events }, G.tiles.drawPile.length === 0);
 }
 
-function budgetDeficits(G: CoreState, playerID: string): string[] {
-  return G.activeMeasureEffects?.filter(instance => instance.sourceCardId === 'ECO_M06' && instance.targetPlayerID === playerID)
-    .map(instance => instance.id) ?? [];
-}
-
 function beginPoliticalSlot(turn: TurnContext, additional: boolean): void {
   // CORE-01-04-09A..09C: skip an empty slot automatically, after placement or Measure resolution.
   if (politicalMoveOptions(turn.G, turn.ctx.currentPlayer, additional).next().done) {
-    createResolver()(turn.G, { kind: 'consumeBudgetDeficits', ids: budgetDeficits(turn.G, turn.ctx.currentPlayer) });
+    createResolver()(turn.G, { kind: 'consumeBudgetDeficits', ids: budgetDeficitIds(turn.G, turn.ctx.currentPlayer) });
     completePoliticalSequence(turn);
     return;
   }
@@ -134,15 +131,19 @@ const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown)
   if (!definition) return INVALID_MOVE;
 
   // EXP-01-06-05(c): an additional action cannot be PlayMeasure.
-  if (ctx.activePlayers?.[ctx.currentPlayer] === CoreStages.AdditionalPoliticalAction && definition.isPlayMeasure) {
+  const additional = ctx.activePlayers?.[ctx.currentPlayer] === CoreStages.AdditionalPoliticalAction;
+  if (additional && definition.isPlayMeasure) {
     return INVALID_MOVE;
   }
 
   const payload = definition.payloadSchema.safeParse(input.data.payload === undefined ? {} : input.data.payload);
   if (!payload.success) return INVALID_MOVE;
-  const deficits = budgetDeficits(G, ctx.currentPlayer);
-  if (!definition.execute(G, ctx.currentPlayer, payload.data).ok) return INVALID_MOVE;
-  createResolver()(G, { kind: 'consumeBudgetDeficits', ids: deficits });
+  const result = definition.execute(G, ctx.currentPlayer, payload.data);
+  if (!result.ok) {
+    if (!result.budgetDeficitConsumed) return INVALID_MOVE;
+    beginPoliticalSlot({ G, ctx, events }, additional);
+    return;
+  }
 
   // EXP-01-06-05(b) and CORE-01-07-08: complete the whole action sequence in this turn.
   if (suspendForRegulation({ G, ctx, events }, definition.isPlayMeasure ? 'additional' : 'turnEnd')) return;

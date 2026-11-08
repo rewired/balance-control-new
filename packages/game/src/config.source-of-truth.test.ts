@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InitializeGame } from 'boardgame.io/internal';
 import { createBCGame } from './factory.js';
-import { __resetRegisteredExpansionsForTest, registerExpansion, ensureExpansionSlice, createExpansionRegistry, type ExpansionModule } from '@bc/rules';
+import { __resetRegisteredExpansionsForTest, assertExpansionStateMatchesConfig, registerExpansion, ensureExpansionSlice, createExpansionRegistry, type ExpansionModule } from '@bc/rules';
 
 function makeNoopModule(id: 'exp01'|'exp02'|'exp03'): ExpansionModule {
   return {
@@ -15,7 +15,7 @@ function makeNoopModule(id: 'exp01'|'exp02'|'exp03'): ExpansionModule {
 describe('Task 0021 - Config is source of truth', () => {
   beforeEach(() => { __resetRegisteredExpansionsForTest(); });
 
-  it('disabled config ignores present slice', () => {
+  it('disabled config ignores hooks and rejects a ghost slice', () => {
     registerExpansion(makeNoopModule('exp01'));
     const game = createBCGame({ expansions: { exp01: false } });
     const G = structuredClone(InitializeGame({ game, numPlayers: 2 }).G);
@@ -24,6 +24,7 @@ describe('Task 0021 - Config is source of truth', () => {
     // registry must still ignore because flags from cfg
     const mods = createExpansionRegistry(G.cfg.expansions);
     expect(mods).toEqual([]);
+    expect(() => assertExpansionStateMatchesConfig(G)).toThrowError(/present for disabled exp01/);
   });
 
   it('enabled config requires slice (throws if missing)', () => {
