@@ -72,7 +72,7 @@ async function main() {
     if (pos === 1) {
       resolveRoundSettlement(G, mods);
       // reset measure flags for exp01
-      resolve(G, { kind: 'resetMeasuresRound', expansion: 'exp01' });
+      resolve(G, { kind: 'resetMeasuresRound' });
     }
 
     pos = (pos + 1) % 2;

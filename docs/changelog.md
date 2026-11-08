@@ -437,3 +437,10 @@
 - Supply Chain Disruption begrenzt die endgültige Auszahlung je ResortTile und betroffenen Empfänger auf höchstens eins. Andere Spieler und Noise erhalten ihre regulären Beträge. Die Kürzung bleibt ungebucht.
 - Der Resolver speichert die registrierten Produktionswirkungen unabhängig von Kartenzonen und verarbeitet ihren Ablauf am Settlement- oder Zugbeginn. Die Engine-Tests verwenden einen Test-Move für die Registrierung. Reguläres Kartenspiel folgt mit den Erweiterungen.
 - 122 Workspace-Tests, Lint, Mutation-Check, TypeScript- und Webclient-Build bestehen unter Node 22.22.2.
+
+## 2026-11-08 — Task 0030 — Gemeinsamer Maßnahmenmarkt
+
+- Jedes aktive Deck hat eigene Karten- und Handzonen, drei feste Marktslots und einen eigenen deterministischen Recycle-Zyklus. Take und Play füllen den betroffenen Markt vor dem nächsten Zug oder Zusatzslot auf.
+- Handlimit und PlayMeasure-Nutzung gelten deckübergreifend. Die Vorschau prüft dieselben Zonen, Verbote und generischen Zahlungsschritte wie die Ausführung.
+- T10 prüft über boardgame.io den mittleren Marktslot. T18 prüft die ordinale ResortTile-Reihenfolge. Weitere Engine-Tests decken deckübergreifende Limits und Play-Refill aus Recycle ab.
+- 126 Workspace-Tests, Lint, Mutation-Check und Game-TypeScript-Build bestehen unter Node 22.22.2. Der EXP-01-Replay-Hash berücksichtigt die gemeinsame Nutzungsmarke und die expliziten Karten-Zähler.

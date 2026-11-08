@@ -1,7 +1,7 @@
 import { Client } from 'boardgame.io/client';
 import {
   __resetRegisteredExpansionsForTest, ensureExpansionSlice, registerExpansion,
-  type CoreState, type CostIncreasesArgs, type ExpansionHooks, type ExpansionId,
+  type BoardPlacement, type CoreState, type CostIncreasesArgs, type ExpansionHooks, type ExpansionId,
 } from '@bc/rules';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBCGame } from './factory.js';
@@ -18,14 +18,14 @@ function registerHooks(id: ExpansionId, hooks: ExpansionHooks): void {
   });
 }
 
-function setupSettlement(expansions: Partial<Record<ExpansionId, boolean>>, tied = false): CoreClient {
+function setupSettlement(expansions: Partial<Record<ExpansionId, boolean>>, tied = false, board: BoardPlacement[] = [resort]): CoreClient {
   const game = createBCGame({ matchSeed: 'task-0030-production', expansions });
   const setup = game.setup!;
   game.setup = (context, data) => {
     const G = setup(context, data);
     const draw = ['Committee-1', 'Committee-2', 'Committee-3'];
-    G.tiles.board.push(resort);
-    G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => id !== resort.tileId && !draw.includes(id));
+    G.tiles.board.push(...board);
+    G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => !board.some(placement => placement.tileId === id) && !draw.includes(id));
     G.tiles.drawPile = draw;
     G.influencesOnBoard = (tied ? ['0', '1'] : ['0']).map(id => ({
       ...G.players[id].personal.influence.shift()!, tileId: resort.tileId,
@@ -118,5 +118,17 @@ describe('Canonical Resort Production through boardgame.io', () => {
     expect(productionModifiers).not.toHaveBeenCalled();
     expect(G.players['0'].personal.resources.DOM).toBe(0);
     expect(G.resources.noise.DOM).toBe(0);
+  });
+
+  it('T18: settles ResortTiles in ordinal Tile ID order even with reversed board insertion', () => {
+    const seen: string[] = [];
+    registerHooks('exp02', { productionModifiers: ({ tile }) => { seen.push(tile.id); } });
+    const earlier = { tileId: 'DOM-W1-1', coord: { q: -1, r: 0 } };
+    const client = setupSettlement({ exp02: true }, false, [resort, earlier]);
+    openLastTurnOfRound(client);
+    placeMarker(client, 'Committee-2');
+
+    expect(client.getState()!.ctx.turn).toBe(3);
+    expect(seen).toEqual([earlier.tileId, resort.tileId]);
   });
 });

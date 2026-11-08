@@ -1,7 +1,7 @@
 import type { AxialCoord, CoreState, ExpansionId, ResortTile } from './types.js';
 import type { ResourceRegistry, ResourceAmounts } from './resources.js';
 import type { EffectDescriptor } from './effects.js';
-import type { ExpansionFlags } from './schemas.js';
+import type { ExpansionFlags, MatchConfig } from './schemas.js';
 
 export interface ProhibitionsArgs { G: CoreState; effect: EffectDescriptor }
 export interface CostIncreasesArgs { G: CoreState; effect: EffectDescriptor; cost?: Partial<ResourceAmounts> }
@@ -23,6 +23,7 @@ export interface ExpansionModule {
   id: ExpansionId;
   registerResources(registry: ResourceRegistry): void;
   setupExpansionState(G: CoreState, ctx: { numPlayers: number; seed: string }): void;
+  measureDeck?: (config: MatchConfig) => readonly string[];
   extendMoves?: (builder: import('./moves.js').MoveExtensionBuilder) => void;
   hooks?: ExpansionHooks;
 }

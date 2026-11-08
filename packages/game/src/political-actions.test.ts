@@ -277,8 +277,11 @@ describe('CORE political actions through boardgame.io', () => {
     enableHooks({ prohibitions: ({ effect }) => effect.kind === 'placeOrMoveInfluence' });
     const client = clientWithBoard(G => {
       const measures = G.exp!.exp01!.measures!;
-      measures.hands['0'] = measures.open.splice(0, 2);
-      measures.drawPile.push(...measures.open.splice(0));
+      const [first, second, third] = measures.open;
+      measures.hands['0'] = [first!, second!];
+      measures.open.fill(null);
+      measures.finalDiscard.push(third!, ...measures.drawPile.splice(0));
+      measures.playCounts[first!] = 1;
     }, { expansions: { exp01: true, exp02: true } }, 2, []);
     placeDraw(client);
     const measureId = client.getState()!.G.exp!.exp01!.measures!.hands['0'][0];
@@ -287,8 +290,8 @@ describe('CORE political actions through boardgame.io', () => {
     const measures = G.exp!.exp01!.measures!;
     expect(ctx.currentPlayer).toBe('1');
     expect(ctx.turn).toBe(2);
-    expect(measures.usedThisRound['0']).toBe(true);
+    expect(G.playedMeasureThisRound!['0']).toBe(true);
     expect(measures.hands['0']).toHaveLength(1);
-    expect(measures.recycle).toEqual([measureId]);
+    expect(measures.finalDiscard).toContain(measureId);
   });
 });

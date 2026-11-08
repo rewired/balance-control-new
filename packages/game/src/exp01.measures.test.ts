@@ -58,7 +58,7 @@ describe('EXP-01 Measures - Task 0027', () => {
     expect(((G as any).exp.exp01.measures.recycle).includes(id)).toBe(true);
 
     // reset per-round flag, then play again => finalDiscard
-    resolve(G, { kind: 'resetMeasuresRound', expansion: 'exp01' });
+    resolve(G, { kind: 'resetMeasuresRound' });
     m.hands['0'].push(m.recycle.splice(m.recycle.indexOf(id), 1)[0]);
     doAction(G, 'exp01_playMeasure', { measureId: id });
     expect(((G as any).exp.exp01.measures.finalDiscard).includes(id)).toBe(true);
@@ -82,7 +82,7 @@ describe('EXP-01 Measures - Task 0027', () => {
       const m = (G as any).exp.exp01.measures;
       if (m.drawPile.length === 0) break;
       // reset per-round to allow subsequent plays if needed
-      resolve(G, { kind: 'resetMeasuresRound', expansion: 'exp01' });
+      resolve(G, { kind: 'resetMeasuresRound' });
     }
     const beforeOpenLen = (G as any).exp.exp01.measures.open.length;
     const candidate = (G as any).exp.exp01.measures.open[0];
@@ -128,7 +128,7 @@ describe('EXP-01 Measures - Task 0027', () => {
     expect(extra.ctx.turn).toBe(before.ctx.turn);
     expect(extra.ctx.activePlayers).toEqual({ '1': 'AdditionalPoliticalAction' });
     expect(measures().hands['1']).toEqual([second]);
-    expect(measures().usedThisRound['1']).toBe(true);
+    expect(extra.G.playedMeasureThisRound!['1']).toBe(true);
 
     play(second);
     expect(client.getState()!._stateID).toBe(extra._stateID);
@@ -140,7 +140,7 @@ describe('EXP-01 Measures - Task 0027', () => {
     expect(next.ctx.currentPlayer).toBe('0');
     expect(next.ctx.activePlayers).toEqual({ '0': 'DrawAndPlaceTile' });
     expect(measures().hands['1']).toHaveLength(2);
-    expect(measures().usedThisRound['1']).toBe(false);
+    expect(next.G.playedMeasureThisRound!['1']).toBe(false);
   });
 
   it('enumerators list legal options only (AGENTS -4.1)', async () => {

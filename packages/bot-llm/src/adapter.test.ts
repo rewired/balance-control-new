@@ -49,7 +49,7 @@ describe('bot adapter - 0028', () => {
       const catalog = buildMoveCatalog(corePoliticalMoves(), mods);
       const def = catalog.definitions[intent.type];
       def.execute(G, String(pos), def.payloadSchema.parse(intent.payload));
-      if (pos === 1) createResolver(mods)(G, { kind: 'resetMeasuresRound', expansion: 'exp01' });
+      if (pos === 1) createResolver(mods)(G, { kind: 'resetMeasuresRound' });
       pos = (pos + 1) % 2;
     }
     const hash = stableHash(G);

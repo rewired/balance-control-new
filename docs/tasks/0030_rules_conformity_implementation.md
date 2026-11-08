@@ -46,14 +46,15 @@ Norm: CORE-01-04 bis -09; VAR-01; ADD56-01.
 
 - [x] S07/S13, Berechnung pro ResortTile: Verbot am produzierenden Tile prüfen, zulässige Verdopplungen auf den Druckwert anwenden, additive Modifikatoren aktiver Quellen summieren und den Minimum-0-Floor einmal anwenden. Danach folgen kanonische Mehrheit, reguläre Anteile und ursprünglicher Noise-Rest. [DD-0025](../design-decisions/DD-0025-canonical-production-pipeline.md)
 - [x] S07/S13, Erweiterungswirkungen: Investment Freeze filtert Measure-Modifikatoren bei aktueller Kontrolle durch das Ziel. Supply Chain Disruption begrenzt den regulären Anteil je Tile und Empfänger und lässt den ursprünglichen Noise-Rest bestehen. Engine-Tests prüfen die Wirkung registrierter Instanzen und ihren Ablauf. Das reguläre Ausspielen und Bezahlen der Karten gehört zur Maßnahmenanbindung in Stufe 4. [DD-0026](../design-decisions/DD-0026-production-source-and-receipt.md)
-- [ ] Settlement-Operationen und ResortTiles in vorgeschriebener Registrierungs-/ID-Reihenfolge auflösen; Refill und Zusatzaktion innerhalb des vollständigen Zugs halten.
+- [x] ResortTiles in ordinaler Tile-ID-Reihenfolge auflösen. T18 prüft die Reihenfolge unabhängig von der Board-Einfügung. Refill und Zusatzaktion gehören zum selben vollständigen Zug.
+- [ ] Registrierte Settlement-Operationen in vorgeschriebener Reihenfolge vor oder nach Produktion auflösen.
 - [ ] Aktive Effektinstanzen unabhängig von Karten mit stabiler ID, Quelle, Eigentümer, Zielen, Registrierung, Triggern, Dauer und Verbrauch modellieren.
 - [ ] Gemeinsame ereignisbasierte Uhr, nicht rückwirkende Trigger, Turn-/Settlement-/Round-Grenzen und ausbleibende Folgerunden nach Spielende implementieren.
-- [ ] S11/S12: Getrennte Deckzonen, drei stabile Marktslots und vollständigen Take-/Play-/Recycle-/FinalDiscard-Ablauf einschließlich Refill nach erfolgreichem Play umsetzen.
-- [ ] Globale Limits von zwei Handkarten und einem PlayMeasure je Spieler/Runde für beliebige aktive Deckkombinationen umsetzen; gemeinsame Flags ohne deaktivierten EXP-01-Slice.
+- [x] S11/S12, gemeinsamer Kartenlebenszyklus: getrennte Deckzonen, drei stabile Marktslots und Refill nach Take und Play. T10 ist über die Engine abgedeckt. Das T12-Szenario mit der echten Karte Collective Bargaining folgt bei der Kartenanbindung. [DD-0027](../design-decisions/DD-0027-shared-measure-lifecycle.md)
+- [x] Globale Limits von zwei Handkarten und einem PlayMeasure je Spieler/Runde für beliebige aktive Deckkombinationen umsetzen. Die gemeinsamen Flags sind auch ohne EXP-01 verfügbar, wenn ein anderes Deck aktiv ist.
 - [ ] Vollständigen atomaren Zahlungsplan einschließlich Ersetzungen, Herkunft, Payern, Gebrauch und ausdrücklich geregelten Fehlschlagsausnahmen implementieren.
 - [x] T07: Über boardgame.io prüfen, dass ein kontrolliertes DOM-W3 bei leerem PersonalSupply trotz aktivem Kosten-Hook 3 DOM liefert. Engine-Tests decken auch Verbot, Verdopplung, aktiven Modifikatorstapel, Floor und Noise-Rest ab. [Engine-Tests](../../packages/game/src/production.engine.test.ts)
-- [ ] T10–T12/T18 sowie Kartenrezirkulation bei fortbestehender Wirkung, mehrere Instanzen, gleichzeitige Trigger und fehlgeschlagene Zahlungen dauerhaft testen.
+- [ ] T11/T12 mit vollständigem Karten-Play sowie Kartenrezirkulation bei fortbestehender Wirkung, mehrere Instanzen, gleichzeitige Trigger und fehlgeschlagene Zahlungen dauerhaft testen.
 
 Norm: CORE-01-06-00-07 bis -12; CORE-01-06-16/-16A/-17; CORE-01-07-04 bis -18; EXP-01-06 und EXP-01-07.
 

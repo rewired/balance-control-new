@@ -11,12 +11,12 @@ export function resolveProductionForTile(state: CoreState, coord: AxialCoord, mo
 }
 
 export function resolveRoundSettlement(state: CoreState, modules?: readonly ExpansionModule[]): void {
-  // CORE-01-07-03: resolve production for each ResortTile on the Board.
+  // CORE-01-07-04(c): settle ResortTiles in ascending ordinal Tile ID order.
   const resolve = createResolver(modules);
-  for (const p of state.tiles.board) {
-    if (state.allTiles[p.tileId]?.kind === 'ResortTile') {
-      resolve(state, { kind: 'applyProductionAt', coord: p.coord });
-    }
+  const resorts = state.tiles.board.filter(placement => state.allTiles[placement.tileId]?.kind === 'ResortTile');
+  resorts.sort((a, b) => a.tileId < b.tileId ? -1 : a.tileId > b.tileId ? 1 : 0);
+  for (const placement of resorts) {
+    resolve(state, { kind: 'applyProductionAt', coord: placement.coord });
   }
   // CORE-01-07-17: expiring effects remain active through all production in this Settlement.
   resolve(state, { kind: 'expireProductionEffects', boundary: 'settlementEnd' });

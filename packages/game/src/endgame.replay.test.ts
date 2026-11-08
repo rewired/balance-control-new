@@ -168,8 +168,8 @@ function replayLastPlacementWithMeasure() {
   const measures = final.G.exp!.exp01!.measures!;
   expect(measures.hands['1']).toEqual([]);
   expect(measures.recycle).toContain(measureId);
-  expect(measures.usedThisRound['1']).toBe(true);
-  expect(final.G.lastTurnHash).toBe('afc0bf6daf484f15407086b94634eb04f75cb2531b1875a2912e6633e964564e');
+  expect(final.G.playedMeasureThisRound!['1']).toBe(true);
+  expect(final.G.lastTurnHash).toBe('83aa91da6a850af720209d3dd63cb0fd133c8193c4753ccb4d3d75b589915f4b');
   return final;
 }
 

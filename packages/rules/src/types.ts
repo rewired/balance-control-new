@@ -90,20 +90,20 @@ export interface ExpansionsState {
 
 export type { ExpansionId } from './schemas.js';
 
-export interface Exp01MeasuresState {
+export interface MeasureDeckState {
   drawPile: string[];
-  open: string[];
+  open: (string | null)[];
   recycle: string[];
   finalDiscard: string[];
   hands: Record<string, string[]>; // by playerID
-  usedThisRound: Record<string, boolean>; // per player
   playCounts: Record<string, number>; // per measure id
   cycle: number;
+  usedThisRound?: Record<string, boolean>; // legacy EXP-01 saves
 }
 
-export interface Exp01State { measures?: Exp01MeasuresState }
-export interface Exp02State {}
-export interface Exp03State {}
+export interface Exp01State { measures?: MeasureDeckState }
+export interface Exp02State { measures?: MeasureDeckState }
+export interface Exp03State { measures?: MeasureDeckState }
 
 export type ProductionMeasureId = 'ECO_M09' | 'CLM_M11';
 
@@ -126,5 +126,6 @@ export interface CoreState {
   lastTurnHash?: string; // AGENTS 5.3: SHA-256 at the most recent completed turn
   influencesOnBoard?: InfluenceOnBoard[];
   productionEffects?: ActiveProductionEffect[];
+  playedMeasureThisRound?: Record<string, boolean>;
   exp?: ExpansionsState;
 }

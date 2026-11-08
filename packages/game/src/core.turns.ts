@@ -100,8 +100,8 @@ export const CoreTurn: NonNullable<Game<CoreState>['turn']> = {
     resolve(G, { kind: 'expireProductionEffects', boundary: 'turnStart', playerID: ctx.currentPlayer });
 
     // CORE-01-07-17 and EXP-01-07-07: reset usage at the start of the next round.
-    if (ctx.turn > 1 && ctx.playOrderPos === 0 && G.cfg.expansions.exp01) {
-      resolve(G, { kind: 'resetMeasuresRound', expansion: 'exp01' });
+    if (ctx.turn > 1 && ctx.playOrderPos === 0) {
+      resolve(G, { kind: 'resetMeasuresRound' });
     }
 
     // CORE-01-04-04/-06/-07: resolve the draw sequence before offering placement.

@@ -1,5 +1,5 @@
 import { shuffleSeeded, stableHash } from '@bc/shared';
-import type { ActiveProductionEffect, AxialCoord, CoreState, Exp01State, Influence, ResourceId, ExpansionId } from './types.js';
+import type { ActiveProductionEffect, AxialCoord, CoreState, Influence, MeasureDeckState, ResourceId, ExpansionId } from './types.js';
 import { createMatchResourceRegistry, type ResourceAmounts, type ResourceRegistry } from './resources.js';
 import { createExpansionRegistry, ensureExpansionSlice, type ExpansionHooks, type ExpansionModule } from './expansion-registry.js';
 import { isFullySurrounded } from './hotspot.js';
@@ -83,8 +83,7 @@ export type PoliticalActionEffect = BaseEffect & { playerID: string } & (
 export interface InitMeasuresEffect extends BaseEffect {
   kind: 'initMeasures';
   expansion: ExpansionId;
-  deck: string[];
-  openCount: number;
+  deck: readonly string[];
 }
 export interface TakeMeasureEffect extends BaseEffect {
   kind: 'takeMeasure';
@@ -100,7 +99,6 @@ export interface PlayMeasureEffect extends BaseEffect {
 }
 export interface ResetMeasuresRoundEffect extends BaseEffect {
   kind: 'resetMeasuresRound';
-  expansion: ExpansionId;
 }
 
 interface RecordTurnHashEffect extends BaseEffect {
@@ -376,20 +374,70 @@ function drawTile(G: CoreState, effect: DrawTileEffect, registry: ResourceRegist
   return { ok: true };
 }
 
-function getExp01Measures(G: CoreState): import('./types.js').Exp01MeasuresState | undefined {
-  const exp = (G as CoreState & { exp: NonNullable<CoreState['exp']> }).exp;
-  const s = exp?.exp01?.measures as import('./types.js').Exp01MeasuresState | undefined;
-  return s;
+type MeasureAction = TakeMeasureEffect | PlayMeasureEffect;
+
+function measureUsage(G: CoreState): Record<string, boolean> {
+  const legacy = G.exp?.exp01?.measures;
+  const flags = G.playedMeasureThisRound ??= legacy?.usedThisRound ?? Object.fromEntries(
+    Object.keys(G.players).map(playerID => [playerID, false]),
+  );
+  if (legacy) delete legacy.usedThisRound;
+  return flags;
 }
 
-function drawFromDeckExp01(G: CoreState): string | undefined {
-  const m = getExp01Measures(G); if (!m) return undefined;
-  if (m.drawPile.length === 0 && m.recycle.length > 0) {
-    // EXP-01-07: Recycle -> Draw reshuffle (deterministic)
-    m.drawPile = shuffleSeeded(m.recycle.slice(), G.matchSeed + '|exp01:measures:cycle:' + (m.cycle|0));
-    m.recycle.length = 0; m.cycle = (m.cycle|0) + 1;
+// EXP-01-07-05..05D: keep occupied slots and refill vacancies in slot order.
+function refillMeasureMarket(G: CoreState, expansion: ExpansionId, deck: MeasureDeckState): void {
+  for (let slot = 0; slot < 3; slot++) {
+    if (deck.open[slot]) continue;
+    if (deck.drawPile.length === 0 && deck.recycle.length > 0) {
+      deck.drawPile = shuffleSeeded(deck.recycle, `${G.matchSeed}|${expansion}:measures:cycle:${deck.cycle}`);
+      deck.recycle.length = 0;
+      deck.cycle++;
+    }
+    deck.open[slot] = deck.drawPile.shift() ?? null;
   }
-  return m.drawPile.shift();
+}
+
+function planMeasureAction(
+  G: CoreState,
+  effect: MeasureAction,
+  active: readonly ExpansionModule[],
+): { ok: true; commit: () => void } | { ok: false; reason?: string } {
+  const { expansion, playerID, measureId } = effect;
+  const deck = G.cfg.expansions[expansion] ? G.exp?.[expansion]?.measures : undefined;
+  if (!deck || !Object.hasOwn(G.players, playerID)) return { ok: false, reason: 'measure-action-unavailable' };
+  const take = effect.kind === 'takeMeasure';
+  const hand = deck.hands[playerID] ?? [];
+  const index = (take ? deck.open : hand).indexOf(measureId);
+  if (index < 0) return { ok: false, reason: take ? 'not-open' : 'not-in-hand' };
+  // EXP-01-06-02..03: both limits are shared across decks.
+  const flags = G.playedMeasureThisRound ?? G.exp?.exp01?.measures?.usedThisRound;
+  if (!take && flags?.[playerID]) return { ok: false, reason: 'limit-per-round' };
+  const enabled = (Object.keys(G.cfg.expansions) as ExpansionId[]).filter(id => G.cfg.expansions[id]);
+  if (take && enabled.reduce((sum, id) => sum + (G.exp?.[id]?.measures?.hands[playerID]?.length ?? 0), 0) >= 2) {
+    return { ok: false, reason: 'hand-full' };
+  }
+  // EXP-01-06-04C and CORE-01-06-00-07/-11: plan the complete payment before moving cards.
+  const hooks = active.flatMap(module => module.hooks ?? []);
+  if (isProhibited(G, effect, hooks)) return { ok: false, reason: 'prohibited' };
+  const payment = planPayment(G, createMatchResourceRegistry(active), effect, hooks);
+  if (!payment.ok) return payment;
+
+  return { ok: true, commit: () => {
+    payment.transaction.commit();
+    if (take) {
+      deck.open[index] = null;
+      (deck.hands[playerID] ??= []).push(measureId);
+    } else {
+      // EXP-01-07-01..04: preserve counters through all zone transfers.
+      hand.splice(index, 1);
+      const count = (deck.playCounts[measureId] ?? 0) + 1;
+      deck.playCounts[measureId] = count;
+      (count === 1 ? deck.recycle : deck.finalDiscard).push(measureId);
+      measureUsage(G)[playerID] = true;
+    }
+    refillMeasureMarket(G, expansion, deck);
+  } };
 }
 
 export function createResolver(modules?: readonly ExpansionModule[]) {
@@ -400,6 +448,9 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
   function previewPoliticalAction(G: CoreState, effect: PoliticalActionEffect): boolean {
     const active = activeModules(G);
     return planPoliticalAction(G, effect, createMatchResourceRegistry(active), active.flatMap(module => module.hooks ?? [])).ok;
+  }
+  function previewMeasureAction(G: CoreState, effect: MeasureAction): boolean {
+    return planMeasureAction(G, effect, activeModules(G)).ok;
   }
 
   function resolveEffect(G: CoreState, requested: EffectDescriptor): ResolveResult {
@@ -439,8 +490,43 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
       return { ok: true };
     }
 
+    if (effect.kind === 'initMeasures') {
+      // EXP-01-06-00A/-00B and EXP-01-03-06: initialize only the chosen active deck.
+      const { expansion } = effect;
+      if (!G.cfg.expansions[expansion]) return { ok: false, reason: 'inactive-expansion' };
+      const slice = ensureExpansionSlice<{ measures?: MeasureDeckState }>(G, expansion, {});
+      if (slice.measures) return { ok: false, reason: 'deck-already-initialized' };
+      const deck: MeasureDeckState = {
+        drawPile: shuffleSeeded(effect.deck, `${G.matchSeed}|${expansion}:measures:init`),
+        open: [null, null, null], recycle: [], finalDiscard: [],
+        hands: Object.fromEntries(Object.keys(G.players).map(playerID => [playerID, []])),
+        playCounts: Object.fromEntries(effect.deck.map(card => [card, 0])),
+        cycle: 0,
+      };
+      slice.measures = deck;
+      measureUsage(G);
+      refillMeasureMarket(G, expansion, deck);
+      return { ok: true };
+    }
+
+    if (effect.kind === 'resetMeasuresRound') {
+      // CORE-01-07-17 and EXP-01-06-02A: reset only on an actually begun round.
+      if (G.playedMeasureThisRound || G.exp?.exp01?.measures) {
+        const flags = measureUsage(G);
+        for (const id of Object.keys(flags)) flags[id] = false;
+      }
+      return { ok: true };
+    }
+
     const active = activeModules(G);
     const hooks = active.map(module => module.hooks).filter(hook => hook !== undefined);
+
+    if (effect.kind === 'takeMeasure' || effect.kind === 'playMeasure') {
+      const plan = planMeasureAction(G, effect, active);
+      if (!plan.ok) return plan;
+      plan.commit();
+      return { ok: true };
+    }
 
     if (effect.kind === 'drawTile') return drawTile(G, effect, createMatchResourceRegistry(active), hooks);
     if (effect.kind === 'placeTile') {
@@ -539,67 +625,10 @@ export function createResolver(modules?: readonly ExpansionModule[]) {
         return noise;
       }
 
-            case 'initMeasures': { // EXP-01-02-E zones; EXP-01-07 lifecycle setup
-        const { expansion, deck, openCount } = effect as InitMeasuresEffect;
-        if (expansion !== 'exp01') return { ok: true };
-        const slice = ensureExpansionSlice<Exp01State>(G, 'exp01', {});
-        const state: import('./types.js').Exp01MeasuresState = {
-          drawPile: shuffleSeeded(deck, G.matchSeed + '|exp01:measures:init'),
-          open: [], recycle: [], finalDiscard: [],
-          hands: Object.fromEntries(Object.keys(G.players).map(pid => [pid, [] as string[]])),
-          usedThisRound: Object.fromEntries(Object.keys(G.players).map(pid => [pid, false])),
-          playCounts: {},
-          cycle: 0,
-        };
-        for (let i=0; i<openCount; i++) {
-          const d = state.drawPile.shift(); if (!d) break; state.open.push(d);
-        }
-        slice.measures = state;
-        return { ok: true };
-      }
-
-      case 'takeMeasure': { // EXP-01-06-03 hand limit; EXP-01-07 open refill w/ recycle reshuffle
-        const { expansion, playerID, measureId } = effect as TakeMeasureEffect;
-        if (expansion !== 'exp01') return { ok: true };
-        const m = getExp01Measures(G); if (!m) return { ok: true };
-        const pid = String(playerID); const hand = (m.hands[pid] ?? (m.hands[pid] = []));
-        if (hand.length >= 2) return { ok: false, reason: 'hand-full' };
-        const idx = m.open.indexOf(measureId); if (idx < 0) return { ok: false, reason: 'not-open' };
-        m.open.splice(idx,1); hand.push(measureId);
-        while (m.open.length < 3) {
-          const d = drawFromDeckExp01(G);
-          if (!d) break; m.open.push(d);
-        }
-        return { ok: true };
-      }
-
-            case 'playMeasure': { // EXP-01-06-02 Play limit per round; EXP-01-07 recycle/final discard cycling
-        const { expansion, playerID, measureId } = effect as PlayMeasureEffect;
-        if (expansion !== 'exp01') return { ok: true };
-        const m = getExp01Measures(G); if (!m) return { ok: true };
-        const pid2 = String(playerID);
-        if (m.usedThisRound[pid2]) return { ok: false, reason: 'limit-per-round' };
-        const hand = m.hands[pid2] ?? [];
-        const idx = hand.indexOf(measureId); if (idx < 0) return { ok: false, reason: 'not-in-hand' };
-        hand.splice(idx,1);
-        const c = (m.playCounts[measureId] ?? 0) + 1; m.playCounts[measureId] = c;
-        if (c >= 2) m.finalDiscard.push(measureId); else m.recycle.push(measureId);
-        m.usedThisRound[pid2] = true;
-        return { ok: true };
-      }
-
-      case 'resetMeasuresRound': {
-        const { expansion } = effect as ResetMeasuresRoundEffect;
-        if (expansion !== 'exp01') return { ok: true };
-        const m = getExp01Measures(G); if (!m) return { ok: true };
-        for (const pid of Object.keys(m.usedThisRound)) m.usedThisRound[pid] = false;
-        return { ok: true };
-      }
-
       default:
         return { ok: false, reason: 'unknown-effect' };
     }
   }
 
-  return Object.assign(resolveEffect, { previewPoliticalAction });
+  return Object.assign(resolveEffect, { previewPoliticalAction, previewMeasureAction });
 }

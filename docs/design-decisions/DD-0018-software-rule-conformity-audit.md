@@ -17,6 +17,8 @@ Die Produktionsrechnung aus S07/S13 bindet Verbote an das produzierende ResortTi
 
 Investment Freeze und Supply Chain Disruption greifen bei registrierten Produktionswirkungen in getrennten Stufen. Engine-Tests prüfen die Kontrolle zum Produktionszeitpunkt, die Quellentrennung und die endgültigen Transfers samt Bankbestand und Noise. [DD-0026](DD-0026-production-source-and-receipt.md)
 
+S11/S12 verwenden getrennte Deckzonen und drei stabile Marktslots mit gemeinsamem Hand- und Spiellimit. T10 prüft den mittleren Slot, T18 die ResortTile-Reihenfolge im Settlement. Die Prüfung der vollständigen Kartenauflösung in T11/T12 folgt bei Collective Bargaining. [DD-0027](DD-0027-shared-measure-lifecycle.md)
+
 Der CORE-Teil von S03 und das Add-on-Cap aus S18 sind umgesetzt. Engine-Tests prüfen Markeridentität, Committee-Formalisierung, Grassroots-Konvertierung und den automatischen Abschluss leerer politischer Slots. [DD-0023](DD-0023-core-political-actions.md)
 
 Der CORE-Teil von S08 ist umgesetzt. T04 prüft den persistenten Abschluss nach Erfolg oder unterbliebener Auszahlung sowie gleichzeitige Einschließungen über boardgame.io. [DD-0024](DD-0024-hotspot-enclosure-events.md)

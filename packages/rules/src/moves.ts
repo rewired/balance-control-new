@@ -1,5 +1,5 @@
 import { z, ZodFirstPartyTypeKind, type ZodTypeAny } from 'zod';
-import type { CoreState } from './types.js';
+import type { CoreState, ExpansionId } from './types.js';
 import { createExpansionRegistry, type ExpansionModule } from './expansion-registry.js';
 import { createResolver, type PoliticalActionEffect, type ResolveResult } from './effects.js';
 import { createMatchResourceRegistry } from './resources.js';
@@ -49,11 +49,35 @@ export function buildMoveCatalog(coreMoves: MoveDefinition<unknown>[], modules: 
 
   // Let enabled expansion modules extend moves (AGENTS §3.8)
   for (const mod of modules) {
+    if (mod.measureDeck) {
+      add(measureMove(mod.id, 'takeMeasure'));
+      add(measureMove(mod.id, 'playMeasure'));
+    }
     mod.extendMoves?.({ add });
   }
 
   const types = Object.keys(defs).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   return { types, schemas, definitions: defs };
+}
+
+const MeasurePayload = z.object({ measureId: z.string().min(1) }).strict();
+
+// EXP-01-06-00A/-01A: each active deck exposes the same shared actions.
+function measureMove(expansion: ExpansionId, kind: 'takeMeasure' | 'playMeasure'): MoveDefinition<z.infer<typeof MeasurePayload>> {
+  const resolve = createResolver();
+  return {
+    type: `${expansion}_${kind}`,
+    payloadSchema: MeasurePayload,
+    ...(kind === 'playMeasure' ? { isPlayMeasure: true } : {}),
+    execute: (G, playerID, { measureId }) => resolve(G, { kind, expansion, playerID, measureId }),
+    enumerate: (G, playerID) => {
+      const deck = G.exp?.[expansion]?.measures;
+      const cards = kind === 'takeMeasure' ? deck?.open : deck?.hands[playerID];
+      return (cards ?? []).flatMap(measureId => measureId && resolve.previewMeasureAction(G, {
+        kind, expansion, playerID, measureId,
+      }) ? [{ measureId }] : []);
+    },
+  };
 }
 
 function corePoliticalMove<P>(
