@@ -14,7 +14,7 @@ module.exports = {
       files: ['**/*.tsx', '**/*.jsx'],
       env: { browser: true },
       plugins: ['react', 'react-hooks'],
-      extends: ['plugin:react/recommended', 'plugin:react-hooks/recommended', 'prettier'],
+      extends: ['plugin:react/recommended', 'plugin:react/jsx-runtime', 'plugin:react-hooks/recommended', 'prettier'],
       settings: { react: { version: 'detect' } }
     }
   ]

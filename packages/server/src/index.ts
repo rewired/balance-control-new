@@ -1,10 +1,10 @@
 import { Server } from '#boardgame-server';
-import { CounterGame } from '@bc/game';
+import { CoreGame, CounterGame } from '@bc/game';
 
 const PORT = Number(process.env.PORT) || 8000;
 
 const server = Server({
-  games: [CounterGame],
+  games: [CounterGame, CoreGame],
   // Dev-only permissive origin; tightened in later tasks
   origins: [
     'http://localhost:5173',

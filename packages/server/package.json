@@ -24,7 +24,7 @@
                     "build":  "tsc -b",
                     "lint":  "eslint src --ext .ts",
                     "test":  "vitest run",
-                    "dev":  "tsx watch src/index.ts"
+                    "dev":  "node --no-experimental-require-module --import tsx --watch src/index.ts"
                 },
     "dependencies":  {
                          "@bc/game":  "workspace:*",

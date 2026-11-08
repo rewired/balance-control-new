@@ -469,3 +469,8 @@
 - Die Optionsliste enthält alternative Zahlungen mit Payer, Ressource und Betrag. Derselbe Resolver prüft Optionen für Platzierung, Politik, Hotspot und Regulation.
 - Der Bot erhält die realen Optionen mit ContextTile und Vorschauhash. Der Runner führt die per Index gewählte Option über boardgame.io aus und vergleicht den Vorschauhash mit dem Ergebnis.
 - Encoding-Prüfung und Bereinigung erfassen ungültiges UTF-8, Mojibake und überflüssige ASCII-Escapes in JSON. Die geparsten JSON-Werte bleiben erhalten.
+
+## 2026-11-08 — Task 0030 — CORE im Webclient
+
+- Der Webclient bietet die Aktionen der aktuellen Engine-Phase an. Hotseat berücksichtigt auch Entscheidungen, die einem anderen Spieler als dem Zugspieler zustehen.
+- Die Netzwerk-Lobby führt CORE als Spieltyp. Der lokale HTTP-Test erstellt ein CORE-Match auf Node.js 24.22.2.

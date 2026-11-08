@@ -1,15 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Client as BGClient, Lobby } from 'boardgame.io/react';
 import { CounterGame, CoreGame } from '@bc/game';
-import CounterBoard from './Board';
-import CoreBoard from './BoardCore';
+import CounterBoard from './Board.js';
+import CoreBoard from './BoardCore.js';
+import HotseatCore from './HotseatCore.js';
 
 type Env = { VITE_SERVER_URL?: string };
 const env = (import.meta as unknown as { env: Env }).env;
 const serverURL = env?.VITE_SERVER_URL ?? 'http://localhost:8000';
 
 const LocalClientCounter = BGClient({ game: CounterGame, board: CounterBoard });
-const LocalClientCore = BGClient({ game: CoreGame, board: CoreBoard });
 
 export function App() {
   const [mode, setMode] = useState<'Hotseat — Counter/Core' | 'network'>(() => (location.hash.includes('network') ? 'network' : 'Hotseat — Counter/Core'));
@@ -25,7 +25,7 @@ export function App() {
       {mode === 'Hotseat — Counter/Core' ? (
         <div>
           <h2>Hotseat — Counter/Core</h2>
-          <div style={{display:'flex', gap:16}}><div><h3>Counter</h3><LocalClientCounter /></div><div><h3>Core</h3><LocalClientCore /></div></div>
+          <div style={{display:'flex', gap:16}}><div><h3>Counter</h3><LocalClientCounter /></div><div><h3>Core</h3><HotseatCore /></div></div>
         </div>
       ) : (
         <div>

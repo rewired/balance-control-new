@@ -1,7 +1,6 @@
-import React from 'react';
+import type { BoardProps } from 'boardgame.io/react';
 
-export interface Moves { increment: () => void }
-export interface CounterProps { G: { count: number }; moves: Moves }
+type CounterProps = Pick<BoardProps<{ count: number }>, 'G' | 'moves'>;
 
 export function CounterBoard({ G, moves }: CounterProps) {
   return (

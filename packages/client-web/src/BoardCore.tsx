@@ -1,63 +1,62 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Ctx } from 'boardgame.io';
-import { politicalMoveOptions, type AxialCoord, type CoreState } from '@bc/rules';
+import type { BoardProps } from 'boardgame.io/react';
+import { engineMoveOptions, type EngineMoveOption } from '@bc/game';
+import type { CoreState } from '@bc/rules';
 
-type PoliticalAction = { type: string; payload: unknown };
+type Moves = Record<string, (...args: unknown[]) => void>;
 
-export interface CoreMoves {
-  placeTile: (coord: AxialCoord) => void;
-  doPoliticalAction: (action: PoliticalAction) => void;
+export function submitCoreOption(moves: Moves, option: EngineMoveOption): void {
+  moves[option.moveType](...option.parameters);
 }
-export interface CoreProps { G: CoreState; ctx: Ctx; isActive: boolean; moves: CoreMoves }
 
-function PoliticalActions({ options, submit }: { options: PoliticalAction[]; submit: CoreMoves['doPoliticalAction'] }) {
+function OptionPicker({ options, submit }: { options: EngineMoveOption[]; submit: (option: EngineMoveOption) => void }) {
   const [selected, setSelected] = useState(0);
   return (
     <form onSubmit={event => {
       event.preventDefault();
-      const action = options[selected];
-      if (action) submit(action);
+      const option = options[selected];
+      if (option) submit(option);
     }}>
       <label>
-        Political action{' '}
+        Action{' '}
         <select value={selected} onChange={event => setSelected(Number(event.target.value))}>
-          {options.map((action, i) => (
-            <option key={i} value={i}>{action.type} {JSON.stringify(action.payload)}</option>
+          {options.map(({ moveType, parameters }, index) => (
+            <option key={index} value={index}>{moveType} {JSON.stringify(parameters)}</option>
           ))}
         </select>
       </label>{' '}
-      <button type="submit" disabled={!options[selected]}>Play</button>
+      <button type="submit" disabled={!options[selected]}>Confirm</button>
     </form>
   );
 }
 
-export default function CoreBoard({ G, ctx, isActive, moves }: CoreProps) {
-  const drawn = G.tiles.drawResolution;
-  const stage = ctx.activePlayers?.[ctx.currentPlayer];
-  const additional = stage === 'AdditionalPoliticalAction';
-  const political = isActive && (additional || stage === 'ExactlyOnePoliticalAction');
+interface CoreViewProps {
+  G: CoreState;
+  ctx: Ctx;
+  revision: number;
+  playerID?: string | null;
+  submit: (option: EngineMoveOption) => void;
+}
+
+export function CoreView({ G, ctx, revision, playerID, submit }: CoreViewProps) {
+  const activePlayer = Object.keys(ctx.activePlayers ?? {})[0] ?? ctx.currentPlayer;
+  const stage = ctx.activePlayers?.[activePlayer];
+  const options = playerID == null ? [] : engineMoveOptions(G, ctx, playerID);
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <div><strong>Core {stage}</strong></div>
-      {drawn ? (
-        <div>
-          <div>Drawn <code>{drawn.tileId}</code></div>
-          <div>Legal placements</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {drawn.legalCoords.map(c => (
-              <button key={`${c.q},${c.r}`} disabled={!isActive} onClick={() => moves.placeTile(c)}>
-                ({c.q},{c.r})
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : political && (
-        <PoliticalActions
-          key={`${ctx.turn}-${stage}`}
-          options={[...politicalMoveOptions(G, ctx.currentPlayer, additional)]}
-          submit={moves.doPoliticalAction}
-        />
+      <div><strong>{ctx.gameover === undefined ? `Core ${stage ?? ''}` : 'Game over'}</strong></div>
+      <div>Turn {ctx.turn}, player {ctx.currentPlayer}</div>
+      {stage && activePlayer !== ctx.currentPlayer && <div>Decision by player {activePlayer}</div>}
+      {G.tiles.drawResolution && <div>Drawn <code>{G.tiles.drawResolution.tileId}</code></div>}
+      {options.length > 0 && (
+        <OptionPicker key={revision} options={options} submit={submit} />
       )}
     </div>
   );
+}
+
+export default function CoreBoard({ G, ctx, _stateID, playerID, isActive, moves }: BoardProps<CoreState>) {
+  return <CoreView G={G} ctx={ctx} revision={_stateID} playerID={isActive ? playerID : null}
+    submit={option => submitCoreOption(moves, option)} />;
 }

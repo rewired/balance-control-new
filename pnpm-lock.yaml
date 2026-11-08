@@ -57,6 +57,12 @@ importers:
 
   packages/client-web:
     dependencies:
+      '@bc/game':
+        specifier: workspace:*
+        version: link:../game
+      '@bc/rules':
+        specifier: workspace:*
+        version: link:../rules
       '@bc/shared':
         specifier: workspace:*
         version: link:../shared
