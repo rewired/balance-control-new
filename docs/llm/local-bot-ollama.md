@@ -1,6 +1,6 @@
-# Local LLM Bot — Ollama Runbook
+# Local LLM Bot â€” Ollama Runbook
 
-This guide runs the LLM bot locally using Ollama. The bot never constructs moves: it picks from enumerated legal options only (AGENTS §4.1) and falls back deterministically if the model is unavailable.
+This guide runs the LLM bot locally using Ollama. The bot never constructs moves: it picks from enumerated legal options only (AGENTS Â§4.1) and falls back deterministically if the model is unavailable.
 
 ## Prereqs
 - Node.js 20.11+ and pnpm 10 (repo uses `packageManager: pnpm@10.18.0`)

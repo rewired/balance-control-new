@@ -1,4 +1,4 @@
-# Task 0002 â€” boardgame.io Hello-Game (Hotseat + Network skeleton)
+# Task 0002 — boardgame.io Hello-Game (Hotseat + Network skeleton)
 
 ## Goal
 Introduce a minimal boardgame.io game that can run:
@@ -51,7 +51,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled

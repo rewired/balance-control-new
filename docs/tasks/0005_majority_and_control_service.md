@@ -1,4 +1,4 @@
-# Task 0005 â€” Majority & Control Service (Canonical computeMajority) â€” CORE-01-05
+# Task 0005 — Majority & Control Service (Canonical computeMajority) — CORE-01-05
 
 ## Goal
 Implement `computeMajority(tileCoord)` as the single canonical majority function and derive control from it.
@@ -53,7 +53,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled

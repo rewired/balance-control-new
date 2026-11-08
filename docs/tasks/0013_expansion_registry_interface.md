@@ -1,4 +1,4 @@
-# Codex Task â€” BALANCE // CONTROL (Software Edition)
+# Codex Task — BALANCE // CONTROL (Software Edition)
 
 **Date:** 2026-02-11  
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
@@ -11,25 +11,25 @@
 - Canonical effect resolver: AGENTS §3.5  
 - Production order: AGENTS §3.6  
 - Start Committee immunity: AGENTS §3.7  
-- Tests + golden replays + hashing: AGENTS §5.1â€“§5.3
+- Tests + golden replays + hashing: AGENTS §5.1–§5.3
 
 **Repo:** This task assumes the current codebase is the one where Task 0006 is completed.
 
 ---
 
-# Task 0013 â€” Expansion Registry Interface (registerExpansion)
+# Task 0013 — Expansion Registry Interface (registerExpansion)
 
 ## Goal
 Create the canonical module interface for expansions and a registry that the engine can use to:
 - register expansion-provided resources
 - register expansion-provided zones/state initializers
-- provide hooks for resolver/production and move injection (to be wired in tasks 0014â€“0016)
+- provide hooks for resolver/production and move injection (to be wired in tasks 0014–0016)
 
 This formalizes AGENTS §3.8.
 
 ## Inputs
 - `AGENTS.md` §3.4, §3.8
-- Tasks 0010â€“0012 completed.
+- Tasks 0010–0012 completed.
 
 ## Outputs
 ### Code
@@ -38,7 +38,7 @@ This formalizes AGENTS §3.8.
     - `ExpansionModule`
     - `ExpansionRegistration`
   - API:
-    - `createExpansionRegistry(config)` â†’ returns an ordered list of enabled modules
+    - `createExpansionRegistry(config)` → returns an ordered list of enabled modules
     - `registerExpansion(module: ExpansionModule)`
   - `ExpansionModule` must support:
     - `id: ExpansionId`

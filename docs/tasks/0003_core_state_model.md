@@ -1,4 +1,4 @@
-# Task 0003 â€” Core State Model (Zones + Objects) â€” CORE-01-00/02
+# Task 0003 — Core State Model (Zones + Objects) — CORE-01-00/02
 
 ## Goal
 Implement the **canonical state model** and object representations required by CORE-01.
@@ -58,7 +58,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled

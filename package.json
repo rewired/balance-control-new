@@ -5,10 +5,10 @@
     "packageManager":  "pnpm@10.18.0",
     "engines":  {
                     "node":  ">=24.11.0 <25",
-                    "pnpm":  "\u003e=9"
+                    "pnpm":  ">=9"
                 },
     "scripts":  {
-                    "prepare":  "husky install || echo \u0027husky not installed\u0027",
+                    "prepare":  "husky install || echo 'husky not installed'",
                     "build":  "pnpm -r build",
                     "lint":  "pnpm -r lint",
                     "check:mutation":  "node scripts/check-no-direct-mutation.mjs",

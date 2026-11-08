@@ -1,4 +1,4 @@
-# Codex Task â€” BALANCE // CONTROL (Software Edition)
+# Codex Task — BALANCE // CONTROL (Software Edition)
 
 **Date:** 2026-02-11  
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
@@ -11,13 +11,13 @@
 - Canonical effect resolver: AGENTS §3.5  
 - Production order: AGENTS §3.6  
 - Start Committee immunity: AGENTS §3.7  
-- Tests + golden replays + hashing: AGENTS §5.1â€“§5.3
+- Tests + golden replays + hashing: AGENTS §5.1–§5.3
 
 **Repo:** This task assumes the current codebase is the one where Task 0006 is completed.
 
 ---
 
-# Task 0012 â€” Expansion State Namespacing (G.exp Slices)
+# Task 0012 — Expansion State Namespacing (G.exp Slices)
 
 ## Goal
 Introduce a canonical namespacing for expansion state so that:
@@ -42,7 +42,7 @@ Introduce a canonical namespacing for expansion state so that:
 
 - `@bc/game`:
   - Setup:
-    - If at least one expansion enabled â†’ create `G.exp` object.
+    - If at least one expansion enabled → create `G.exp` object.
     - Create `G.exp[expId]` **only** for enabled expansions.
 
 ### Tests
@@ -56,14 +56,14 @@ Introduce a canonical namespacing for expansion state so that:
 
 ## Constraints
 - Do not implement any expansion mechanics.
-- Do not create any empty â€œmeasure zonesâ€ yet; those come with expansion modules.
+- Do not create any empty “measure zones” yet; those come with expansion modules.
 
 ## Invariants
 - State JSON must stay stable and deterministic (field ordering handled later by hashing task; but avoid non-deterministic insertion here).
 
 ## Acceptance Criteria
 - Tests explicitly assert absence/presence rules.
-- No â€œghostâ€ expansion zones or arrays.
+- No “ghost” expansion zones or arrays.
 
 
 ---

@@ -20,7 +20,7 @@ function stateWithResort(q=1,r=0,w=5): CoreState {
   };
 }
 
-describe('Production â€” CORE-01-06-16', () => {
+describe('Production — CORE-01-06-16', () => {
   it('awards all to controlling player', () => {
     const G = stateWithResort(1,0,3);
     G.influencesOnBoard = [ { tileId: 'DOM-W1-1', owner: '0', id: 'test-1' } ];

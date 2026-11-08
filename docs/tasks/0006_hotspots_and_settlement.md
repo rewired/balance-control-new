@@ -1,4 +1,4 @@
-# Task 0006 â€” Effects: Hotspots + Round Settlement + Production Order â€” CORE-01-06/07
+# Task 0006 — Effects: Hotspots + Round Settlement + Production Order — CORE-01-06/07
 
 ## Goal
 Implement the canonical effect system pieces needed for CORE completion:
@@ -27,8 +27,8 @@ Implement the canonical effect system pieces needed for CORE completion:
 
 ## Constraints
 - No expansion modifiers yet, but implement the modifier pipeline hook points:
-  - â€œdoubling effectsâ€ step
-  - â€œproduction output modifiersâ€ step
+  - “doubling effects” step
+  - “production output modifiers” step
   (Leave them empty for core-only.)
 - Hotspots produce no resources.
 
@@ -63,7 +63,7 @@ When the implementation is finished, you MUST do all of the following before dec
 2. Update documentation:
    - /docs/changelog.md (required)
    - /docs/design-decisions/DD-XXXX-<topic>.md (if any architectural decision was made)
-   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for â€œconvenienceâ€)
+   - /docs/rules/ERRATA-XXXX.md (only if a rules ambiguity/defect was discovered; never for “convenience”)
 3. Ensure repo hygiene:
    - No temporary files added
    - No dead state introduced when expansions are disabled

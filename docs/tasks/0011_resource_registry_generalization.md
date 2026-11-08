@@ -1,4 +1,4 @@
-# Codex Task â€” BALANCE // CONTROL (Software Edition)
+# Codex Task — BALANCE // CONTROL (Software Edition)
 
 **Date:** 2026-02-11  
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
@@ -11,13 +11,13 @@
 - Canonical effect resolver: AGENTS §3.5  
 - Production order: AGENTS §3.6  
 - Start Committee immunity: AGENTS §3.7  
-- Tests + golden replays + hashing: AGENTS §5.1â€“§5.3
+- Tests + golden replays + hashing: AGENTS §5.1–§5.3
 
 **Repo:** This task assumes the current codebase is the one where Task 0006 is completed.
 
 ---
 
-# Task 0011 â€” Resource Registry Generalization (No Hardcoded DOM/FOR/INF)
+# Task 0011 — Resource Registry Generalization (No Hardcoded DOM/FOR/INF)
 
 ## Goal
 Remove hardcoded resource-type branching and introduce a **registry-driven resource model** consistent with AGENTS §1.6.

@@ -35,10 +35,10 @@ This task is explicitly designed to avoid the common failure mode:
 1. Remove UTF-8 BOM where present (byte-level removal only).
 2. Fix known mojibake sequences ONLY where the original intent is unambiguous.
    - Allowed replacements (examples):
-     - "Ã‚§" -> "§"
-     - "Ã¤" -> "ä", "Ã¶" -> "ö", "Ã¼" -> "ü"
-     - "Ã„" -> "Ä", "Ã–" -> "Ö", "Ãœ" -> "Ü"
-     - "ÃŸ" -> "ß"
+     - "§" -> "§"
+     - "ä" -> "ä", "ö" -> "ö", "ü" -> "ü"
+     - "Ä" -> "Ä", "Ö" -> "Ö", "Ü" -> "Ü"
+     - "ß" -> "ß"
    - Forbidden:
      - Any global re-encoding like iconv -f cp1252 -t utf8 across the whole repo
      - Any action that turns valid characters into the Unicode replacement character "REPLACEMENT CHARACTER (U+FFFD)"

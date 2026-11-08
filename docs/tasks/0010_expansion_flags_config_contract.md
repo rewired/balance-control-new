@@ -1,4 +1,4 @@
-# Codex Task â€” BALANCE // CONTROL (Software Edition)
+# Codex Task — BALANCE // CONTROL (Software Edition)
 
 **Date:** 2026-02-11  
 **Style:** Codex task contract (Inputs / Outputs / Constraints / Invariants / Acceptance / PR Checklist)
@@ -11,13 +11,13 @@
 - Canonical effect resolver: AGENTS §3.5  
 - Production order: AGENTS §3.6  
 - Start Committee immunity: AGENTS §3.7  
-- Tests + golden replays + hashing: AGENTS §5.1â€“§5.3
+- Tests + golden replays + hashing: AGENTS §5.1–§5.3
 
 **Repo:** This task assumes the current codebase is the one where Task 0006 is completed.
 
 ---
 
-# Task 0010 â€” Expansion Flags & Match Config Contract
+# Task 0010 — Expansion Flags & Match Config Contract
 
 ## Goal
 Introduce a **single canonical match config contract** that can enable/disable expansions, and ensure the state contains **no expansion artifacts** when expansions are disabled.
@@ -52,7 +52,7 @@ This is prerequisite plumbing for modular expansions and for later resolver + mo
 ## Constraints
 - **Do not change any normative rules**.
 - No expansion mechanics implemented in this task (only flags + validation + plumbing).
-- No â€œempty placeholder arraysâ€ for expansions when disabled (AGENTS §5.5).
+- No “empty placeholder arrays” for expansions when disabled (AGENTS §5.5).
 
 ## Invariants
 - A match created with no expansion flags must behave as **pure CORE**.
@@ -60,8 +60,8 @@ This is prerequisite plumbing for modular expansions and for later resolver + mo
 
 ## Acceptance Criteria
 - `MatchConfig` validates:
-  - missing `expansions` â†’ treated as all false
-  - unknown keys â†’ rejected by zod (strict)
+  - missing `expansions` → treated as all false
+  - unknown keys → rejected by zod (strict)
 - Unit tests demonstrate:
   - CORE-only match has **no expansion zones** and **no expansion resources**
   - enabling `exp01` creates its state slice placeholder **only when enabled** (actual zones can be added in later tasks)
