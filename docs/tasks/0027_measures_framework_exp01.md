@@ -33,7 +33,7 @@ EXP-02 and EXP-03 will reuse the same lifecycle rules but keep separate zones.
 - Start Committee immunity remains intact (CORE-01-08-06A/B).
 
 ## Invariants
-- usedThisRound resets immediately after Round Settlement ends (EXP-01-07-07).
+- usedThisRound resets only when a new round actually begins, after Round Settlement and due effect expiry; no reset follows the final Settlement (EXP-01-07-07; CORE-01-07-17).
 
 ## Acceptance Criteria
 - Unit tests:
@@ -71,6 +71,8 @@ When the implementation is finished, you MUST do all of the following before dec
    - Do not leave placeholders
 
 ### Final Checklist (fill after completion)
+
+Historical implementation record: the checked results below predate the rules review completed on 2026-11-08. The invariant above is aligned with approved R25a/R26; these earlier results do not verify the newly consolidated rules. Implementation revalidation remains outstanding as recorded in DD-0017.
 
 - [x] pnpm lint passed (all packages): see pnpm -w -r lint ? Done
 - [x] pnpm test passed: all packages green; game: 10 files, 23 tests; rules: 13 files, 33 tests.
