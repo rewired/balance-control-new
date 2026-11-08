@@ -28,7 +28,7 @@ function installModule(id: ExpansionId, hooks: ExpansionHooks): void {
       isPlayMeasure: true,
       payloadSchema: registerPayload,
       execute: (G, owner, payload: RegisterPayload) => createResolver()(G, {
-        kind: 'registerMeasureEffect', instance: { ...payload, owner },
+        kind: 'registerMeasureEffect', instance: { ...payload, owner, duration: payload.sourceCardId === 'CLM_M11' ? 'ownerNextTurn' : 'thisRound' },
       }),
     }) : undefined,
   });
@@ -98,7 +98,7 @@ describe('Production effects through boardgame.io', () => {
     const armed = client.getState()!;
     expect(armed.ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
     expect(armed.G.activeMeasureEffects).toEqual([
-      { id: 'ECO_M09:1', sourceCardId: 'ECO_M09', playNumber: 1, owner: '0', targetPlayerID: '1' },
+      { id: 'ECO_M09:1', sourceCardId: 'ECO_M09', playNumber: 1, owner: '0', targetPlayerID: '1', duration: 'thisRound' },
     ]);
     expect(getControl(armed.G, dom.coord)).toBeNull();
     placeMarker(client, first);

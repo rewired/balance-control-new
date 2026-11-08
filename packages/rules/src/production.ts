@@ -13,6 +13,7 @@ export function resolveProductionForTile(state: CoreState, coord: AxialCoord, mo
 export function resolveRoundSettlement(state: CoreState, modules?: readonly ExpansionModule[]): void {
   // CORE-01-07-04(c): settle ResortTiles in ascending ordinal Tile ID order.
   const resolve = createResolver(modules);
+  resolve(state, { kind: 'beforeSettlementProduction' });
   const resorts = state.tiles.board.filter(placement => state.allTiles[placement.tileId]?.kind === 'ResortTile');
   resorts.sort((a, b) => a.tileId < b.tileId ? -1 : a.tileId > b.tileId ? 1 : 0);
   for (const placement of resorts) {

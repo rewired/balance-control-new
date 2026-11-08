@@ -105,18 +105,40 @@ export interface MeasureDeckState {
 }
 
 export interface Exp01State { measures?: MeasureDeckState }
-export interface Exp02State { measures?: MeasureDeckState }
+export const RegulationKinds = ['SecurityLevel', 'Control', 'Administration', 'Blockade'] as const;
+export type RegulationKind = typeof RegulationKinds[number];
+export interface Regulation { id: string; kind: RegulationKind }
+export interface BoardRegulation extends Regulation { tileId: string }
+export interface RegulationZones {
+  attached: BoardRegulation[];
+  supply: Regulation[];
+  serial: number;
+}
+export type RegulationOperation =
+  | { operation: 'place'; regulationKind: RegulationKind; tileId: string }
+  | { operation: 'move'; regulationId: string; tileId: string }
+  | { operation: 'remove'; regulationId: string }
+  | { operation: 'removeAll'; tileId: string };
+export interface Exp02State { measures?: MeasureDeckState; regulations?: RegulationZones }
 export interface Exp03State { measures?: MeasureDeckState }
 
-export type ContinuingMeasureId = 'ECO_M03' | 'ECO_M09' | 'CLM_M11';
+export type MeasureDuration = 'thisRound' | 'nextRound' | 'throughNextRound' | 'ownerNextTurn' | 'thisTurn' | 'targetNextTurn' | 'untilConsumed';
 
 // EXP-01-07-08: the production effect survives the card's transfer or recycling.
 export interface ActiveMeasureEffect {
   id: string;
-  sourceCardId: ContinuingMeasureId;
+  sourceCardId: string;
   playNumber: 1 | 2;
   owner: string;
   targetPlayerID?: string;
+  targetTileId?: string;
+  targetResort?: ResourceId;
+  targetRegulationId?: string;
+  regulation?: RegulationOperation;
+  duration: MeasureDuration;
+  waitingForRound?: true;
+  waitingForTurn?: true;
+  used?: true;
 }
 
 export interface CoreState {

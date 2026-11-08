@@ -1,4 +1,4 @@
-import type { AxialCoord, ContinuingMeasureId, CoreState, ExpansionId, ResourceId, ResortTile, Tile } from './types.js';
+import type { AxialCoord, CoreState, ExpansionId, MeasureDuration, RegulationOperation, ResourceId, ResortTile, Tile } from './types.js';
 import type { ResourceRegistry, ResourceAmounts } from './resources.js';
 import type { EffectDescriptor } from './effects.js';
 import type { ExpansionFlags, MatchConfig } from './schemas.js';
@@ -6,6 +6,12 @@ import type { ExpansionFlags, MatchConfig } from './schemas.js';
 export interface ProhibitionsArgs { G: CoreState; effect: EffectDescriptor }
 export interface CostIncreasesArgs { G: CoreState; effect: EffectDescriptor; cost?: Partial<ResourceAmounts> }
 export interface OutputModifiersArgs { G: CoreState; effect: EffectDescriptor; amount: number }
+export interface Surcharge {
+  id: string;
+  source: 'measure' | 'regulation';
+  resources?: readonly ResourceId[];
+  climate?: true;
+}
 export interface ProductionModifiersArgs { G: CoreState; coord: AxialCoord; tile: ResortTile; amount: number }
 export type ProductionModifier = { source: 'measure' | 'regulation' | 'other' } & (
   { kind: 'double' } | { kind: 'additive'; delta: number }
@@ -14,7 +20,12 @@ export type ProductionModifier = { source: 'measure' | 'regulation' | 'other' } 
 export interface MeasureRule {
   cost: Readonly<Partial<ResourceAmounts>>;
   targetPlayer?: 'any' | 'opponent';
-  continuingEffect?: ContinuingMeasureId;
+  targetTile?: (G: CoreState, playerID: string, tile: Tile, coord: AxialCoord) => boolean;
+  targetResort?: 'any' | 'unique';
+  gainTargetResort?: true;
+  targetRegulation?: true;
+  regulation?: { timing: 'immediate' | 'settlement'; operation: RegulationOperation['operation']; hotspotOnly?: true };
+  duration?: MeasureDuration;
 }
 
 export interface ConversionAlternative {
@@ -26,6 +37,7 @@ export interface ConversionAlternative {
 export interface ExpansionHooks {
   prohibitions?: (args: ProhibitionsArgs) => boolean;
   costIncreases?: (args: CostIncreasesArgs) => Partial<ResourceAmounts> | void;
+  surcharges?: (args: CostIncreasesArgs) => readonly Surcharge[] | void;
   outputModifiers?: (args: OutputModifiersArgs) => number | void;
   // CORE-01-06-16-00: report only effects eligible for this tile's production instance.
   productionModifiers?: (args: ProductionModifiersArgs) => readonly ProductionModifier[] | void;

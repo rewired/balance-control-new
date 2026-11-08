@@ -3,7 +3,7 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 import type { AxialCoord, CoreState } from '@bc/rules';
 import {
   assertExpansionStateMatchesConfig, buildMoveCatalog, corePoliticalMoves,
-  createExpansionRegistry, createResolver, politicalMoveOptions, resolveRoundSettlement, z,
+  createExpansionRegistry, createResolver, PaymentSelectionSchema, politicalMoveOptions, resolveRoundSettlement, z,
 } from '@bc/rules';
 
 export const CoreStages = {
@@ -15,20 +15,25 @@ export const CoreStages = {
 const PoliticalActionSchema = z.object({ type: z.string(), payload: z.unknown() }).strict();
 
 // CORE-01-04-04/-05/-08: place the offered tile at a legal coordinate.
-const placeTile: Move<CoreState> = ({ G, ctx, events }, requested: AxialCoord) => {
+const placeTile: Move<CoreState> = ({ G, ctx, events }, requested: AxialCoord, payment?: unknown) => {
   const drawn = G.tiles.drawResolution;
   const coord = drawn?.legalCoords.find(c => c.q === requested?.q && c.r === requested?.r);
   if (!drawn || !coord) return INVALID_MOVE;
 
-  const placed = createResolver()(G, { kind: 'placeTile', tileId: drawn.tileId, coord, playerID: ctx.currentPlayer });
+  const selected = PaymentSelectionSchema.optional().safeParse(payment);
+  if (!selected.success) return INVALID_MOVE;
+  const placed = createResolver()(G, { kind: 'placeTile', tileId: drawn.tileId, coord, playerID: ctx.currentPlayer, payment: selected.data });
   if (!placed.ok) return INVALID_MOVE;
   beginPoliticalSlot({ G, ctx, events }, false);
 };
 
 function settleAndRecordTurn(G: CoreState, ctx: Ctx, settle: boolean): void {
+  // CORE-01-07-08/-09: expire turn-bound effects before any regular or final Settlement.
+  const resolve = createResolver();
+  resolve(G, { kind: 'expireMeasureEffects', boundary: 'turnEnd', playerID: ctx.currentPlayer });
   if (settle) resolveRoundSettlement(G);
   // AGENTS 5.3: record the completed state before the next turn begins.
-  createResolver()(G, { kind: 'recordTurnHash', turn: ctx.turn, playerID: ctx.currentPlayer });
+  resolve(G, { kind: 'recordTurnHash', turn: ctx.turn, playerID: ctx.currentPlayer });
 }
 
 function finishMatch({ G, ctx, events }: Pick<FnContext<CoreState>, 'G' | 'ctx' | 'events'>): void {
@@ -51,9 +56,15 @@ function completePoliticalSequence({ G, ctx, events }: TurnContext): void {
   else events.endTurn();
 }
 
+function budgetDeficits(G: CoreState, playerID: string): string[] {
+  return G.activeMeasureEffects?.filter(instance => instance.sourceCardId === 'ECO_M06' && instance.targetPlayerID === playerID)
+    .map(instance => instance.id) ?? [];
+}
+
 function beginPoliticalSlot(turn: TurnContext, additional: boolean): void {
   // CORE-01-04-09A..09C: skip an empty slot automatically, after placement or Measure resolution.
   if (politicalMoveOptions(turn.G, turn.ctx.currentPlayer, additional).next().done) {
+    createResolver()(turn.G, { kind: 'consumeBudgetDeficits', ids: budgetDeficits(turn.G, turn.ctx.currentPlayer) });
     completePoliticalSequence(turn);
     return;
   }
@@ -77,7 +88,9 @@ const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown)
 
   const payload = definition.payloadSchema.safeParse(input.data.payload === undefined ? {} : input.data.payload);
   if (!payload.success) return INVALID_MOVE;
+  const deficits = budgetDeficits(G, ctx.currentPlayer);
   if (!definition.execute(G, ctx.currentPlayer, payload.data).ok) return INVALID_MOVE;
+  createResolver()(G, { kind: 'consumeBudgetDeficits', ids: deficits });
 
   // EXP-01-06-05(b) and CORE-01-07-08: complete the whole action sequence in this turn.
   if (definition.isPlayMeasure) beginPoliticalSlot({ G, ctx, events }, true);
@@ -96,11 +109,12 @@ export const CoreTurn: NonNullable<Game<CoreState>['turn']> = {
     assertExpansionStateMatchesConfig(G);
     const resolve = createResolver();
 
-    // CORE-01-07-14/-17: expire effects of the player whose next turn actually begins.
-    resolve(G, { kind: 'expireMeasureEffects', boundary: 'turnStart', playerID: ctx.currentPlayer });
+    const nextRound = ctx.turn > 1 && ctx.playOrderPos === 0;
+    // CORE-01-07-12/-14/-17: apply duration boundaries at the beginning of the actual turn.
+    resolve(G, { kind: 'expireMeasureEffects', boundary: 'turnStart', playerID: ctx.currentPlayer, nextRound });
 
     // CORE-01-07-17 and EXP-01-07-07: reset usage at the start of the next round.
-    if (ctx.turn > 1 && ctx.playOrderPos === 0) {
+    if (nextRound) {
       resolve(G, { kind: 'resetMeasuresRound' });
     }
 

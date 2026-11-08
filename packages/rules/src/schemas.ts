@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { topologyIds } from './topology/index.js';
+import { RegulationKinds } from './types.js';
 
 // Expansion flags — explicit IDs only (Task 0010)
 export const ExpansionIdEnum = z.enum(['exp01', 'exp02', 'exp03']);
@@ -38,6 +39,21 @@ export const MatchConfigSchema = z
 
 export type MatchConfig = z.infer<typeof MatchConfigSchema>;
 export type MatchConfigInput = z.input<typeof MatchConfigSchema>;
+
+const PaymentId = z.string().min(1);
+export const PaymentSelectionSchema = z.object({
+  surcharges: z.record(PaymentId).optional(),
+  replacement: z.object({ costId: PaymentId, resource: PaymentId }).strict().optional(),
+  transfers: z.array(z.object({ costId: PaymentId, effectId: PaymentId, playerID: PaymentId }).strict()).optional(),
+  council: z.object({ effectId: PaymentId, resource: PaymentId }).strict().optional(),
+}).strict();
+export type PaymentSelection = z.infer<typeof PaymentSelectionSchema>;
+export const RegulationOperationSchema = z.discriminatedUnion('operation', [
+  z.object({ operation: z.literal('place'), regulationKind: z.enum(RegulationKinds), tileId: PaymentId }).strict(),
+  z.object({ operation: z.literal('move'), regulationId: PaymentId, tileId: PaymentId }).strict(),
+  z.object({ operation: z.literal('remove'), regulationId: PaymentId }).strict(),
+  z.object({ operation: z.literal('removeAll'), tileId: PaymentId }).strict(),
+]);
 
 export const MatchSetupDataSchema = MatchConfigSchema.extend({ matchSeed: z.string().min(1).default('match') });
 

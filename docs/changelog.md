@@ -450,3 +450,10 @@
 - Alle acht Erweiterungskombinationen erhalten nur ihre aktiven Ressourcen, Tiles und Decks. Setup-Tests prüfen die zehn EXP-01-Karten, SEC, den CLM-Deckfilter und das größere Material für fünf und sechs Spieler.
 - Investment Program bietet den 2-ECO-Tausch am kontrollierten Grassroots an. Collective Bargaining, Investment Freeze und Supply Chain Disruption nutzen ihre regulären Decks, Preise und Ziele. T11/T12 prüfen fehlgeschlagene und erfolgreiche Zahlungen sowie Refill.
 - 140 Workspace-Tests, Lint, Mutation-Check und Game-TypeScript-Build bestehen unter Node 22.22.2.
+
+## 2026-11-08 — Task 0030 — Zeitfenster, Kosten und Regulationen
+
+- Aktive Maßnahmen überdauern den Kartenumlauf und folgen tatsächlichen Zug-, Runden- und Settlement-Grenzen. Die zehn EXP-01-Karten sind an den bezahlten Spielweg angebunden.
+- Der Zahlungsplan bucht Grundkosten und Aufschläge gemeinsam und berücksichtigt Herkunft, Climate-Schutz, Ersetzung, Transfer und Council-Nutzung. Pflichtslots ohne legale Aktion verbrauchen Budget Deficit.
+- Regulationen behalten beim Transfer ihre Identität. Authority Apparatus bindet seinen eigenen Kontext. Emergency Decree löst seinen separaten Versuch vor der Hotspot-Mehrheit aus, und registrierte Settlement-Operationen laufen vor der Produktion.
+- 153 Workspace-Tests, Lint, Mutation-Check und Game-TypeScript-Build bestehen unter Node 22.22.2.

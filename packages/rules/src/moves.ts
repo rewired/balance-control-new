@@ -3,6 +3,8 @@ import type { CoreState } from './types.js';
 import { createExpansionRegistry, type ExpansionModule } from './expansion-registry.js';
 import { createResolver, type PoliticalActionEffect, type ResolveResult } from './effects.js';
 import { createMatchResourceRegistry } from './resources.js';
+import { PaymentSelectionSchema, RegulationOperationSchema } from './schemas.js';
+import { regulationOperations } from './regulations.js';
 
 // MoveDefinition is rules-only (no boardgame.io types here per AGENTS §1.2)
 export interface MoveDefinition<P> {
@@ -60,8 +62,14 @@ export function buildMoveCatalog(coreMoves: MoveDefinition<unknown>[], modules: 
   return { types, schemas, definitions: defs };
 }
 
-const MeasurePayload = z.object({ measureId: z.string().min(1) }).strict();
-const PlayMeasurePayload = MeasurePayload.extend({ targetPlayerID: z.string().min(1).optional() });
+const MeasurePayload = z.object({ measureId: z.string().min(1), payment: PaymentSelectionSchema.optional() }).strict();
+const PlayMeasurePayload = MeasurePayload.extend({
+  targetPlayerID: z.string().min(1).optional(),
+  targetTileId: z.string().min(1).optional(),
+  targetResort: z.string().min(1).optional(),
+  targetRegulationId: z.string().min(1).optional(),
+  regulation: RegulationOperationSchema.optional(),
+});
 
 // EXP-01-06-00A/-01A: each active deck exposes the same shared actions.
 function measureMove(module: ExpansionModule, kind: 'takeMeasure' | 'playMeasure'): MoveDefinition<z.infer<typeof PlayMeasurePayload>> {
@@ -77,10 +85,21 @@ function measureMove(module: ExpansionModule, kind: 'takeMeasure' | 'playMeasure
       const cards = kind === 'takeMeasure' ? deck?.open : deck?.hands[playerID];
       return (cards ?? []).flatMap(measureId => {
         if (!measureId) return [];
-        const target = kind === 'playMeasure' ? module.measureRules?.[measureId]?.targetPlayer : undefined;
-        const choices = target
-          ? Object.keys(G.players).filter(id => target !== 'opponent' || id !== playerID).map(targetPlayerID => ({ measureId, targetPlayerID }))
-          : [{ measureId }];
+        const rule = kind === 'playMeasure' ? module.measureRules?.[measureId] : undefined;
+        const players = rule?.targetPlayer
+          ? Object.keys(G.players).filter(id => rule.targetPlayer !== 'opponent' || id !== playerID) : [undefined];
+        const tiles = rule?.targetTile ? G.tiles.board.map(tile => tile.tileId) : [undefined];
+        const resorts = rule?.targetResort ? matchResources(G) : [undefined];
+        const regulationIds = rule?.targetRegulation
+          ? G.exp?.exp02?.regulations?.attached.map(item => item.id) ?? [] : [undefined];
+        const operations = rule?.regulation ? [...regulationOperations(G, rule.regulation.operation)] : [undefined];
+        const choices = players.flatMap(targetPlayerID => tiles.flatMap(targetTileId => resorts.flatMap(targetResort =>
+          regulationIds.flatMap(targetRegulationId => operations.map(regulation => ({
+          measureId, ...(targetPlayerID === undefined ? {} : { targetPlayerID }), ...(targetTileId === undefined ? {} : { targetTileId }),
+          ...(targetResort === undefined ? {} : { targetResort }),
+          ...(targetRegulationId === undefined ? {} : { targetRegulationId }),
+          ...(regulation === undefined ? {} : { regulation }),
+        }))))));
         return choices.filter(payload => resolve.previewMeasureAction(G, { kind, expansion, playerID, ...payload }));
       });
     },
@@ -127,7 +146,7 @@ export function corePoliticalMoves(): MoveDefinition<unknown>[] {
   return [
     corePoliticalMove(
       'placeOrMoveInfluence',
-      z.object({ markerId: id, targetTileId: id, sourceTileId: id.optional() }).strict(),
+      z.object({ markerId: id, targetTileId: id, sourceTileId: id.optional(), payment: PaymentSelectionSchema.optional() }).strict(),
       (playerID, payload) => ({ kind: 'placeOrMoveInfluence', playerID, ...payload }),
       function* (G, playerID) {
         for (const { tileId: targetTileId } of G.tiles.board) {
@@ -145,7 +164,7 @@ export function corePoliticalMoves(): MoveDefinition<unknown>[] {
     ),
     corePoliticalMove(
       'formalizeInfluence',
-      z.object({ tileId: id, resources: z.array(id).min(2).max(4) }).strict(),
+      z.object({ tileId: id, resources: z.array(id).min(2).max(4), payment: PaymentSelectionSchema.optional() }).strict(),
       (playerID, payload) => ({ kind: 'formalizeInfluence', playerID, ...payload }),
       function* (G) {
         const resources = matchResources(G);
@@ -160,7 +179,7 @@ export function corePoliticalMoves(): MoveDefinition<unknown>[] {
     ),
     corePoliticalMove(
       'convertResources',
-      z.object({ tileId: id, input: id, output: id, alternative: id.optional() }).strict(),
+      z.object({ tileId: id, input: id, output: id, alternative: id.optional(), payment: PaymentSelectionSchema.optional() }).strict(),
       (playerID, payload) => ({ kind: 'convertResources', playerID, ...payload }),
       function* (G, playerID) {
         const resources = matchResources(G);

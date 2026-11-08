@@ -1,4 +1,4 @@
-import { createResortTiles, getControl, type ExpansionModule } from '@bc/rules';
+import { createResortTiles, getControl, isPoliticalEffect, type ExpansionModule, type ProductionModifier } from '@bc/rules';
 
 const MEASURE_DECK = [
   'ECO_M01', 'ECO_M02', 'ECO_M03', 'ECO_M04', 'ECO_M05', 'ECO_M06', 'ECO_M07', 'ECO_M08', 'ECO_M09', 'ECO_M10',
@@ -21,15 +21,59 @@ export function exp01Economy(): ExpansionModule {
       G.allTiles[placement.tileId]?.kind === 'InvestmentProgram' && getControl(G, placement.coord) === playerID
     ) ? [{ id: 'investmentProgram', input: 'ECO', cost: 2 }] : [],
     measureRules: {
+      // EXP-01-08-M01-02..06.
+      ECO_M01: { cost: { DOM: 1, ECO: 1, INF: 1 }, targetTile: (_G, _player, tile) => tile.kind === 'Hotspot', duration: 'thisRound' },
+      // EXP-01-08-M02-02..05.
+      ECO_M02: { cost: { ECO: 1, FOR: 1 }, targetTile: (_G, _player, tile) => tile.kind === 'ResortTile', duration: 'thisRound' },
       // EXP-01-08-M03-02..04.
-      ECO_M03: { cost: { ECO: 2 }, continuingEffect: 'ECO_M03' },
+      ECO_M03: { cost: { ECO: 2 }, duration: 'thisRound' },
+      // EXP-01-08-M04-02..05.
+      ECO_M04: { cost: { ECO: 1, DOM: 1 }, targetTile: (G, player, tile, coord) => {
+        if (tile.kind !== 'ResortTile' || tile.resort !== 'ECO') return false;
+        const controller = getControl(G, coord);
+        return controller !== null && controller !== player;
+      }, duration: 'thisRound' },
+      // EXP-01-08-M05-02..05.
+      ECO_M05: { cost: { ECO: 1, INF: 1 }, targetTile: (_G, _player, tile) => tile.kind === 'ResortTile', duration: 'thisRound' },
+      // EXP-01-08-M06-02..07A.
+      ECO_M06: { cost: { ECO: 2 }, targetPlayer: 'any', duration: 'untilConsumed' },
+      // EXP-01-08-M07-02..04.
+      ECO_M07: { cost: { DOM: 1, ECO: 2 }, duration: 'nextRound' },
+      // EXP-01-08-M08-02..05.
+      ECO_M08: { cost: { ECO: 3 }, duration: 'thisRound' },
       // EXP-01-08-M09-02..07.
-      ECO_M09: { cost: { ECO: 2, INF: 1 }, targetPlayer: 'opponent', continuingEffect: 'ECO_M09' },
+      ECO_M09: { cost: { ECO: 2, INF: 1 }, targetPlayer: 'opponent', duration: 'thisRound' },
+      // EXP-01-08-M10-02..08.
+      ECO_M10: { cost: { ECO: 1 }, duration: 'thisTurn' },
     },
     hooks: {
-      // EXP-01-08-M03-04: the restriction applies to all ECO conversions in this round.
-      prohibitions: ({ G, effect }) => effect.kind === 'convertResources' && effect.input === 'ECO'
-        && Boolean(G.activeMeasureEffects?.some(instance => instance.sourceCardId === 'ECO_M03')),
+      // EXP-01-08-M06-05: one unrestricted surcharge on the targeted player's next Political Action.
+      surcharges: ({ G, effect }) => isPoliticalEffect(effect) && 'playerID' in effect
+        ? G.activeMeasureEffects?.flatMap(instance => instance.sourceCardId === 'ECO_M06' && instance.targetPlayerID === effect.playerID
+          ? [{ id: instance.id, source: 'measure' as const }] : [])
+        : undefined,
+      prohibitions: ({ G, effect }) => {
+        if (effect.kind === 'convertResources') {
+          // EXP-01-08-M03-04 and EXP-01-08-M07-04.
+          return Boolean(G.activeMeasureEffects?.some(instance =>
+            (instance.sourceCardId === 'ECO_M03' && effect.input === 'ECO')
+            || (instance.sourceCardId === 'ECO_M07' && !instance.waitingForRound)));
+        }
+        if (effect.kind !== 'resolveHotspotAt') return false;
+        // EXP-01-08-M01-05/-06: consume the enclosure without awarding its outcome.
+        const hotspot = G.tiles.board.find(({ coord }) => coord.q === effect.coord.q && coord.r === effect.coord.r);
+        return Boolean(hotspot && G.activeMeasureEffects?.some(instance =>
+          instance.sourceCardId === 'ECO_M01' && instance.targetTileId === hotspot.tileId));
+      },
+      productionModifiers: ({ G, tile }) => G.activeMeasureEffects?.flatMap<ProductionModifier>(instance => {
+        if (instance.targetTileId !== tile.id) return [];
+        // EXP-01-08-M02-05, EXP-01-08-M04-05 and EXP-01-08-M05-05.
+        if (instance.sourceCardId === 'ECO_M02') return [{ source: 'measure', kind: 'double' }];
+        if (instance.sourceCardId === 'ECO_M04' || instance.sourceCardId === 'ECO_M05') {
+          return [{ source: 'measure', kind: 'additive', delta: -1 }];
+        }
+        return [];
+      }),
     },
   };
 }

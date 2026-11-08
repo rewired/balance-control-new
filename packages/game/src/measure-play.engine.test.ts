@@ -54,7 +54,10 @@ describe('Paid Measures through boardgame.io', () => {
       ...economy,
       hooks: {
         ...economy.hooks,
-        productionModifiers: ({ tile }) => tile.id === 'DOM-W5-1' ? [{ source: 'measure', kind: 'double' }] : [],
+        productionModifiers: args => [
+          ...(economy.hooks?.productionModifiers?.(args) ?? []),
+          ...(args.tile.id === 'DOM-W5-1' ? [{ source: 'measure', kind: 'double' } as const] : []),
+        ],
       },
     });
     registerExpansion(exp03Climate());
@@ -170,5 +173,75 @@ describe('Paid Measures through boardgame.io', () => {
     expect(ctx.currentPlayer).toBe('1');
     expect(G.players['0'].personal.resources).toMatchObject({ ECO: 0, FOR: 0, DOM: 1 });
     expect(G.resources.bank).toMatchObject({ ECO: 2, FOR: 1, DOM: 0 });
+  });
+
+  it.each([
+    { measureId: 'ECO_M02', expected: 6 },
+    { measureId: 'ECO_M04', expected: 2 },
+    { measureId: 'ECO_M05', expected: 2 },
+  ])('applies the paid $measureId modifier to the selected ResortTile in Settlement', ({ measureId, expected }) => {
+    const game = createBCGame({ expansions: { exp01: true } });
+    const setup = game.setup!;
+    const targetTileId = 'ECO-W3-1';
+    game.setup = (context, data) => {
+      const G = setup(context, data);
+      takeIntoFixtureHand(G.exp!.exp01!.measures!, measureId, '0');
+      Object.assign(G.players['0'].personal.resources, { ECO: 1, DOM: 1, FOR: 1, INF: 1 });
+      const draw = ['Committee-1', 'Committee-2'];
+      G.tiles.discardFaceUp = G.tiles.drawPile.filter(id => id !== targetTileId && !draw.includes(id));
+      G.tiles.drawPile = draw;
+      G.tiles.board.push({ tileId: targetTileId, coord: { q: 0, r: 1 } });
+      G.influencesOnBoard = [{ ...G.players['1'].personal.influence.shift()!, tileId: targetTileId }];
+      return G;
+    };
+    const client = Client({ game, numPlayers: 2 });
+    const first = place(client);
+    const before = client.getState()!;
+    client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId, targetTileId: first } });
+    expect(client.getState()!._stateID).toBe(before._stateID);
+    client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId, targetTileId } });
+    expect(client.getState()!.G.activeMeasureEffects?.[0].targetTileId).toBe(targetTileId);
+    expect(client.getState()!.G.players['1'].personal.resources.ECO).toBe(0);
+    mark(client, first);
+    mark(client, place(client));
+    expect(client.getState()!.G.players['1'].personal.resources.ECO).toBe(expected);
+    expect(client.getState()!.G.activeMeasureEffects).toBeUndefined();
+  });
+
+  it('activates Debt Brake only in the next actual round and expires it after that Settlement', () => {
+    const game = createBCGame({ expansions: { exp01: true } });
+    const setup = game.setup!;
+    game.setup = (context, data) => {
+      const G = setup(context, data);
+      takeIntoFixtureHand(G.exp!.exp01!.measures!, 'ECO_M07', '0');
+      G.tiles.drawPile = G.tiles.drawPile.filter(id => id !== 'Grassroots-1');
+      G.tiles.board.push({ tileId: 'Grassroots-1', coord: { q: 0, r: 1 } });
+      G.influencesOnBoard = [{ ...G.players['0'].personal.influence.shift()!, tileId: 'Grassroots-1' }];
+      Object.assign(G.players['0'].personal.resources, { DOM: 1, ECO: 2, FOR: 6 });
+      return G;
+    };
+    const client = Client({ game, numPlayers: 2 });
+    const convert = () => client.moves.doPoliticalAction({
+      type: 'convertResources', payload: { tileId: 'Grassroots-1', input: 'FOR', output: 'INF' },
+    });
+    place(client);
+    client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId: 'ECO_M07' } });
+    expect(client.getState()!.G.activeMeasureEffects?.[0].waitingForRound).toBe(true);
+    convert();
+    expect(client.getState()!.G.players['0'].personal.resources.INF).toBe(1);
+    mark(client, place(client));
+
+    const third = place(client);
+    const blocked = client.getState()!;
+    expect(blocked.G.activeMeasureEffects?.[0].id).toBe('ECO_M07:1');
+    expect(blocked.G.activeMeasureEffects?.[0].waitingForRound).toBeUndefined();
+    convert();
+    expect(client.getState()!._stateID).toBe(blocked._stateID);
+    mark(client, third);
+    mark(client, place(client));
+    expect(client.getState()!.G.activeMeasureEffects).toBeUndefined();
+    place(client);
+    convert();
+    expect(client.getState()!.G.players['0'].personal.resources.INF).toBe(2);
   });
 });
