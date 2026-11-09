@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { State } from 'boardgame.io';
@@ -8,6 +8,7 @@ import { CoreGame, CounterGame, createBCGame, hashEngineState, migrateCoreMatchS
 import { describe, expect, it } from 'vitest';
 import { FlatFile } from '#boardgame-server';
 import { CoreSaveStorage } from './core-save-storage.js';
+import { logNetworkMatches } from './network-match-logs.js';
 
 type CoreG = ReturnType<typeof setupCoreMatch>;
 
@@ -31,8 +32,10 @@ describe('CORE saves in boardgame.io FlatFile storage', () => {
   it('exports authoritative persisted actions without exposing lobby data', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'bc-core-log-'));
     try {
-      const storage = new CoreSaveStorage({ dir });
+      const storage = new CoreSaveStorage({ dir: join(dir, 'saves') });
       await storage.connect();
+      const logs = join(dir, 'logs');
+      logNetworkMatches(storage, logs);
       const initialState = InitializeGame({ game: CoreGame, numPlayers: 2, setupData: { matchSeed: 'network-log' } });
       await storage.createMatch('logged-match', { initialState, metadata: {
         gameName: 'core', players: { '0': { id: 0, name: 'private-name', credentials: 'private-credential' } },
@@ -52,6 +55,8 @@ describe('CORE saves in boardgame.io FlatFile storage', () => {
       }
       const exported = await storage.exportMatchLog('logged-match');
       const serialized = JSON.stringify(exported);
+      const written = JSON.parse(await readFile(join(logs, 'logged-match.match-log.json'), 'utf8'));
+      expect(verifyMatchLog(written)).toEqual(exported);
       expect(serialized).not.toMatch(/private-name|private-credential/);
       expect(exported.setup.game.matchSeed).toBe('network-log');
       expect(exported.steps.map(step => step.action.kind)).toEqual(['move', 'undo']);

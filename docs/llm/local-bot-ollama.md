@@ -1,6 +1,6 @@
 # Local Ollama bot and paired duels
 
-To play in the browser, start Ollama, build the workspace with `pnpm build`, and run `pnpm --filter @bc/server dev` alongside `pnpm dev`. Open **Hotseat → Player seats** and use **Check Ollama** to check the connection and refresh the installed models. Pick a model for any seat, including Player 1. The setup checks that each selected model is still installed when you start the match.
+To play in the browser, start Ollama and run `pnpm dev` from the project root. This starts the browser client and the local game server. Open **Hotseat → Player seats** and use **Check Ollama** to check the connection and refresh the installed models. Pick a model for any seat, including Player 1. The setup checks that each selected model is still installed when you start the match.
 
 Run Ollama locally and use `ollama list` to pick an installed model. Build the workspace before starting the runner.
 

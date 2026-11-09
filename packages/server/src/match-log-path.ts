@@ -1,6 +1,13 @@
 import { existsSync } from 'node:fs';
 import { realpath } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const workspace = ['../../../', '../../../../']
+  .map(path => new URL(path, import.meta.url))
+  .find(path => existsSync(new URL('pnpm-workspace.yaml', path)));
+if (!workspace) throw new Error('Cannot locate the match log directory');
+export const logsDirectory = fileURLToPath(new URL('logs/', workspace));
 
 function assertOutsideGit(directory: string) {
   for (let dir = directory; ; dir = dirname(dir)) {

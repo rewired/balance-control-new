@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { createBCGame, type MatchLog } from '@bc/game';
 import { runBotDuel, runBotMatch } from './bot-match.js';
 import { localOllamaOrigin, makeOllamaBackend, ollamaHost } from './ollama.js';
-import { matchLogDirectory } from './match-log-path.js';
+import { logsDirectory } from './match-log-path.js';
 
 const BOT = (process.env.BOT ?? 'random').toLowerCase();
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'llama3.2:3b-instruct-q4_K_M';
@@ -15,15 +15,13 @@ function botExpansions(fallback: string) {
   return Object.fromEntries(flags.map(id => [id, enabled.includes(id)]));
 }
 
-async function matchLogging() {
-  if (!process.env.MATCH_LOG_DIR) return undefined;
-  const root = await matchLogDirectory(process.env.MATCH_LOG_DIR);
+function matchLogging() {
   let dir: string | undefined;
   let count = 0;
   return { model: OLLAMA_MODEL, onLog: async (log: MatchLog) => {
     if (!dir) {
-      await mkdir(root, { recursive: true });
-      dir = await mkdtemp(join(root, 'bot-'));
+      await mkdir(logsDirectory, { recursive: true });
+      dir = await mkdtemp(join(logsDirectory, 'bot-'));
     }
     const output = join(dir, `${++count}.match-log.json`);
     await writeFile(output, JSON.stringify(log, null, 2) + '\n', { flag: 'wx' });
@@ -32,7 +30,7 @@ async function matchLogging() {
 }
 
 async function main() {
-  const logging = await matchLogging();
+  const logging = matchLogging();
   if (BOT === 'duel') {
     const host = localOllamaOrigin(ollamaHost);
     if (!process.env.OLLAMA_MODEL) throw new Error('Set OLLAMA_MODEL to a model shown by ollama list');

@@ -1,8 +1,11 @@
 import { Server } from '#boardgame-server';
+import { join } from 'node:path';
 import { CoreGame, CounterGame } from '@bc/game';
 import { CoreSaveStorage } from './core-save-storage.js';
 import { addOllamaRoutes } from './ollama-routes.js';
-import { matchLogDirectory } from './match-log-path.js';
+import { logsDirectory, matchLogDirectory } from './match-log-path.js';
+import { logNetworkMatches } from './network-match-logs.js';
+import { addHotseatLogRoute } from './hotseat-match-logs.js';
 
 const PORT = Number(process.env.PORT) || 8000;
 const origins = [
@@ -21,5 +24,7 @@ const server = Server({
 });
 
 addOllamaRoutes(server.router, origins);
+addHotseatLogRoute(server.router, origins, join(logsDirectory, 'hotseat'));
+logNetworkMatches(server.db, join(logsDirectory, 'network'));
 server.run(PORT);
 console.log(`boardgame.io server running on http://localhost:${PORT}`);

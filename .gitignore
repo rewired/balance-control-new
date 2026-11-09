@@ -9,6 +9,7 @@ node_modules/
 
 # Coverage and logs
 coverage/
+/logs/
 *.log
 *.match-log.json
 npm-debug.log*

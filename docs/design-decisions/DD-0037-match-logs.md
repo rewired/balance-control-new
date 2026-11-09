@@ -1,39 +1,26 @@
 # DD-0037 — Reproduzierbare Spielprotokolle für Playtests
 
-Das versionierte JSON-Protokoll verwendet die von boardgame.io angenommenen Aktionen. Hotseat und Bot-Runner lesen den lokalen Engine-Client, der Netzwerkexport den gespeicherten Serververlauf. Bot-Vorschauen, ungültige Eingaben und Wiederholungen durch Netzwerk-Synchronisierung landen so nicht im Protokoll. Undo und Redo bleiben als eigene Aktionen sichtbar. Die Engine erzeugt interne Ereignisse beim Replay erneut. Das Protokoll ist außerhalb des Spielzustands; Regelablauf und Zughashes bleiben unverändert.
+Das versionierte JSON-Protokoll verwendet die von boardgame.io angenommenen Aktionen. Hotseat und Bot-Runner lesen den lokalen Engine-Client. Im Netzwerk protokolliert der Server den bestätigten Stand. Bot-Vorschauen, ungültige Eingaben und Wiederholungen durch Netzwerk-Synchronisierung landen so nicht im Protokoll. Undo und Redo bleiben als eigene Aktionen sichtbar. Die Engine erzeugt interne Ereignisse beim Replay erneut.
 
-Der Export baut den Startzustand aus Seed, Spielerzahl und Konfiguration neu auf und vergleicht Start und Ende mit der Originalpartie. Nach jeder bestätigten Aktion enthält er den Zustandshash, den zuletzt von der Engine gespeicherten Zughash, Einfluss auf dem Brett, Vorräte, Noise und Kachelzahlen. `result` enthält die Gewinnerliste der Engine (einschließlich geteilter Siege) oder `null` für eine unvollständige Partie. Der Sitz der Aktion steht in `action.playerID`, der Sitz des aktuellen Zugs in `turnPlayer`: Bei Zwischenentscheidungen können sie abweichen. Automatische Folgen wie Settlement und das Ziehen für den nächsten Zug können bereits in derselben Zustandsaufnahme enthalten sein. Vorratsdifferenzen sind daher Nettoänderungen, keine Aufschlüsselung einzelner Kosten oder Erträge.
+Das Replay baut den Startzustand aus Seed, Spielerzahl und Konfiguration neu auf und prüft die Checkpoints der Originalpartie. Nach jeder bestätigten Aktion enthält das Protokoll den Zustandshash, den zuletzt von der Engine gespeicherten Zughash, Einfluss auf dem Brett, Vorräte, Noise und Kachelzahlen. `result` enthält die Gewinnerliste der Engine (einschließlich geteilter Siege) oder `null` für eine unvollständige Partie. Bei Zwischenentscheidungen können der Sitz der Aktion in `action.playerID` und der Sitz des aktuellen Zugs in `turnPlayer` abweichen. Automatische Folgen wie Settlement und das Ziehen für den nächsten Zug können bereits in derselben Zustandsaufnahme enthalten sein. Vorratsdifferenzen geben die Nettoänderung an.
 
 Der Export übernimmt keine Lobby-Namen, Zugangsdaten oder LLM-Prompts aus den Metadaten. Seed und Aktionen machen verdeckte Inhalte rekonstruierbar; Netzwerklogs deshalb erst nach der Partie mit den Mitspielern teilen. Das Protokollformat hat eine eigene Versionsnummer. Für langfristige Vergleiche die Git-Revision des Playtest-Builds zusammen mit den Logs aufbewahren; ein Replay mit geänderten Regeln kann an einem Hash abweichen.
 
 ## Nutzung
 
-Alle erzeugten Logs und die Netzwerk-Speicherdaten gehören außerhalb des Checkouts. Server und Kommandozeile lehnen Schreibziele in Git-Checkouts ab. `*.match-log.json` ist zusätzlich in Git ignoriert, falls ein Download im Checkout landet.
+Alle erzeugten Spielprotokolle liegen unter `logs/` im Projektverzeichnis. Git ignoriert den gesamten Ordner. `pnpm dev` startet den Browserclient und den lokalen Server gemeinsam.
 
-- **Hotseat:** **Download match log** ist während und nach der Partie verfügbar. Vor dem Verlassen herunterladen; der laufende Hotseat-Spielstand lebt im Browser bis zum Verlassen der Partie.
-- **Netzwerk:** Den Server mit `FLATFILE_DIR` auf ein externes Verzeichnis starten. Falls die bisherigen Speicherdateien im Checkout liegen, das Verzeichnis vor dem Neustart nach außen verschieben und den neuen Pfad setzen. Der Export läuft lokal beim Serverbetreiber, ohne öffentliche Route. Nach der Partie die Match-ID aus der Lobby verwenden. Der flüchtige Servermodus unterstützt keinen Export.
-- **Bot:** `MATCH_LOG_DIR` auf ein externes Verzeichnis setzen. Der Runner schreibt pro Partie eine Datei, bei `BOT=duel` also je eine pro Sitztausch. Ein mit `N` begrenzter Lauf kann als unvollständige Partie exportiert werden. `SEED` und `BOT_EXPANSIONS` wählen bei Einzelläufen den Seed und die Erweiterungen; ohne Angabe bleibt EXP-01 aktiv.
+- **Hotseat** speichert in `logs/hotseat/<Match-ID>.match-log.json`. Der Browser aktualisiert die Datei über den lokalen Server bei Spielbeginn und nach bestätigten Aktionen.
+- **Netzwerk** speichert in `logs/network/<Match-ID>.match-log.json`. Das funktioniert auch mit der Lobby im Arbeitsspeicher. Für ältere gespeicherte Partien liest `match:log export <Match-ID>` aus dem gesetzten `FLATFILE_DIR` und schreibt nach `logs/export/`.
+- **Bot** speichert in `logs/bot-…/1.match-log.json`. Ein Duell speichert eine Datei pro Partie, ein durch `N` begrenzter Lauf speichert seinen letzten Stand. Bei Einzelläufen wählen `SEED` und `BOT_EXPANSIONS` Seed und Erweiterungen. EXP-01 ist standardmäßig aktiv.
 
-Beispiel mit PowerShell:
+Bot-Testlauf und Replay-Prüfung in PowerShell aus dem Projektverzeichnis. Beim Prüfen den tatsächlichen Dateinamen aus der Runner-Ausgabe verwenden.
 
 ```powershell
-$logRoot = Join-Path $HOME 'balance-control-playtests'
-New-Item -ItemType Directory -Force -Path $logRoot
-$env:FLATFILE_DIR = Join-Path $logRoot 'network-saves'
-$env:MATCH_LOG_DIR = Join-Path $logRoot 'bot-logs'
-
-# Server in einem Terminal starten, das dieselbe FLATFILE_DIR verwendet.
-pnpm --filter @bc/server dev
-
-# Nach der Partie in einem weiteren Terminal mit derselben FLATFILE_DIR:
-$output = Join-Path $logRoot 'testpartie.match-log.json'
-pnpm --filter @bc/server match:log export MATCH_ID $output
-pnpm --filter @bc/server match:log verify $output
-
-# Deterministischer Bot-Testlauf ohne Ollama:
 $env:SEED = 'playtest-01'
 $env:N = '100'
 pnpm --filter @bc/server bot:run
+pnpm --filter @bc/server match:log verify (Join-Path (Get-Location) 'logs/bot-EXAMPLE/1.match-log.json')
 ```
 
 `verify` spielt die Aktionen ohne Bot oder Netzwerk erneut ab und gibt Gewinner, Endstand und Zustandshash aus. Bei abweichenden Checkpoints nennt es die erste abweichende Revision. Für Balancing-Vergleiche mehrere Seeds mit derselben Konfiguration spielen, Startsitze tauschen und geteilte Siege separat zählen. Einflussverlauf, Ressourcen und Noise helfen, auffällige Partien bis zur konkreten Aktion zurückzuverfolgen.

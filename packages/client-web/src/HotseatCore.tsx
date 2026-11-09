@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Client } from 'boardgame.io/client';
-import { createBCGame, createComputerPosition, createMatchLog } from '@bc/game';
+import { createBCGame, createComputerPosition, createMatchLogRecorder, type EngineMoveOption } from '@bc/game';
 import { CoreView, submitCoreOption } from './BoardCore.js';
 import CoreMatchSetup, { type CoreMatchSettings } from './CoreMatchSetup.js';
 import type { ComputerMoveRequest, ComputerMoveResponse } from './computer.worker.js';
@@ -11,13 +11,43 @@ function HotseatMatch({ settings, onNewMatch, server }: { settings: CoreMatchSet
   const [client] = useState(() => Client({
     game, numPlayers: settings.numPlayers, playerID: '0', debug: false,
   }));
-  // The local reducer can mutate nested boardgame.io counters in the original context.
-  const [initialState] = useState(() => structuredClone(client.getInitialState()));
+  const [matchID] = useState(() => crypto.randomUUID());
+  const [recorder] = useState(() => createMatchLogRecorder(client.store.getState(), {
+    mode: 'hotseat', matchID,
+    seats: Object.fromEntries(settings.players?.map((seat, index) => [String(index), seat]) ?? []),
+  }));
   const [state, setState] = useState(() => client.getState());
-  const [exportError, setExportError] = useState<string>();
+  const [saveError, setSaveError] = useState(false);
   const [computerError, setComputerError] = useState<string>();
   const [retry, setRetry] = useState(0);
   const computerWorker = useRef<Worker>();
+  const lastSave = useRef(0);
+  const saveLog = useCallback(async () => {
+    const request = ++lastSave.current;
+    try {
+      const response = await fetch(`${server.replace(/\/$/, '')}/match-logs/hotseat/${matchID}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(recorder.log),
+      });
+      if (!response.ok) throw new Error(`Match log save failed with HTTP ${response.status}`);
+      if (request === lastSave.current) setSaveError(false);
+    } catch (error) {
+      console.error('Match log save failed', error);
+      if (request === lastSave.current) setSaveError(true);
+    }
+  }, [matchID, recorder, server]);
+
+  useEffect(() => { void saveLog(); }, [saveLog]);
+  const submit = useCallback((option: EngineMoveOption) => {
+    client.updatePlayerID(option.playerID);
+    submitCoreOption(client.moves, option);
+    const next = client.store.getState();
+    if (next._stateID === recorder.log.steps.length) return;
+    recorder.record(next, next.deltalog ?? []);
+    void saveLog();
+  }, [client, recorder, saveLog]);
+
   useEffect(() => {
     const unsubscribe = client.subscribe(setState);
     client.start();
@@ -38,8 +68,7 @@ function HotseatMatch({ settings, onNewMatch, server }: { settings: CoreMatchSet
     const onMove = ({ data }: MessageEvent<ComputerMoveResponse>) => {
       if (data.revision !== revision || client.store.getState()._stateID !== revision) return;
       if (data.option) {
-        client.updatePlayerID(playerID);
-        submitCoreOption(client.moves, data.option);
+        submit(data.option);
         if (client.store.getState()._stateID !== revision) return;
       }
       setComputerError(data.error ?? 'The computer could not complete its move.');
@@ -65,34 +94,18 @@ function HotseatMatch({ settings, onNewMatch, server }: { settings: CoreMatchSet
       console.error('Computer player could not start', error);
       setComputerError('The computer could not start.');
     }
-  }, [client, computerPlayers, revision, retry, server, settings.players]);
+  }, [client, computerPlayers, revision, retry, server, settings.players, submit]);
 
   if (!state) return null;
   const { G, ctx, _stateID } = state;
   const playerID = Object.keys(ctx.activePlayers ?? {})[0] ?? ctx.currentPlayer;
   const isComputerTurn = computerPlayers.has(playerID);
-  const downloadLog = () => {
-    setExportError(undefined);
-    try {
-      const seats = Object.fromEntries(settings.players?.map((seat, index) => [String(index), seat]) ?? []);
-      const log = createMatchLog(initialState, client.store.getState(), client.log ?? [], { mode: 'hotseat', seats });
-      const url = URL.createObjectURL(new Blob([JSON.stringify(log, null, 2) + '\n'], { type: 'application/json' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'hotseat.match-log.json';
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    } catch (error) {
-      console.error('Match log export failed', error);
-      setExportError('The match log could not be exported.');
-    }
-  };
   return <>
-    <div>
-      {!ctx.gameover && <button type="button" onClick={onNewMatch}>Back to match setup</button>}
-      <button type="button" onClick={downloadLog}>Download match log</button>
-    </div>
-    {exportError && <p role="alert">{exportError}</p>}
+    {!ctx.gameover && <div><button type="button" onClick={onNewMatch}>Back to match setup</button></div>}
+    {saveError && <p role="alert">
+      Could not save the match log.{' '}
+      <button type="button" onClick={() => void saveLog()}>Retry saving</button>
+    </p>}
     {computerError && <div role="alert">
       {computerError}{' '}
       <button type="button" onClick={() => { setComputerError(undefined); setRetry(attempt => attempt + 1); }}>Retry move</button>
@@ -101,8 +114,7 @@ function HotseatMatch({ settings, onNewMatch, server }: { settings: CoreMatchSet
       computerPlayers={computerPlayers} onNewMatch={onNewMatch}
       submit={option => {
         if (isComputerTurn || client.store.getState()._stateID !== _stateID) return;
-        client.updatePlayerID(option.playerID);
-        submitCoreOption(client.moves, option);
+        submit(option);
       }} />
   </>;
 }

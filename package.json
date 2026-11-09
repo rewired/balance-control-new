@@ -14,7 +14,7 @@
                     "check:mutation":  "node scripts/check-no-direct-mutation.mjs",
                     "test":  "pnpm -r test",
                     "check:encoding":  "node scripts/check-encoding.mjs",
-                    "dev":  "pnpm --filter @bc/client-web dev"
+                    "dev":  "pnpm --filter @bc/server build && pnpm --filter @bc/server --filter @bc/client-web --parallel dev"
                 },
     "devDependencies":  {
                             "@typescript-eslint/eslint-plugin":  "^7.18.0",

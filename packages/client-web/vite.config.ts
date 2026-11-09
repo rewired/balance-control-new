@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import path from 'node:path';
 
 export default defineConfig({
+  server: {
+    fs: { deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/logs/**'] },
+  },
   resolve: {
     alias: [
       { find: '@bc/bot-llm', replacement: path.resolve(__dirname, '../bot-llm/src/index.ts') },
