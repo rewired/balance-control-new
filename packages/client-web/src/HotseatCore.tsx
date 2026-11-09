@@ -5,17 +5,15 @@ import { CoreView, submitCoreOption } from './BoardCore.js';
 import CoreMatchSetup, { type CoreMatchSettings } from './CoreMatchSetup.js';
 import type { ComputerMoveRequest, ComputerMoveResponse } from './computer.worker.js';
 
-function HotseatMatch({ settings, onNewMatch }: { settings: CoreMatchSettings; onNewMatch: () => void }) {
+function HotseatMatch({ settings, onNewMatch, server }: { settings: CoreMatchSettings; onNewMatch: () => void; server: string }) {
   const [game] = useState(() => createBCGame(settings.setupData));
-  const [computerPlayers] = useState(() => {
-    const count = settings.computerPlayers ?? 0;
-    return new Set(Array.from({ length: count }, (_, index) => String(settings.numPlayers - count + index)));
-  });
+  const [computerPlayers] = useState(() => new Set(settings.players?.flatMap((player, index) => player === 'human' ? [] : [String(index)])));
   const [client] = useState(() => Client({
     game, numPlayers: settings.numPlayers, playerID: '0', debug: false,
   }));
   const [state, setState] = useState(() => client.getState());
-  const [computerError, setComputerError] = useState(false);
+  const [computerError, setComputerError] = useState<string>();
+  const [retry, setRetry] = useState(0);
   const computerWorker = useRef<Worker>();
   useEffect(() => {
     const unsubscribe = client.subscribe(setState);
@@ -41,34 +39,40 @@ function HotseatMatch({ settings, onNewMatch }: { settings: CoreMatchSettings; o
         submitCoreOption(client.moves, data.option);
         if (client.store.getState()._stateID !== revision) return;
       }
-      setComputerError(true);
+      setComputerError(data.error ?? 'The computer could not complete its move.');
     };
     const onError = (error: ErrorEvent) => {
       console.error('Computer move failed', error.message, error.filename, error.lineno);
-      setComputerError(true);
+      computerWorker.current?.terminate();
+      computerWorker.current = undefined;
+      setComputerError('The computer could not complete its move.');
     };
     try {
       const worker = computerWorker.current ??= new Worker(new URL('./computer.worker.ts', import.meta.url), { type: 'module' });
       worker.addEventListener('message', onMove);
       worker.addEventListener('error', onError);
-      worker.postMessage({ position: createComputerPosition(current), playerID } satisfies ComputerMoveRequest);
+      const seat = settings.players?.[Number(playerID)];
+      const ollama = seat?.startsWith('ollama:') ? { server, model: seat.slice(7) } : undefined;
+      worker.postMessage({ position: createComputerPosition(current), playerID, ollama } satisfies ComputerMoveRequest);
       return () => {
         worker.removeEventListener('message', onMove);
         worker.removeEventListener('error', onError);
       };
     } catch (error) {
       console.error('Computer player could not start', error);
-      setComputerError(true);
+      setComputerError('The computer could not start.');
     }
-  }, [client, computerPlayers, revision]);
+  }, [client, computerPlayers, revision, retry, server, settings.players]);
 
   if (!state) return null;
   const { G, ctx, _stateID } = state;
   const playerID = Object.keys(ctx.activePlayers ?? {})[0] ?? ctx.currentPlayer;
   const isComputerTurn = computerPlayers.has(playerID);
   return <>
+    {!ctx.gameover && <div><button type="button" onClick={onNewMatch}>Back to match setup</button></div>}
     {computerError && <div role="alert">
-      The computer could not complete its move. <button type="button" onClick={onNewMatch}>Back to match setup</button>
+      {computerError}{' '}
+      <button type="button" onClick={() => { setComputerError(undefined); setRetry(attempt => attempt + 1); }}>Retry move</button>
     </div>}
     <CoreView G={G} ctx={ctx} revision={_stateID} playerID={playerID} isActive={!isComputerTurn}
       computerPlayers={computerPlayers} onNewMatch={onNewMatch}
@@ -80,12 +84,12 @@ function HotseatMatch({ settings, onNewMatch }: { settings: CoreMatchSettings; o
   </>;
 }
 
-export default function HotseatCore() {
+export default function HotseatCore({ server }: { server: string }) {
   const [settings, setSettings] = useState<CoreMatchSettings>();
   const [playing, setPlaying] = useState(false);
   return playing && settings
-    ? <HotseatMatch settings={settings} onNewMatch={() => setPlaying(false)} />
-    : <CoreMatchSetup title="New hotseat match" buttonLabel="Start match" initial={settings} allowComputerPlayers onStart={configuration => {
+    ? <HotseatMatch settings={settings} server={server} onNewMatch={() => setPlaying(false)} />
+    : <CoreMatchSetup title="New hotseat match" buttonLabel="Start match" initial={settings} botServer={server} onStart={configuration => {
       setSettings(configuration);
       setPlaying(true);
     }} />;

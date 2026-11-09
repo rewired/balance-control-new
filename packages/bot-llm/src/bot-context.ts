@@ -1,8 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
 import type { ComputerPosition } from '@bc/game';
-
-const rulesDir = [new URL('../../../docs/rules/', import.meta.url), new URL('../../../../docs/rules/', import.meta.url)]
-  .find(dir => existsSync(new URL('000-core.md', dir)));
 
 const decks = [
   { id: 'exp01', prefix: 'ECO', file: '001-expansion01.md', label: 'Economy & Labor (EXP-01-02-C/05). Labor Market is a regular Hotspot. Control of Investment Program and a Grassroots enables an alternate 2-ECO conversion at that Grassroots.' },
@@ -18,28 +14,33 @@ const ruleBrief = [
   'Hotspots and production (CORE-01-06/07): first full enclosure triggers a Hotspot before the political action. Its usual payout places one reserve marker for the majority player. Resort tiles produce at Settlement after each round. Positive ties split output among leaders and remainders go to Noise. Zero Influence produces nothing.',
 ];
 
-const cardRules = new Map<string, Map<string, string>>();
+type RuleFile = typeof decks[number]['file'];
 
-function visibleCardRules(file: string, prefix: string, visible: Set<string | null>): string[] {
-  let catalog = cardRules.get(file);
-  if (!catalog) {
-    if (!rulesDir) throw new Error('Cannot find the normative rules directory');
-    catalog = new Map();
-    for (const section of readFileSync(new URL(file, rulesDir), 'utf8').split(/^#{1,2} /m)) {
-      const match = /^(EXP-\d\d-08-(M\d\d)) — (.+)\r?\n/.exec(section);
-      if (!match) continue;
-      const [, ruleId, number, title] = match;
-      const clauses = section.slice(match[0].length).split(new RegExp(`^${ruleId}-\\d{2}[A-Z]? `, 'm')).slice(1)
-        .map(clause => clause.replace(/^---$/gm, '').trim()).filter(clause => !/^Name: /.test(clause));
-      catalog.set(`${prefix}_${number}`, `${prefix}_${number} ${title}: ${clauses.join(' ')}`);
+export function createBotPositionDescriber(readRules: (file: RuleFile) => string) {
+  const cardRules = new Map<string, Map<string, string>>();
+  return (position: ComputerPosition, playerID: string) => describeBotPosition(position, playerID, visibleCardRules);
+
+  function visibleCardRules(file: RuleFile, prefix: string, visible: Set<string | null>): string[] {
+    let catalog = cardRules.get(file);
+    if (!catalog) {
+      catalog = new Map();
+      for (const section of readRules(file).split(/^#{1,2} /m)) {
+        const match = /^(EXP-\d\d-08-(M\d\d)) — (.+)\r?\n/.exec(section);
+        if (!match) continue;
+        const [, ruleId, number, title] = match;
+        const clauses = section.slice(match[0].length).split(new RegExp(`^${ruleId}-\\d{2}[A-Z]? `, 'm')).slice(1)
+          .map(clause => clause.replace(/^---$/gm, '').trim()).filter(clause => !/^Name: /.test(clause));
+        catalog.set(`${prefix}_${number}`, `${prefix}_${number} ${title}: ${clauses.join(' ')}`);
+      }
+      cardRules.set(file, catalog);
     }
-    cardRules.set(file, catalog);
+    return [...catalog].filter(([id]) => visible.has(id)).map(([, text]) => text);
   }
-  return [...catalog].filter(([id]) => visible.has(id)).map(([, text]) => text);
 }
 
 /** Format an allowlist from the public projection. Its simulated piles are also excluded. */
-export function describeBotPosition({ G, ctx }: ComputerPosition, playerID: string): string {
+function describeBotPosition({ G, ctx }: ComputerPosition, playerID: string,
+  visibleCardRules: (file: RuleFile, prefix: string, visible: Set<string | null>) => string[]): string {
   const { tiles, allTiles, players, influencesOnBoard, resources, activeMeasureEffects } = G.exp.core;
   const expansions = decks.filter(({ id }) => G.cfg.expansions[id]);
   const measureZones = expansions.flatMap(({ id }) => {

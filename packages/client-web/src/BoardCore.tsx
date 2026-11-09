@@ -12,7 +12,7 @@ import { playerColor, resortVisuals } from './core-board-visuals.js';
 import { PlayerMarker, RegulationBadge, ResourceBadge } from './CoreSymbols.js';
 import {
   coordLabel, describeOption, isFormalization, measureAction, movePreview, optionCost, playerLabel,
-  regulationLabel, tileLabel, tileOccupation, type MeasureSelection,
+  regulationLabel, tileLabel, tileOccupation, tileRuleSummary, type MeasureSelection,
 } from './core-board-labels.js';
 
 type Moves = Record<string, (...args: unknown[]) => void>;
@@ -178,7 +178,8 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
             if (choices.length === 1 && choices[0].costBreakdown.length === 0) submit(choices[0]);
             else setSelection({ revision, playerID, coord: key });
           }} />
-        <aside className="core-inspector core-panel" aria-label="Tile details and actions" ref={inspector} tabIndex={-1}>
+        <aside className="core-inspector core-panel" aria-label="Tile details and actions" ref={inspector} tabIndex={-1}
+          data-inspecting-tile={!!inspectedTile}>
           <header className="core-inspector-heading">
             <div><p className="core-kicker">Details and actions</p><h3>{selectedMeasure ? 'Measure inspector' : 'Tile inspector'}</h3></div>
             {(selectedTile || selectedCoord || selectedMeasure) && <button type="button" onClick={() => setSelection(undefined)}>Clear</button>}
@@ -187,6 +188,10 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
             tabIndex={0} role="region" aria-label="Inspection details">
             {occupation && inspected && inspectedTile ? <>
               <TileSummary tile={inspectedTile} controller={occupation.controller} label={`Selected tile · ${coordLabel(inspected.coord)}`} />
+              <section className="tile-rules" aria-label="Tile rules">
+                <h4>Tile rules</h4>
+                <p>{tileRuleSummary(inspectedTile)}</p>
+              </section>
               <p className="inspected-control"><strong>{occupation.control}</strong></p>
               {occupation.influence.length ? (
                 <table className="inspected-influence">
@@ -218,6 +223,10 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
               <>
                 {drawn && <div className="core-offer">
                   <TileSummary tile={core.allTiles[drawn.tileId]} label="Drawn tile" />
+                  <details className="tile-rules">
+                    <summary>Drawn tile rules</summary>
+                    <p>{tileRuleSummary(core.allTiles[drawn.tileId])}</p>
+                  </details>
                   <p>{core.tiles.drawPile.length} in draw pile · {core.tiles.discardFaceUp.length} discarded</p>
                 </div>}
                 {options.length === 0 ? <p>Waiting for {playerLabel(activePlayer)}{isComputerTurn && ' (computer)'}.</p>

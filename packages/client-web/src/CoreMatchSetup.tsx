@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ExpansionFlags, MatchConfig } from '@bc/rules';
 import { expansions } from './expansion-data.js';
+import { listOllamaModels } from './ollama-client.js';
+
+export type HotseatPlayer = 'human' | 'search' | `ollama:${string}`;
 
 export interface CoreMatchSettings {
   numPlayers: number;
   setupData: Omit<MatchConfig, 'topology'> & { matchSeed: string };
-  computerPlayers?: number;
+  players?: HotseatPlayer[];
 }
 
 function generateMatchSeed(): string {
@@ -13,15 +16,34 @@ function generateMatchSeed(): string {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, allowComputerPlayers = false }: {
+export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, botServer }: {
   title: string;
   buttonLabel: string;
   onStart: (settings: CoreMatchSettings) => void | Promise<void>;
   initial?: CoreMatchSettings;
-  allowComputerPlayers?: boolean;
+  botServer?: string;
 }) {
   const [numPlayers, setNumPlayers] = useState(initial?.numPlayers ?? 2);
-  const [computerPlayers, setComputerPlayers] = useState(initial?.computerPlayers ?? 0);
+  const [players, setPlayers] = useState<HotseatPlayer[]>(initial?.players ?? []);
+  const [models, setModels] = useState<string[]>([]);
+  const [ollamaStatus, setOllamaStatus] = useState('Checking Ollama…');
+  const [modelCheck, setModelCheck] = useState(0);
+  useEffect(() => {
+    if (!botServer) return;
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(6000)]);
+    setOllamaStatus('Checking Ollama…');
+    void listOllamaModels(botServer, signal).then(found => {
+      if (controller.signal.aborted) return;
+      setModels(found);
+      setOllamaStatus(found.length ? `Ollama ready · ${found.length} ${found.length === 1 ? 'model' : 'models'}` : 'Ollama is running. No local models found.');
+    }).catch((failure: unknown) => {
+      if (controller.signal.aborted) return;
+      setModels([]);
+      setOllamaStatus(failure instanceof Error ? failure.message : 'Could not check Ollama.');
+    });
+    return () => controller.abort();
+  }, [botServer, modelCheck]);
   const [enabled, setEnabled] = useState<ExpansionFlags>(
     initial?.setupData.expansions ?? { exp01: false, exp02: false, exp03: false },
   );
@@ -38,11 +60,18 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, a
       setError(undefined);
       setPending(true);
       try {
+        const selected = Array.from({ length: numPlayers }, (_, index) => players[index] ?? 'human');
+        const requested = selected.filter(player => player.startsWith('ollama:')).map(player => player.slice(7));
+        if (botServer && requested.length) {
+          const available = await listOllamaModels(botServer);
+          const missing = requested.find(model => !available.includes(model));
+          if (missing) throw new Error(`Ollama model ${missing} is no longer installed.`);
+        }
         const matchSeed = seed.trim() ? seed : generateMatchSeed();
         await onStart({
           numPlayers,
           setupData: { expansions: enabled, addOn56: numPlayers >= 5, matchSeed, variants },
-          ...(allowComputerPlayers && { computerPlayers }),
+          ...(botServer && { players: selected }),
         });
       } catch (failure) {
         setError(failure instanceof Error ? failure.message : 'Could not start the match.');
@@ -53,21 +82,32 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, a
       <h2>{title}</h2>
       <label>
         Players{' '}
-        <select value={numPlayers} disabled={pending} onChange={event => {
-          const count = Number(event.target.value);
-          setNumPlayers(count);
-          setComputerPlayers(previous => Math.min(previous, count - 1));
-        }}>
+        <select value={numPlayers} disabled={pending} onChange={event => setNumPlayers(Number(event.target.value))}>
           {[2, 3, 4, 5, 6].map(count => <option key={count}>{count}</option>)}
         </select>
       </label>
-      {allowComputerPlayers && <label>
-        Computer opponents{' '}
-        <select value={computerPlayers} disabled={pending} onChange={event => setComputerPlayers(Number(event.target.value))}>
-          <option value={0}>None</option>
-          {Array.from({ length: numPlayers - 1 }, (_, index) => <option key={index + 1}>{index + 1}</option>)}
-        </select>
-      </label>}
+      {botServer && <fieldset disabled={pending}>
+        <legend>Player seats</legend>
+        <p role="status">{ollamaStatus}</p>
+        <button type="button" onClick={() => setModelCheck(check => check + 1)}>Check Ollama</button>
+        {Array.from({ length: numPlayers }, (_, index) => {
+          const selected = players[index] ?? 'human';
+          const unavailable = selected.startsWith('ollama:') && !models.includes(selected.slice(7));
+          return <label key={index}>
+            Player {index + 1}{' '}
+            <select value={selected} onChange={event => {
+              const choice = event.target.value as HotseatPlayer;
+              setPlayers(previous => Array.from({ length: Math.max(previous.length, index + 1) },
+                (_, seat) => seat === index ? choice : previous[seat] ?? 'human'));
+            }}>
+              <option value="human">Human</option>
+              <option value="search">Local AI</option>
+              {unavailable && <option value={selected}>Ollama · {selected.slice(7)} (unavailable)</option>}
+              {models.map(model => <option key={model} value={`ollama:${model}`}>Ollama · {model}</option>)}
+            </select>
+          </label>;
+        })}
+      </fieldset>}
       <fieldset disabled={pending}>
         <legend>Expansions</legend>
         <p>CORE is always included. Select any combination of expansions.</p>

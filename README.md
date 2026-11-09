@@ -20,7 +20,7 @@
 ## Playing in the browser
 
 - Hotseat: run `pnpm dev` and open http://localhost:5173. Choose the player count and expansions, then start the match on the same device.
-- Against the computer: in **Hotseat**, set **Computer opponents** to `1` or more. For a solo game, fill every seat except one with a computer opponent. The bots run in your browser without Ollama or a game server.
+- Against the computer: in **Hotseat → Player seats**, choose **Human**, **Local AI**, or an installed **Ollama** model for each seat. Player 1 can be AI, and all seats can be AI for a match you can watch. **Local AI** runs in the browser. For Ollama, start Ollama and the game server, then use **Check Ollama** to refresh the list.
 - Network: run `pnpm --filter @bc/server dev` on port 8000, then run `pnpm dev` and choose Network. Enter a player name, choose expansions in **New network match**, and join the created match from the list. Set `VITE_SERVER_URL` when using a different server address.
 - In either mode, **Variants** lets you enable tile recycling and the first-player handicap independently.
 - Leave **Seed (optional)** blank for a fresh seed. To repeat an opening, copy the seed from the match header and enter it with the same match settings.

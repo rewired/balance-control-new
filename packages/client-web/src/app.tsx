@@ -1,15 +1,10 @@
 import { useState } from 'react';
-import { Client as BGClient } from 'boardgame.io/react';
-import { CounterGame } from '@bc/game';
-import CounterBoard from './Board.js';
 import HotseatCore from './HotseatCore.js';
 import NetworkLobby from './NetworkLobby.js';
 
 type Env = { VITE_SERVER_URL?: string };
 const env = (import.meta as unknown as { env: Env }).env;
 const serverURL = env?.VITE_SERVER_URL ?? 'http://localhost:8000';
-
-const LocalClientCounter = BGClient({ game: CounterGame, board: CounterBoard, debug: false });
 
 export function App() {
   const [mode, setMode] = useState<'hotseat' | 'network'>(() => location.hash.includes('network') ? 'network' : 'hotseat');
@@ -30,13 +25,7 @@ export function App() {
       </header>
 
       {mode === 'hotseat' ? (
-        <>
-          <HotseatCore />
-          <details className="core-demo">
-            <summary>Counter demo</summary>
-            <LocalClientCounter />
-          </details>
-        </>
+        <HotseatCore server={serverURL} />
       ) : <NetworkLobby server={serverURL} />}
     </main>
   );

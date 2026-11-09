@@ -548,3 +548,14 @@
 - Die Computergegner simulieren bis zu drei Spielerzüge mit gegnerischen Antworten. Der Browser rekonstruiert für die Suche hypothetische Stapel aus dem sichtbaren Spielstand. Die tatsächliche Reihenfolge wird weder gelesen noch an den Bot weitergegeben.
 
 - Der lokale Ollama-Runner erhält das sichtbare Brett, das Spielziel und die relevanten Regeln. `BOT=duel` vergleicht Ollama mit dem Hotseat-Bot je Seed auf beiden Startplätzen. Modellantworten mit Ersatzzügen werden separat ausgewiesen und die betroffenen Paare aus der Gesamtwertung genommen.
+
+- Im Hotseat lassen sich Menschen, lokale KI und installierte Ollama-Modelle pro Spielerplatz auswählen. Das gilt auch für Player 1 und für reine KI-Partien. Die Startmaske zeigt den Ollama-Status und prüft die ausgewählten Modelle vor dem Start erneut.
+
+## 2026-11-09 – Basisproduktion und Kontrolle auf dem Brett
+
+- Ressortkacheln zeigen ihren aufgedruckten Basiswert groß neben Ressortsymbol und Kürzel. Die Einflussleiste hebt den kontrollierenden Spieler mit einem durchgezogenen Rahmen hervor. Bei Gleichstand haben die führenden Spieler gestrichelte Rahmen.
+- Das Mausrad zoomt am Zeiger und Ziehen verschiebt das Brett. Der Feldinspektor zeigt die Regel der ausgewählten Kachel und bietet die Regel der gezogenen Kachel zum Aufklappen an.
+
+## 2026-11-09 – Counter-Demo aus dem Webclient entfernt
+
+- Hotseat und Netzwerklobby bieten nur noch BALANCE // CONTROL an. Bestehende Counter-Demopartien erscheinen nicht mehr in der Lobby.

@@ -59,6 +59,9 @@ importers:
 
   packages/client-web:
     dependencies:
+      '@bc/bot-llm':
+        specifier: workspace:*
+        version: link:../bot-llm
       '@bc/exp-00-core':
         specifier: workspace:*
         version: link:../exp-00-core
@@ -252,6 +255,9 @@ importers:
       boardgame.io:
         specifier: ^0.50.2
         version: 0.50.2
+      koa-body:
+        specifier: 5.0.0
+        version: 5.0.0
     devDependencies:
       eslint:
         specifier: ^8.57.1

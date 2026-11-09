@@ -30,7 +30,8 @@
                          "@bc/game":  "workspace:*",
                          "@bc/shared":  "workspace:*",
                          "boardgame.io":  "^0.50.2",
-                         "@bc/bot-llm":  "workspace:*"
+                         "@bc/bot-llm":  "workspace:*",
+                         "koa-body": "5.0.0"
                      },
     "devDependencies":  {
                             "eslint":  "^8.57.1",

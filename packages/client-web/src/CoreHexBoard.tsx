@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import type { EngineMoveOption } from '@bc/game';
 import type { AxialCoord, CoreState, RegulationKind, Tile } from '@bc/rules';
 import committeeIcon from '@bc/exp-00-core/assets/tile-icons/committee.svg';
@@ -8,6 +8,7 @@ import hotspotIcon from '@bc/exp-00-core/assets/tile-icons/hotspot.svg';
 import startCommitteeIcon from '@bc/exp-00-core/assets/tile-icons/start-committee.svg';
 import { playerColor, resortVisuals } from './core-board-visuals.js';
 import { PlayerMarker, RegulationBadge } from './CoreSymbols.js';
+import HexBoardViewport from './HexBoardViewport.js';
 import {
   coordLabel, influenceLabel, playerShortLabel, regulationLabel, tileActionLabel, tileLabel, tileOccupation, type MovePreview,
 } from './core-board-labels.js';
@@ -25,16 +26,26 @@ const tileWidth = 144;
 const tileHeight = 166;
 const fieldPadding = 16;
 
-export function TileFace({ tile, controller }: { tile: Tile; controller?: string | null }) {
+export function TileFace({ tile, controller, showOutput = false }: {
+  tile: Tile;
+  controller?: string | null;
+  showOutput?: boolean;
+}) {
   const visual = tile.kind === 'ResortTile' ? resortVisuals[tile.resort] : tileVisuals[tile.kind];
+  const emblem = <span className="tile-emblem">
+    {visual && <img className="tile-glyph" src={visual.icon} alt="" draggable={false} />}
+    <span className="tile-name">{tile.kind === 'ResortTile' ? tile.resort : tileLabel(tile)}</span>
+  </span>;
   return (
     <span className="tile-face" aria-hidden="true" style={{
       '--tile-color': visual?.color ?? '#435063',
       '--tile-rim': controller == null ? '#677789' : playerColor(controller),
     } as CSSProperties}>
       <span className="tile-art" />
-      {visual && <img className="tile-glyph" src={visual.icon} alt="" />}
-      <span className="tile-name">{tile.kind === 'ResortTile' ? tile.resort : tileLabel(tile)}</span>
+      {showOutput && tile.kind === 'ResortTile' ? <span className="tile-production">
+        <strong className="tile-yield">{tile.w}</strong>
+        {emblem}
+      </span> : emblem}
     </span>
   );
 }
@@ -74,8 +85,6 @@ interface Props {
 }
 
 export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile, selectedCoord, preview, onPlace, onInspect }: Props) {
-  const [zoom, setZoom] = useState(100);
-  const viewport = useRef<HTMLDivElement>(null);
   const core = G.exp.core;
   const tiles = core.tiles.board.map(placement => ({
     ...placement, ...pixel(placement.coord),
@@ -86,26 +95,17 @@ export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile
   const top = Math.min(...locations.map(({ y }) => y));
   const width = Math.max(...locations.map(({ x }) => x)) - left + tileWidth + 2 * fieldPadding;
   const height = Math.max(...locations.map(({ y }) => y)) - top + tileHeight + 2 * fieldPadding;
+  const center = {
+    x: (Math.min(...tiles.map(({ x }) => x)) + Math.max(...tiles.map(({ x }) => x))) / 2,
+    y: (Math.min(...tiles.map(({ y }) => y)) + Math.max(...tiles.map(({ y }) => y))) / 2,
+  };
   const source = preview && tiles.find(({ tileId }) => tileId === preview.sourceTileId);
   const destination = preview && tiles.find(({ tileId }) => tileId === preview.targetTileId);
 
   return (
     <section className="core-board core-panel" aria-label="Game board">
-      <header className="core-board-heading">
-        <div><p className="core-kicker">Match overview</p><h3>Board</h3></div>
-        <span className="core-tile-total">{tiles.length} {tiles.length === 1 ? 'tile' : 'tiles'}</span>
-        <div className="board-tools" role="group" aria-label="Board controls">
-          <button type="button" aria-label="Zoom out" disabled={zoom <= 75} onClick={() => setZoom(zoom - 25)}>−</button>
-          <output aria-label="Board zoom">{zoom}%</output>
-          <button type="button" aria-label="Zoom in" disabled={zoom >= 125} onClick={() => setZoom(zoom + 25)}>+</button>
-          <button type="button" onClick={() => {
-            const board = viewport.current;
-            if (board) board.scrollTo((board.scrollWidth - board.clientWidth) / 2, (board.scrollHeight - board.clientHeight) / 2);
-          }}>Center</button>
-        </div>
-      </header>
-      <div className="hex-board" ref={viewport} tabIndex={0} role="region" aria-label="Scrollable hex field">
-        <div className="hex-field" style={{ width, height, zoom: zoom / 100 }}>
+      <HexBoardViewport tileCount={tiles.length} width={width} height={height} center={center}
+        origin={{ x: left - fieldPadding - tileWidth / 2, y: top - fieldPadding - tileHeight / 2 }}>
           {tiles.map(placement => {
             const { tileId, coord, x, y } = placement;
             const tile = core.allTiles[tileId];
@@ -116,8 +116,11 @@ export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile
             const action = tileActionLabel(tileActions.get(tileId) ?? []);
             const endpoint = preview?.sourceTileId === tileId ? 'source'
               : preview?.targetTileId === tileId ? 'destination' : undefined;
+            const name = tile.kind === 'ResortTile' ? resortVisuals[tile.resort]?.name ?? tile.resort : tileLabel(tile);
             const label = [
-              `${tileLabel(tile)} (${coordLabel(coord)})`, control,
+              `${name} (${coordLabel(coord)})`,
+              tile.kind === 'ResortTile' && `Printed output ${tile.w} ${tile.resort}`,
+              control,
               influence.length ? influence.map(influenceLabel).join(', ') : 'No influence',
               action && `Legal action: ${action}`,
               endpoint && `Move preview: ${endpoint}`,
@@ -127,18 +130,14 @@ export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile
               <button key={tileId} className="hex-cell" type="button" data-move-endpoint={endpoint}
                 style={{ left: x - left + fieldPadding, top: y - top + fieldPadding }} aria-pressed={selectedTile === tileId}
                 title={label} aria-label={label} onClick={() => onInspect(tileId)}>
-                <TileFace tile={tile} controller={controller} />
-                <span className="tile-status" aria-hidden="true">
-                  {tile.kind === 'ResortTile' && <span className="tile-yield">{tile.w}</span>}
-                  {controller !== null ? <span className="tile-control"><PlayerMarker id={controller} />{playerShortLabel(controller)}</span>
-                    : leaders.length > 1 && <span className="tile-control">Tied</span>}
-                </span>
+                <TileFace tile={tile} controller={controller} showOutput />
                 {regulations.length > 0 && <span className="tile-regulations" aria-hidden="true">
                   {[...regulationCounts].map(([kind, count]) => <RegulationBadge key={kind} kind={kind} count={count} />)}
                 </span>}
                 <span className="tile-influence" aria-hidden="true">
                   {influence.map(({ id, count, virtual }) => (
-                    <span key={id} className="influence-chip">
+                    <span key={id} className="influence-chip"
+                      data-majority={controller === id ? 'control' : leaders.includes(id) ? 'tie' : undefined}>
                       <span className="influence-player"><PlayerMarker id={id} />{playerShortLabel(id)}</span>
                       <span className="influence-count"><b>{count}</b>{virtual > 0 && <span className="virtual-influence">+{virtual}</span>}</span>
                     </span>
@@ -159,10 +158,11 @@ export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile
           ))}
           {source && destination && <MoveArrow source={source} destination={destination}
             viewBox={`${left - fieldPadding} ${top - fieldPadding} ${width} ${height}`} />}
-        </div>
-      </div>
+      </HexBoardViewport>
       <footer className="core-map-key">
         <span><PlayerMarker id="0" /> Influence <span className="virtual-influence">+ virtual</span></span>
+        <span><i className="majority-key" data-majority="control" aria-hidden="true" /> Controls tile</span>
+        <span><i className="majority-key" data-majority="tie" aria-hidden="true" /> Tied lead</span>
         {G.exp.exp02?.regulations && <span><RegulationBadge kind="Administration" /> Regulation</span>}
         {legalCoords.length > 0 && <span><b>+</b> Legal tile placement</span>}
         {tileActions.size > 0 && <span><b>Place / Move</b> Marker action</span>}

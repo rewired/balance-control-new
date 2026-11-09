@@ -4,6 +4,6 @@
     "composite": false,
     "jsx": "react-jsx"
   },
-  "references": [{ "path": "../game" }, { "path": "../rules" }],
+  "references": [{ "path": "../bot-llm" }, { "path": "../game" }, { "path": "../rules" }],
   "include": ["src", "vite.config.ts"]
 }

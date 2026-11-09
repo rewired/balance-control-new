@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Client } from 'boardgame.io/client';
 import { createBCGame, createComputerPosition, type EngineMoveOption } from '@bc/game';
-import { describeBotPosition } from './bot-context.js';
-import { runBotDuel, runBotMatch } from './bot-match.js';
+import { describeBotPosition, runBotDuel, runBotMatch } from './bot-match.js';
 
 describe('Bot match through boardgame.io', () => {
   it('plays a paid Measure, completes its additional action, and replays the final settlement', async () => {

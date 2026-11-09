@@ -1,10 +1,18 @@
 import { Client } from '#boardgame-client';
+import { existsSync, readFileSync } from 'node:fs';
 import {
   chooseComputerMove, createBCGame, createComputerPosition, engineMoveOptions, hashEngineState, legalMoveOptions,
-  sampleComputerOptions, type EngineMoveOption, type EngineSnapshot,
+  type EngineMoveOption, type EngineSnapshot,
 } from '@bc/game';
-import { chooseOptionWithLLM, type LLMBackend, type LLMFallback } from '@bc/bot-llm';
-import { describeBotPosition } from './bot-context.js';
+import { chooseOllamaMove, createBotPositionDescriber, type LLMBackend, type LLMFallback } from '@bc/bot-llm';
+
+const rulesDir = [new URL('../../../docs/rules/', import.meta.url), new URL('../../../../docs/rules/', import.meta.url)]
+  .find(dir => existsSync(new URL('000-core.md', dir)));
+
+export const describeBotPosition = createBotPositionDescriber(file => {
+  if (!rulesDir) throw new Error('Cannot find the normative rules directory');
+  return readFileSync(new URL(file, rulesDir), 'utf8');
+});
 
 type CoreGame = ReturnType<typeof createBCGame>;
 type Policy = (game: CoreGame, state: EngineSnapshot, playerID: string) => EngineMoveOption | undefined | Promise<EngineMoveOption | undefined>;
@@ -13,18 +21,8 @@ const firstLegal: Policy = (_game, { G, ctx }, playerID) => engineMoveOptions(G,
 const hotseat: Policy = (game, state, playerID) => chooseComputerMove(game, createComputerPosition(state), playerID);
 
 function ollamaPolicy(backend: LLMBackend, onRequest?: () => void, onFallback?: (reason: LLMFallback, error?: unknown) => void): Policy {
-  return async (game, state, playerID) => {
-    const position = createComputerPosition(state);
-    const candidates = sampleComputerOptions(position, playerID, 20);
-    const previews = legalMoveOptions(game, {
-      G: position.G, ctx: position.ctx, _stateID: position.revision,
-      plugins: { random: { data: { seed: position.G.matchSeed } } },
-    }, playerID, candidates);
-    if (previews.length === 1) return previews[0];
-    if (!previews.length) return undefined;
-    onRequest?.();
-    return chooseOptionWithLLM(previews, describeBotPosition(position, playerID), backend, onFallback);
-  };
+  return (game, state, playerID) => chooseOllamaMove(game, createComputerPosition(state), playerID,
+    describeBotPosition, backend, onRequest, onFallback);
 }
 
 async function playBotMatch(game: CoreGame, policy: Policy, endTurn: number, openingTurns: number) {

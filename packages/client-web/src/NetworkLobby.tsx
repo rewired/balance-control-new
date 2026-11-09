@@ -1,14 +1,13 @@
 import { useState, type ComponentProps } from 'react';
 import { LobbyClient } from 'boardgame.io/client';
 import { Lobby } from 'boardgame.io/react';
-import { CoreGame, CounterGame } from '@bc/game';
+import { CoreGame } from '@bc/game';
 import { MatchSetupDataSchema } from '@bc/rules';
-import CounterBoard from './Board.js';
 import CoreBoard from './BoardCore.js';
 import CoreMatchSetup from './CoreMatchSetup.js';
 import { expansions } from './expansion-data.js';
 
-const gameComponents = [{ game: CounterGame, board: CounterBoard }, { game: CoreGame, board: CoreBoard }];
+const gameComponents = [{ game: CoreGame, board: CoreBoard }];
 type LobbyViewProps = Parameters<NonNullable<ComponentProps<typeof Lobby>['renderer']>>[0];
 
 function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps }) {
@@ -16,7 +15,7 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
   const [created, setCreated] = useState<string>();
   const {
     phase, playerName, matches, runningMatch, errorMsg, handleEnterLobby, handleExitLobby, handleRefreshMatches,
-    handleCreateMatch, handleJoinMatch, handleLeaveMatch, handleStartMatch, handleExitMatch,
+    handleJoinMatch, handleLeaveMatch, handleStartMatch, handleExitMatch,
   } = lobby;
 
   if (runningMatch && phase === 'play') {
@@ -57,13 +56,13 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
             const free = players.find(player => !player.name);
             const parsed = MatchSetupDataSchema.safeParse(match.setupData ?? {});
             const modules = parsed.success ? expansions.filter(item => parsed.data.expansions[item.id]) : [];
-            const canPlay = gameName !== CoreGame.name || parsed.success;
+            const canPlay = parsed.success;
             const start = () => handleStartMatch(gameName, {
               matchID, numPlayers: players.length, ...(seat && { playerID: String(seat.id) }),
             });
             return (
               <li key={matchID}>
-                <div><strong>{gameName === CoreGame.name ? ['CORE', ...modules.map(item => item.label)].join(' + ') : gameName}</strong>
+                <div><strong>{['CORE', ...modules.map(item => item.label)].join(' + ')}</strong>
                   <div>Match {matchID} · {players.map(player => player.name || 'Open seat').join(', ')}</div></div>
                 <div className="network-match-actions">
                   {seat && <button type="button" onClick={() => void handleLeaveMatch(gameName, matchID)}>Leave</button>}
@@ -77,7 +76,6 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
         </ul>
         {errorMsg && <p role="alert">{errorMsg}</p>}
       </section>
-      <button type="button" onClick={() => void handleCreateMatch(CounterGame.name!, 2)}>Create counter demo</button>
     </div>
   );
 }

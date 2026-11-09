@@ -110,12 +110,21 @@ it('shows all six players on one tile and all six active resources alongside the
   core.influencesOnBoard.push({ ...core.players['5'].personal.influence.shift()!, tileId: lobbyistId });
   G.exp.exp02!.regulations!.attached.push({ id: 'test-regulation', kind: 'Administration', tileId });
 
-  const markup = renderToStaticMarkup(<CoreView G={G} ctx={ctx} revision={_stateID} submit={() => undefined} />);
-  const tile = markup.match(/<button [^>]*aria-label="[^"]*\(1, 0\)[^"]*"[^>]*>.*?<\/button>/)?.[0];
+  const render = () => renderToStaticMarkup(<CoreView G={G} ctx={ctx} revision={_stateID} submit={() => undefined} />);
+  const resortButton = (markup: string) => markup.match(/<button [^>]*aria-label="[^"]*\(1, 0\)[^"]*"[^>]*>.*?<\/button>/)?.[0];
+  const markup = render();
+  const tile = resortButton(markup);
   expect(tile).toBeDefined();
-  expect(tile?.match(/class="influence-chip"/g)).toHaveLength(6);
+  expect(tile).toMatch(/<strong class="tile-yield">\d+<\/strong>/);
+  expect(tile?.match(/class="player-marker"/g)).toHaveLength(6);
+  expect(tile?.match(/class="influence-chip" data-majority="control"/g)).toHaveLength(1);
+  expect(tile).toMatch(/data-majority="control".*?P6<\/span>/);
   expect(tile).toContain('Player 6 has 1 marker and 1 virtual influence');
   expect(tile).toContain('Regulations: Administration');
+  core.influencesOnBoard.pop();
+  const tiedTile = resortButton(render());
+  expect(tiedTile).toContain('Tied majority');
+  expect(tiedTile?.match(/class="influence-chip" data-majority="tie"/g)).toHaveLength(6);
   const supplies = markup.match(/<table class="core-supplies">.*?<\/table>/)?.[0];
   expect(supplies?.match(/class="resource-icon"/g)).toHaveLength(6);
   expect(supplies).toContain('Player 6');
