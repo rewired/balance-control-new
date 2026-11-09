@@ -1,6 +1,6 @@
 import type { State } from 'boardgame.io';
 import type { CoreState } from '@bc/rules';
-import { migrateCoreState, type LegacyCoreState } from './state-migration.js';
+import { hasUnsupportedTopology, migrateCoreState, type LegacyCoreState } from './state-migration.js';
 
 function migrateSnapshot<T extends { G: unknown }>(snapshot: T): T {
   const G = migrateCoreState(snapshot.G);
@@ -10,6 +10,10 @@ function migrateSnapshot<T extends { G: unknown }>(snapshot: T): T {
 export function migrateCoreMatchState(state: State<CoreState | LegacyCoreState>): State<CoreState>;
 export function migrateCoreMatchState(state: State<unknown>): State<unknown>;
 export function migrateCoreMatchState(state: State<unknown>): State<unknown> {
+  // Keep the snapshot available without letting boardgame.io resume it under different rules.
+  if (hasUnsupportedTopology(state.G)) {
+    return { ...state, ctx: { ...state.ctx, gameover: { unsupportedTopology: true } } };
+  }
   const current = migrateSnapshot(state);
   const undo = state._undo.map(migrateSnapshot);
   const redo = state._redo.map(migrateSnapshot);

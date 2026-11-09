@@ -42,12 +42,12 @@ describe('boardgame.io match setup', () => {
     };
     const { G, ctx } = InitializeGame({
       game, numPlayers,
-      setupData: { addOn56: true, topology: 'orthogonal', variants: { firstPlayerHandicap: true, tileRecycling: true } },
+      setupData: { addOn56: true, topology: 'hex', variants: { firstPlayerHandicap: true, tileRecycling: true } },
     });
 
     expect(ctx.playOrder).toEqual(Object.keys(G.exp.core.players));
     expect(ctx.playOrder).toHaveLength(numPlayers);
-    expect(G.cfg).toMatchObject({ addOn56: true, topology: 'orthogonal', variants: { firstPlayerHandicap: true, tileRecycling: true } });
+    expect(G.cfg).toMatchObject({ addOn56: true, topology: 'hex', variants: { firstPlayerHandicap: true, tileRecycling: true } });
     for (const playerID of ctx.playOrder) {
       expect(G.exp.core.players[playerID].personal.influence).toHaveLength(playerID === ctx.currentPlayer ? 1 : 2);
     }
@@ -75,6 +75,7 @@ describe('boardgame.io match setup', () => {
     [5, {}],
     [4, { addOn56: true }],
     [2, { topology: 'diagonal' }],
+    [2, { topology: 'orthogonal' }],
     [2, { variants: { unknownVariant: true } }],
   ])('rejects incompatible match setup for %i players', (numPlayers, setupData) => {
     const result = createMatch({ game: createBCGame(), numPlayers, setupData });

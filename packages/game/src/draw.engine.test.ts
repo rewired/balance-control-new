@@ -42,26 +42,26 @@ describe('DrawResolution through boardgame.io', () => {
   beforeEach(() => __resetRegisteredExpansionsForTest());
   afterEach(() => vi.restoreAllMocks());
 
-  it('offers orthogonal neighbors and transfers the drawn tile into Board on placement', () => {
-    const client = Client({ game: createBCGame({ topology: 'orthogonal' }), numPlayers: 2 });
+  it('offers hex neighbors and transfers the drawn tile into Board on placement', () => {
+    const client = Client({ game: createBCGame(), numPlayers: 2 });
     const start = client.getState()!;
     const drawn = start.G.exp.core.tiles.drawResolution!;
-    expect(drawn.legalCoords).toHaveLength(4);
+    expect(drawn.legalCoords).toHaveLength(6);
     expect(start.G.exp.core.tiles.drawPile).not.toContain(drawn.tileId);
     expect(start.G.exp.core.tiles.discardFaceUp).not.toContain(drawn.tileId);
 
-    client.moves.placeTile({ q: 1, r: -1 });
+    client.moves.placeTile({ q: 1, r: 1 });
     expect(client.getState()!._stateID).toBe(start._stateID);
 
-    client.moves.placeTile({ q: 1, r: 0 });
+    client.moves.placeTile({ q: 1, r: -1 });
     const placed = client.getState()!;
     expect(placed.G.exp.core.tiles.drawResolution).toBeNull();
-    expect(placed.G.exp.core.tiles.board).toContainEqual({ tileId: drawn.tileId, coord: { q: 1, r: 0 } });
+    expect(placed.G.exp.core.tiles.board).toContainEqual({ tileId: drawn.tileId, coord: { q: 1, r: -1 } });
     expect(placed.ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
   });
 
-  it('encloses a Hotspot using the same orthogonal attachment as placement', () => {
-    const game = gameWithDrawPile(['Committee-1'], { topology: 'orthogonal' });
+  it('encloses a Hotspot when the last hex neighbor is placed', () => {
+    const game = gameWithDrawPile(['Committee-1']);
     const setup = game.setup!;
     game.setup = (context, data) => {
       const G = setup(context, data);
@@ -69,6 +69,8 @@ describe('DrawResolution through boardgame.io', () => {
         { tileId: 'Hotspot-1', coord: { q: 1, r: 0 } },
         { tileId: 'Committee-2', coord: { q: 2, r: 0 } },
         { tileId: 'Committee-3', coord: { q: 1, r: -1 } },
+        { tileId: 'Committee-4', coord: { q: 2, r: -1 } },
+        { tileId: 'Committee-5', coord: { q: 0, r: 1 } },
       ];
       G.exp.core.tiles.discardFaceUp = G.exp.core.tiles.discardFaceUp.filter(id => !placed.some(tile => tile.tileId === id));
       G.exp.core.tiles.board.push(...placed);

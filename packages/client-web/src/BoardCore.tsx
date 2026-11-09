@@ -2,7 +2,7 @@ import { useRef, useState, type CSSProperties } from 'react';
 import type { Ctx } from 'boardgame.io';
 import type { BoardProps } from 'boardgame.io/react';
 import { CoreStages, engineMoveOptions, type EngineMoveOption } from '@bc/game';
-import type { AxialCoord, CoreState, Tile } from '@bc/rules';
+import { MatchConfigSchema, type AxialCoord, type CoreState, type Tile } from '@bc/rules';
 import CoreHexBoard, { TileFace } from './CoreHexBoard.js';
 import CoreSupplies from './CoreSupplies.js';
 import StartCommitteeDetails from './StartCommitteeDetails.js';
@@ -163,6 +163,7 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, submit, 
             <h2>{status}</h2>
           </div>
         </div>
+        <p className="core-match-seed">Seed <code>{G.matchSeed}</code></p>
       </header>
       <div className="core-play">
         <CoreHexBoard G={G} selectedTile={selectedTile} selectedCoord={selectedCoord} tileActions={tileActions} preview={preview}
@@ -260,6 +261,9 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, submit, 
 }
 
 export default function CoreBoard({ G, ctx, _stateID, playerID, isActive, moves }: BoardProps<CoreState>) {
+  if (!MatchConfigSchema.shape.topology.safeParse(G.cfg.topology).success) {
+    return <p role="status">This match uses a board topology that is no longer supported.</p>;
+  }
   return <CoreView G={G} ctx={ctx} revision={_stateID} playerID={playerID} isActive={isActive}
     submit={option => submitCoreOption(moves, option)} />;
 }

@@ -83,6 +83,8 @@ button:disabled { cursor: default; }
 .core-setup h2, .core-setup p { margin: 0; }
 .core-setup fieldset { display: grid; gap: .5rem; border: 1px solid var(--bc-line); border-radius: .45rem; }
 .core-setup button, .core-setup select { padding: .35rem .65rem; }
+.core-seed-field { display: grid; gap: .3rem; width: 100%; max-width: 25rem; }
+.core-seed-field input { min-width: 0; padding: .35rem .65rem; }
 .core-setup [role="alert"] { color: #fecaca; }
 .core-demo { margin-block-start: 1rem; color: var(--bc-muted); }
 .network-lobby { display: grid; justify-items: start; gap: .75rem; }
@@ -128,6 +130,8 @@ button:disabled { cursor: default; }
   font: 650 .85rem var(--bc-mono);
 }
 .core-turn > .player-marker { width: 1.15rem; height: 1.15rem; }
+.core-match-seed { min-width: 0; color: var(--bc-muted); font-size: .8rem; overflow-wrap: anywhere; }
+.core-match-seed code { font-family: var(--bc-mono); white-space: pre-wrap; }
 .core-modules { flex-wrap: wrap; gap: .4rem; }
 .core-module {
   display: flex;

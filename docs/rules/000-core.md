@@ -15,6 +15,7 @@ Applied errata: ERRATA-0008 (2026-11-07, ownership, activation rights, and zero-
 Applied errata: ERRATA-0010 (2026-11-07, shared Measure framework).
 Applied errata: ERRATA-0014 (2026-11-07, effect costs and payers).
 Applied errata: ERRATA-0015 (2026-11-07, Round Settlement sequence).
+Applied errata: ERRATA-0031 (2026-11-09, hexagonal topology).
 
 ---
 
@@ -65,7 +66,7 @@ Zones introduced by different expansions never share objects unless a rule expli
 CORE-01-00-T01 A topology implementation must define a function Adjacent(TileA, TileB) → Boolean.
 CORE-01-00-T02 Adjacent(TileA, TileB) must be deterministic.
 CORE-01-00-T03 All adjacency-based rules reference Adjacent(TileA, TileB).
-CORE-01-00-T04 The topology implementation may represent hexagonal, orthogonal, or other grid structures.
+CORE-01-00-T04 This edition uses hexagonal adjacency.
 CORE-01-00-T05 Changing topology does not alter any rule outside adjacency evaluation.
 
 ---

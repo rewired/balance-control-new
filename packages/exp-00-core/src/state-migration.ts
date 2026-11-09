@@ -1,10 +1,15 @@
-import type { CoreExpansionState, CoreState, ExpansionsState } from '@bc/rules';
+import { MatchConfigSchema, type CoreExpansionState, type CoreState, type ExpansionsState } from '@bc/rules';
 
 type OptionalExpansionState = Omit<ExpansionsState, 'core'>;
 export type LegacyCoreState = Omit<CoreState, 'exp'> & CoreExpansionState & { exp?: OptionalExpansionState };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function hasUnsupportedTopology(state: unknown): boolean {
+  return isRecord(state) && typeof state.matchSeed === 'string' && isRecord(state.cfg)
+    && !MatchConfigSchema.shape.topology.safeParse(state.cfg.topology).success;
 }
 
 function isLegacyCoreState(value: unknown): value is LegacyCoreState {

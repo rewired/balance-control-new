@@ -28,6 +28,30 @@ function json(value: unknown): unknown {
 }
 
 describe('CORE saves in boardgame.io FlatFile storage', () => {
+  it('keeps a saved match with a retired topology closed without rewriting its file', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'bc-core-save-'));
+    try {
+      const storage = new CoreSaveStorage({ dir });
+      await storage.connect();
+      const game = createBCGame();
+      const start = InitializeGame({ game, numPlayers: 2 });
+      const saved = { ...start, G: { ...start.G, cfg: { ...start.G.cfg, topology: 'orthogonal' } } };
+      const metadata = { gameName: game.name!, players: { '0': { id: 0 }, '1': { id: 1 } }, createdAt: 0, updatedAt: 0 };
+      await storage.createMatch('retired-topology', { initialState: saved, metadata });
+
+      const loaded = await storage.fetch('retired-topology', { state: true, initialState: true });
+      expect(loaded.state.ctx.gameover).toEqual({ unsupportedTopology: true });
+      expect(loaded.initialState.ctx.gameover).toEqual({ unsupportedTopology: true });
+      expect(loaded.state.G).toEqual(json(saved.G));
+
+      const raw = new FlatFile({ dir });
+      await raw.connect();
+      expect((await raw.fetch('retired-topology', { state: true })).state).toEqual(json(saved));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it.each([{}, { exp01: true }, { exp01: true, exp02: true, exp03: true }])('loads and continues a legacy match with %j', async expansions => {
     const dir = await mkdtemp(join(tmpdir(), 'bc-core-save-'));
     try {

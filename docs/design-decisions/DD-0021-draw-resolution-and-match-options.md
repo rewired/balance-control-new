@@ -4,6 +4,8 @@
 - Status: Implementiert und über boardgame.io geprüft
 - Bezug: S17/S18, Zieh- und Abschlussablauf aus S09 sowie R07 aus DD-0018 und DD-0017
 
+Stand der Entscheidung vom 8. November 2026. Seit [ERRATA-0031](../rules/ERRATA-0031-hexagonal-topology.md) ist nur Hex als Match-Topologie verfügbar.
+
 Die Match-Konfiguration speichert die ausgewählte Topologie als ID. `hex` ist der Standard. `orthogonal` bindet einen Adapter mit vier Nachbarn. Beide Adapter liefern das Adjazenzprädikat und die zugehörigen Kandidatenkoordinaten. Platzierung, Hotspot-Einschließung und Nachbarschaft für Lobbyisten in der Mehrheits- und Produktionsberechnung verwenden diese Bindung gemäß CORE-01-00-07 bis -11 und CORE-01-00-T01 bis -T05. [Topologieadapter](../../packages/rules/src/topology/index.ts)
 
 Ein Beispiel für die Setup-Daten eines Matches mit fünf oder sechs Spielern:

@@ -57,6 +57,7 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
             const free = players.find(player => !player.name);
             const parsed = MatchSetupDataSchema.safeParse(match.setupData ?? {});
             const modules = parsed.success ? expansions.filter(item => parsed.data.expansions[item.id]) : [];
+            const canPlay = gameName !== CoreGame.name || parsed.success;
             const start = () => handleStartMatch(gameName, {
               matchID, numPlayers: players.length, ...(seat && { playerID: String(seat.id) }),
             });
@@ -66,8 +67,9 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
                   <div>Match {matchID} · {players.map(player => player.name || 'Open seat').join(', ')}</div></div>
                 <div className="network-match-actions">
                   {seat && <button type="button" onClick={() => void handleLeaveMatch(gameName, matchID)}>Leave</button>}
-                  {free && !seat && <button type="button" onClick={() => void handleJoinMatch(gameName, matchID, String(free.id))}>Join</button>}
-                  {!free && <button type="button" onClick={start}>{seat ? 'Play' : 'Spectate'}</button>}
+                  {!canPlay && <span>This match uses unsupported settings.</span>}
+                  {canPlay && free && !seat && <button type="button" onClick={() => void handleJoinMatch(gameName, matchID, String(free.id))}>Join</button>}
+                  {canPlay && !free && <button type="button" onClick={start}>{seat ? 'Play' : 'Spectate'}</button>}
                 </div>
               </li>
             );

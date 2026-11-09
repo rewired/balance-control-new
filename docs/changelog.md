@@ -530,3 +530,12 @@
 
 - Economy, Security und Climate liefern ihre Zahlungsoptionen, Kartenziele, Effekte und Ausnahmen über registrierte Schnittstellen. Security besitzt die Regeln für Inner Order, Authority Apparatus und Regulationsfolgeentscheidungen.
 - Der gemeinsame Resolver verarbeitet diese Beiträge in der bisherigen Reihenfolge. Zugpayloads, Spielstände und deterministische Replays behalten ihre Formate.
+
+## 2026-11-09 – Seed beim Start einer Browserpartie
+
+- Hotseat und Netzwerk erzeugen beim Anlegen einer Partie einen neuen Seed, wenn das optionale Feld leer bleibt. Der Spielkopf zeigt den verwendeten Seed, damit sich der Start mit denselben Match-Einstellungen wiederholen lässt.
+
+## 2026-11-09 – Hex-Topologie und Varianten beim Partiestart
+
+- Hex ist die einzige unterstützte Topologie. Orthogonale Partien lassen sich weder neu anlegen noch fortsetzen. Vorhandene Spielstandsdateien bleiben erhalten.
+- Im Startformular für Hotseat und Netzwerk lassen sich Tile-Recycling und Startspieler-Handicap unabhängig voneinander aktivieren.

@@ -18,8 +18,8 @@ describe('Hex adjacency and placement — CORE-01-04-05/08', () => {
 
   it('enumerates only the neighbors from the configured attachment', () => {
     const board: BoardPlacement[] = [{ tileId: 'StartCommittee', coord: { q:0,r:0 } }];
-    const legal = legalPlacementCoords(board, getTopology('orthogonal'));
-    expect(legal).toHaveLength(4);
-    expect(legal).not.toContainEqual({ q: 1, r: -1 });
+    const legal = legalPlacementCoords(board, getTopology('hex'));
+    expect(legal).toHaveLength(6);
+    expect(legal).toContainEqual({ q: 1, r: -1 });
   });
 });

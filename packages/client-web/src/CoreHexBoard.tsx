@@ -39,8 +39,7 @@ export function TileFace({ tile, controller }: { tile: Tile; controller?: string
   );
 }
 
-function pixel({ q, r }: AxialCoord, topology: CoreState['cfg']['topology']) {
-  if (topology === 'orthogonal') return { x: (tileWidth + 6) * q, y: (tileHeight + 6) * r };
+function pixel({ q, r }: AxialCoord) {
   return { x: (tileWidth + 4) * (q + r / 2), y: (tileHeight * 0.75 + 4) * r };
 }
 
@@ -79,9 +78,9 @@ export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile
   const viewport = useRef<HTMLDivElement>(null);
   const core = G.exp.core;
   const tiles = core.tiles.board.map(placement => ({
-    ...placement, ...pixel(placement.coord, G.cfg.topology),
+    ...placement, ...pixel(placement.coord),
   }));
-  const targets = legalCoords.map(coord => ({ coord, ...pixel(coord, G.cfg.topology) }));
+  const targets = legalCoords.map(coord => ({ coord, ...pixel(coord) }));
   const locations = [...tiles, ...targets];
   const left = Math.min(...locations.map(({ x }) => x));
   const top = Math.min(...locations.map(({ y }) => y));
