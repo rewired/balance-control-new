@@ -1,45 +1,26 @@
-# Local LLM Bot — Ollama Runbook
+# Local Ollama bot and paired duels
 
-This guide runs the LLM bot locally using Ollama. The bot never constructs moves: it picks from enumerated legal options only (AGENTS §4.1) and falls back deterministically if the model is unavailable.
+Run Ollama locally and use `ollama list` to pick an installed model. Build the workspace before starting the runner.
 
-## Prereqs
-- Node.js 24 LTS (see `.nvmrc`) and pnpm 10.18.0
-- Ollama installed:
-  - Windows: https://ollama.com/download
-  - Linux/macOS: `curl -fsSL https://ollama.com/install.sh | sh`
-
-## Model
-For ~8GB VRAM:
-- `llama3.2:3b-instruct-q4_K_M` or
-- `phi3:mini` (quantized)
-
-Pull a model:
-```
-ollama pull llama3.2:3b-instruct-q4_K_M
+```powershell
+pnpm build
+$env:BOT = 'duel'
+$env:OLLAMA_MODEL = 'your-installed-model-tag'
+$env:SEEDS = 'duel-1,duel-2'
+pnpm --filter @bc/server bot:run
 ```
 
-Start Ollama (default port 11434):
-```
-ollama serve
-```
+Each seed runs twice, with Ollama on seat `0` and then seat `1`. Both games begin at the same engine state. The opponent uses the same search as the browser's Hotseat bot. Games run through final Settlement and report board Influence, the outcome, model requests, and fallback counts. The totals include only pairs in which the model made a valid choice whenever called. A request failure stops the run.
 
-## Run the bot runner (headless)
-From repo root:
-```
-BOT=llm OLLAMA_MODEL="llama3.2:3b-instruct-q4_K_M" pnpm --filter @bc/server bot:run
-```
-Environment variables:
-- `BOT=llm|random` (default: random)
-- `OLLAMA_HOST` (default: http://127.0.0.1:11434)
-- `OLLAMA_MODEL` (required for `BOT=llm`)
-- `N` number of placement steps (default 6)
+| Variable | Effect |
+| --- | --- |
+| `SEEDS` | Comma-separated match seeds. Defaults to `duel-1,duel-2`. |
+| `OPENING_TURNS` | Defaults to `0` for complete games. A positive value plays those turns with a shared first-legal policy, then lets the bots play the rest. Use this for an endgame pilot and report it separately from full games. |
+| `BOT_EXPANSIONS` | Comma-separated `exp01`, `exp02`, `exp03`. Defaults to CORE only. |
+| `OLLAMA_CONTEXT` | Context limit in tokens. Defaults to 8192 for CORE and 16384 with expansions. |
+| `OLLAMA_THINK` | Set to `1` to request thinking on supported models. Defaults to off. |
+| `OLLAMA_HOST` | Loopback URL for the duel. Defaults to `http://127.0.0.1:11434`. |
 
-Behavior:
-- Enumerates legal political actions for the current player.
-- Sends the actual engine options with parameters, costs, context tile, and result hash. Expects strict JSON `{ "index": 0 }` using a zero-based index.
-- If validation fails or Ollama is unreachable, falls back to the first legal option.
+The prompt contains the goal, a rule brief, normative text for visible Measures, the visible board and player supplies, and a deterministic sample of legal options with costs. Both bots use the same public state boundary. The model receives neither true nor simulated pile order, match seed, PRNG state, or engine hashes. The engine validates the selected option before applying it. Ollama uses [structured outputs](https://docs.ollama.com/capabilities/structured-outputs) and the runner checks the returned index again.
 
-## Troubleshooting
-- "ECONNREFUSED": ensure `ollama serve` is running and `OLLAMA_HOST` is correct.
-- GPU OOM: try a smaller or more heavily quantized model.
-- Empty options: occurs late in a match when no political actions remain.
+For a smoke test with Ollama choosing for both seats, set `BOT=llm` and `N` to a turn limit (default 6). `BOT=random` runs the same smoke test using the first legal option at each decision, without making any model requests.

@@ -539,3 +539,12 @@
 
 - Hex ist die einzige unterstützte Topologie. Orthogonale Partien lassen sich weder neu anlegen noch fortsetzen. Vorhandene Spielstandsdateien bleiben erhalten.
 - Im Startformular für Hotseat und Netzwerk lassen sich Tile-Recycling und Startspieler-Handicap unabhängig voneinander aktivieren.
+
+## 2026-11-09 – Computergegner im Hotseat
+
+- Im Hotseat lassen sich bis auf einen Platz alle Plätze mit Computergegnern besetzen. Sie spielen direkt im Browser und übernehmen auch Zwischenentscheidungen in fremden Zügen.
+- Die Computergegner vergleichen die vom Engine-Reducer bestätigten Ergebnisse legaler Aktionen. Bei identischem Zustand wählen sie denselben Zug. Der Ollama-Runner bleibt separat verfügbar.
+
+- Die Computergegner simulieren bis zu drei Spielerzüge mit gegnerischen Antworten. Der Browser rekonstruiert für die Suche hypothetische Stapel aus dem sichtbaren Spielstand. Die tatsächliche Reihenfolge wird weder gelesen noch an den Bot weitergegeben.
+
+- Der lokale Ollama-Runner erhält das sichtbare Brett, das Spielziel und die relevanten Regeln. `BOT=duel` vergleicht Ollama mit dem Hotseat-Bot je Seed auf beiden Startplätzen. Modellantworten mit Ersatzzügen werden separat ausgewiesen und die betroffenen Paare aus der Gesamtwertung genommen.

@@ -5,6 +5,7 @@ import { expansions } from './expansion-data.js';
 export interface CoreMatchSettings {
   numPlayers: number;
   setupData: Omit<MatchConfig, 'topology'> & { matchSeed: string };
+  computerPlayers?: number;
 }
 
 function generateMatchSeed(): string {
@@ -12,13 +13,15 @@ function generateMatchSeed(): string {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export default function CoreMatchSetup({ title, buttonLabel, onStart, initial }: {
+export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, allowComputerPlayers = false }: {
   title: string;
   buttonLabel: string;
   onStart: (settings: CoreMatchSettings) => void | Promise<void>;
   initial?: CoreMatchSettings;
+  allowComputerPlayers?: boolean;
 }) {
   const [numPlayers, setNumPlayers] = useState(initial?.numPlayers ?? 2);
+  const [computerPlayers, setComputerPlayers] = useState(initial?.computerPlayers ?? 0);
   const [enabled, setEnabled] = useState<ExpansionFlags>(
     initial?.setupData.expansions ?? { exp01: false, exp02: false, exp03: false },
   );
@@ -39,6 +42,7 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial }:
         await onStart({
           numPlayers,
           setupData: { expansions: enabled, addOn56: numPlayers >= 5, matchSeed, variants },
+          ...(allowComputerPlayers && { computerPlayers }),
         });
       } catch (failure) {
         setError(failure instanceof Error ? failure.message : 'Could not start the match.');
@@ -49,10 +53,21 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial }:
       <h2>{title}</h2>
       <label>
         Players{' '}
-        <select value={numPlayers} disabled={pending} onChange={event => setNumPlayers(Number(event.target.value))}>
+        <select value={numPlayers} disabled={pending} onChange={event => {
+          const count = Number(event.target.value);
+          setNumPlayers(count);
+          setComputerPlayers(previous => Math.min(previous, count - 1));
+        }}>
           {[2, 3, 4, 5, 6].map(count => <option key={count}>{count}</option>)}
         </select>
       </label>
+      {allowComputerPlayers && <label>
+        Computer opponents{' '}
+        <select value={computerPlayers} disabled={pending} onChange={event => setComputerPlayers(Number(event.target.value))}>
+          <option value={0}>None</option>
+          {Array.from({ length: numPlayers - 1 }, (_, index) => <option key={index + 1}>{index + 1}</option>)}
+        </select>
+      </label>}
       <fieldset disabled={pending}>
         <legend>Expansions</legend>
         <p>CORE is always included. Select any combination of expansions.</p>

@@ -13,10 +13,12 @@ const placement: LegalMoveOption = {
 const options = [placement, { ...placement, parameters: [{ q: 1, r: 0 }] }];
 
 describe('S15: LLM selects an engine option by index', () => {
-  it('sends the complete engine options and selects the second one', async () => {
+  it('sends playable parameters and prices without engine fingerprints, and selects the second option', async () => {
     const complete = vi.fn(async () => '{"index":1}');
     expect(await chooseOptionWithLLM(options, 'Turn=1', { complete })).toBe(options[1]);
-    expect(complete).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify([{ index: 0, ...options[0] }, { index: 1, ...options[1] }])));
+    expect(complete).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify(options[1].parameters)), 2);
+    expect(complete).toHaveBeenCalledWith(expect.stringContaining(JSON.stringify(options[1].costBreakdown)), 2);
+    expect(complete).not.toHaveBeenCalledWith(expect.stringContaining(placement.resultingStateHashPreview), 2);
   });
 
   it.each(['invalid JSON', '{"index":-1}', '{"index":0.5}', '{"index":"1"}', '{"index":2}', '{"index":1,"payload":{}}'])(

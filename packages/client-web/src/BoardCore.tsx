@@ -75,11 +75,12 @@ interface CoreViewProps {
   revision: number;
   playerID?: string | null;
   isActive?: boolean;
+  computerPlayers?: ReadonlySet<string>;
   submit: (option: EngineMoveOption) => void;
   onNewMatch?: () => void;
 }
 
-export function CoreView({ G, ctx, revision, playerID, isActive = true, submit, onNewMatch }: CoreViewProps) {
+export function CoreView({ G, ctx, revision, playerID, isActive = true, computerPlayers, submit, onNewMatch }: CoreViewProps) {
   const [expansionView, setExpansionView] = useState<'measures' | 'regulations'>('measures');
   const inspector = useRef<HTMLElement>(null);
   const [selection, setSelection] = useState<{
@@ -104,6 +105,7 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, submit, 
   const startCommitteeSelected = inspectedTile?.kind === 'StartCommittee';
   const drawn = core.tiles.drawResolution;
   const activePlayer = Object.keys(ctx.activePlayers ?? {})[0] ?? ctx.currentPlayer;
+  const isComputerTurn = computerPlayers?.has(activePlayer);
   const stage = ctx.activePlayers?.[activePlayer];
   const resolvingDecision = stage === CoreStages.ResolveHotspot || stage === CoreStages.ResolveRegulationFollowUp;
   const result = ctx.gameover as { winners: string[] } | undefined;
@@ -139,7 +141,8 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, submit, 
     : stage === CoreStages.ExactlyOnePoliticalAction ? 'Choose a political action' : stage === CoreStages.ResolveHotspot ? 'Resolve a Hotspot'
       : stage === CoreStages.ResolveRegulationFollowUp ? 'Resolve a Regulation' : 'Resolve a decision';
   const status = result ? (result.winners.length > 1 ? `Shared win · ${result.winners.map(playerLabel).join(' and ')}`
-    : `${playerLabel(result.winners[0])} wins`) : `${playerLabel(activePlayer)} to act`;
+    : `${playerLabel(result.winners[0])} wins`) : isComputerTurn ? `${playerLabel(activePlayer)} (computer) is thinking…`
+    : `${playerLabel(activePlayer)} to act`;
 
   const inspectTile = (tileId: string) => {
     setSelection({ revision, playerID, tile: tileId });
@@ -217,7 +220,7 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, submit, 
                   <TileSummary tile={core.allTiles[drawn.tileId]} label="Drawn tile" />
                   <p>{core.tiles.drawPile.length} in draw pile · {core.tiles.discardFaceUp.length} discarded</p>
                 </div>}
-                {options.length === 0 ? <p>Waiting for {playerLabel(activePlayer)}.</p>
+                {options.length === 0 ? <p>Waiting for {playerLabel(activePlayer)}{isComputerTurn && ' (computer)'}.</p>
                   : resolvingDecision ? <p>{phase}. Choose how to proceed below.</p>
                     : placements.size > 0 && !selectedCoord ? <p>Select a + space on the board to place the tile.</p>
                       : !selectedTile && !selectedMeasure && tileActions.size > 0
@@ -232,7 +235,7 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, submit, 
         </aside>
       </div>
       <div className="core-dashboard" data-expanded={enabledExpansions.length > 0 || !!regulations}>
-        <CoreSupplies G={G} activePlayer={result ? undefined : activePlayer} />
+        <CoreSupplies G={G} activePlayer={result ? undefined : activePlayer} computerPlayers={computerPlayers} />
         {(enabledExpansions.length > 0 || regulations) && (
           <section className="core-operations core-panel" aria-label="Expansion tools">
             {regulations && enabledExpansions.length > 0 && (

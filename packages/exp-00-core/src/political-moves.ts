@@ -21,9 +21,14 @@ function corePoliticalMove<P extends object>(
       const parsed = payloadSchema.safeParse(input);
       return parsed.success ? resolve(G, describe(playerID, parsed.data)) : { ok: false, reason: 'invalid-payload' };
     },
-    quotes: (G, playerID) => Array.from(candidates(G, playerID)).flatMap(payload =>
-      resolve.actionQuotes(G, describe(playerID, payload))
-        .map(({ payment, ...quote }) => ({ ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } }))),
+    *quotes(G, playerID) {
+      // CORE-01-04-09A: existence checks can stop at the first legal option.
+      for (const payload of candidates(G, playerID)) {
+        for (const { payment, ...quote } of resolve.actionQuotes(G, describe(playerID, payload))) {
+          yield { ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } };
+        }
+      }
+    },
   };
 }
 

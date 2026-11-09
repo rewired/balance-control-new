@@ -14,7 +14,11 @@ function InfluenceCount({ markers }: { markers: Influence[] }) {
   );
 }
 
-export default function CoreSupplies({ G, activePlayer }: { G: CoreState; activePlayer?: string }) {
+export default function CoreSupplies({ G, activePlayer, computerPlayers }: {
+  G: CoreState;
+  activePlayer?: string;
+  computerPlayers?: ReadonlySet<string>;
+}) {
   const core = G.exp.core;
   const resources = matchResourceIds(G);
   const board = core.influencesOnBoard ?? [];
@@ -41,7 +45,8 @@ export default function CoreSupplies({ G, activePlayer }: { G: CoreState; active
         <tbody>
           {Object.values(core.players).map(({ id, personal }) => (
             <tr key={id} data-acting={id === activePlayer} style={{ '--player-color': playerColor(id) } as CSSProperties}>
-              <th scope="row"><PlayerMarker id={id} />{playerLabel(id)}{id === activePlayer && <span className="acting-label">To act</span>}</th>
+              <th scope="row"><PlayerMarker id={id} />{playerLabel(id)}{computerPlayers?.has(id) && ' (computer)'}
+                {id === activePlayer && <span className="acting-label">To act</span>}</th>
               <InfluenceCount markers={board.filter(marker => marker.owner === id)} />
               <InfluenceCount markers={personal.influence} />
               {resources.map(resource => {

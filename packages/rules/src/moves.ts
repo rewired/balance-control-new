@@ -14,7 +14,7 @@ export interface MoveDefinition<P> {
   execute: (G: CoreState, playerID: string, payload: P) => ResolveResult;
   isPlayMeasure?: true;
   enumerate?: (G: CoreState, playerID: string) => P[]; // optional deterministic enumerator (AGENTS §4.1)
-  quotes?: (G: CoreState, playerID: string) => MoveQuote<P>[];
+  quotes?: (G: CoreState, playerID: string) => Iterable<MoveQuote<P>>;
 }
 
 export interface MoveCatalog {
@@ -42,7 +42,7 @@ export function buildMoveCatalog(modules: readonly RulesModule[]): MoveCatalog {
     }
     defs[def.type] = {
       ...def,
-      enumerate: def.quotes ? (G, playerID) => def.quotes!(G, playerID).map(quote => quote.payload) : def.enumerate,
+      enumerate: def.quotes ? (G, playerID) => Array.from(def.quotes!(G, playerID), quote => quote.payload) : def.enumerate,
       // The router supplies the output of the registered payload schema.
       execute: (G, playerID, payload) => def.execute(G, playerID, payload as P),
     };
@@ -79,11 +79,11 @@ function measureMove(module: ExpansionModule, kind: 'takeMeasure' | 'playMeasure
     payloadSchema: kind === 'playMeasure' ? PlayMeasurePayload : MeasurePayload,
     ...(kind === 'playMeasure' ? { isPlayMeasure: true } : {}),
     execute: (G, playerID, payload) => resolve(G, { kind, expansion, playerID, ...payload }),
-    quotes: (G, playerID) => {
+    *quotes(G, playerID) {
       const deck = G.exp?.[expansion]?.measures;
       const cards = kind === 'takeMeasure' ? deck?.open : deck?.hands[playerID];
-      return (cards ?? []).flatMap(measureId => {
-        if (!measureId) return [];
+      for (const measureId of cards ?? []) {
+        if (!measureId) continue;
         const rule = kind === 'playMeasure' ? module.measureRules?.[measureId] : undefined;
         const players = rule?.targetPlayer
           ? Object.keys(G.exp.core.players).filter(id => rule.targetPlayer?.(G, playerID, id)) : [undefined];
@@ -96,9 +96,12 @@ function measureMove(module: ExpansionModule, kind: 'takeMeasure' | 'playMeasure
           ...(targetResort === undefined ? {} : { targetResort }),
           ...extensionTarget,
         })))));
-        return choices.flatMap(payload => resolve.actionQuotes(G, { kind, expansion, playerID, ...payload })
-          .map(({ payment, ...quote }) => ({ ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } })));
-      });
+        for (const payload of choices) {
+          for (const { payment, ...quote } of resolve.actionQuotes(G, { kind, expansion, playerID, ...payload })) {
+            yield { ...quote, payload: { ...payload, ...(payment ? { payment } : {}) } };
+          }
+        }
+      }
     },
   };
 }

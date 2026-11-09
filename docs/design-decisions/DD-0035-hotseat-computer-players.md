@@ -1,0 +1,11 @@
+# DD-0035 — Lokale Computergegner
+
+Computerplätze sind eine Einstellung des Hotseat-Clients und gehören weder zur Match-Konfiguration der Engine noch zum Spielstand. Der Client folgt dem aktiven Spieler von boardgame.io, auch wenn der aktive Spieler gerade eine Entscheidung im Zug eines anderen Spielers trifft.
+
+Die Suche simuliert den Rest des laufenden Zugs und bis zu zwei weitere Spielerzüge mit der Reducer-Vorschau der Engine. Platzierung, Zwischenentscheidungen, politische Aktionen und Settlement folgen damit dem tatsächlichen Ablauf. Der Bot vergleicht bis zu vier Startoptionen und bis zu zwei Varianten der ersten gegnerischen Antwort. Jeder simulierte Gegner bewertet die Folgen aus seiner eigenen Sicht. In späteren Entscheidungen folgt die Suche der jeweils besten unmittelbar bewerteten Option. Acht Einzelaktionen und eine kleinere Auswahl auf großen Brettern begrenzen den Aufwand unabhängig von der Rechnergeschwindigkeit.
+
+Die Bewertung berücksichtigt das Spielergebnis, Einfluss auf dem Brett, verfügbare Marker und die wirtschaftliche Position. Die Kontrolle stammt aus dem kanonischen Mehrheitsdienst. Gleichwertige Platzierungen bevorzugen mehr Nachbarn laut aktiver Topologie. Bei weiterem Gleichstand entscheidet die Reihenfolge der Engine.
+
+Der Client leitet den verbleibenden Inhalt verdeckter Stapel aus dem Material und den sichtbaren Zonen ab. Für die Suche mischt er diesen Inhalt einmal mit einem separaten, deterministischen Seed. Alle Varianten einer Entscheidung verwenden dieselbe hypothetische Reihenfolge. Der Worker erhält weder die tatsächliche Stapelreihenfolge noch den echten Seed, die PRNG-Daten oder den Zughash. Karten auf der Hand sind im Hotseat einsehbar. Die Suche läuft im Worker. Der Client verwirft Antworten für ältere Spielstände.
+
+Die Engine ermittelt das Vorhandensein legaler politischer Aktionen über dieselben Zahlungsangebote wie zuvor. Die Angebote werden nacheinander berechnet, damit die Suche nach der ersten legalen Aktion abbrechen kann.
