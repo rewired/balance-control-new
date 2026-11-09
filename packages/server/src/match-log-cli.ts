@@ -1,7 +1,7 @@
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { verifyMatchLog } from '@bc/game';
 import { CoreSaveStorage } from './core-save-storage.js';
+import { readMatchLog } from './match-log-format.js';
 import { logsDirectory } from './match-log-path.js';
 import { createMatchLogWriter, matchLogFilename } from './match-log-writer.js';
 
@@ -19,11 +19,11 @@ async function main() {
     await createMatchLogWriter(directory)(matchID, exported);
     console.log(`Exported ${exported.steps.length} actions to ${output}`);
   } else if (command === 'verify' && args.length === 1) {
-    const log = verifyMatchLog(JSON.parse(await readFile(args[0], 'utf8')));
+    const log = verifyMatchLog(await readMatchLog(args[0]));
     const { turn, players, stateHash } = log.steps.at(-1)?.after ?? log.initial;
     console.log(JSON.stringify({ actions: log.steps.length, turn, players, result: log.result, stateHash }, null, 2));
   } else {
-    throw new Error('Usage: match:log export <matchID> | match:log verify <input.json>');
+    throw new Error('Usage: match:log export <matchID> | match:log verify <input.jsonl or input.json>');
   }
 }
 

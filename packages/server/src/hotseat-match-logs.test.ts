@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from 'boardgame.io/client';
@@ -7,6 +7,7 @@ import { CoreGame, createMatchLogRecorder, verifyMatchLog } from '@bc/game';
 import { expect, it, vi } from 'vitest';
 import { Server } from '#boardgame-server';
 import { addHotseatLogRoute } from './hotseat-match-logs.js';
+import { parseMatchLogJsonl, readMatchLog } from './match-log-format.js';
 import { logNetworkMatches } from './network-match-logs.js';
 
 it('saves local Hotseat and in-memory network matches to their own files', async () => {
@@ -39,8 +40,16 @@ it('saves local Hotseat and in-memory network matches to their own files', async
     expect((await upload({ ...latest, result: 'invalid' })).status).toBe(400);
     expect((await upload(latest)).status).toBe(204);
     expect((await upload(first)).status).toBe(204);
-    const hotseat = JSON.parse(await readFile(join(dir, 'hotseat', `${matchID}.match-log.json`), 'utf8'));
-    expect(verifyMatchLog(hotseat)).toEqual(latest);
+    const hotseat = join(dir, 'hotseat', `${matchID}.match-log.jsonl`);
+    expect(verifyMatchLog(await readMatchLog(hotseat))).toEqual(latest);
+    const contents = await readFile(hotseat, 'utf8');
+    const [header, step] = contents.trimEnd().split('\n');
+    expect(JSON.parse(step)).toEqual(latest.steps[0]);
+    expect(() => parseMatchLogJsonl(header + '\n')).toThrow(/action count/);
+
+    const legacy = join(dir, 'legacy.match-log.json');
+    await writeFile(legacy, JSON.stringify(latest, null, 2) + '\n');
+    expect(verifyMatchLog(await readMatchLog(legacy))).toEqual(latest);
 
     const response = await fetch(`${baseURL}/games/core/create`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numPlayers: 2 }),
@@ -53,7 +62,7 @@ it('saves local Hotseat and in-memory network matches to their own files', async
     const placedNetwork = reduce(state, { type: 'MAKE_MOVE', payload: { type: 'placeTile', args: [coord], playerID: '0' } });
     await server.db.setState(networkID, placedNetwork, placedNetwork.deltalog);
     await vi.waitFor(async () => {
-      const network = JSON.parse(await readFile(join(dir, 'network', `${networkID}.match-log.json`), 'utf8'));
+      const network = await readMatchLog(join(dir, 'network', `${networkID}.match-log.jsonl`));
       const verified = verifyMatchLog(network);
       expect(verified.source).toEqual({ mode: 'network', matchID: networkID, networkStorage: 'memory' });
       expect(verified.steps).toHaveLength(1);

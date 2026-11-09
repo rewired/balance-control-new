@@ -12,6 +12,7 @@ coverage/
 /logs/
 *.log
 *.match-log.json
+*.match-log.jsonl
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

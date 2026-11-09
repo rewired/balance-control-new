@@ -3,7 +3,9 @@ import { join } from 'node:path';
 import { createBCGame, type MatchLog } from '@bc/game';
 import { runBotDuel, runBotMatch } from './bot-match.js';
 import { localOllamaOrigin, makeOllamaBackend, ollamaHost } from './ollama.js';
+import { serializeMatchLogJsonl } from './match-log-format.js';
 import { logsDirectory } from './match-log-path.js';
+import { matchLogFilename } from './match-log-writer.js';
 
 const BOT = (process.env.BOT ?? 'random').toLowerCase();
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'llama3.2:3b-instruct-q4_K_M';
@@ -23,8 +25,8 @@ function matchLogging() {
       await mkdir(logsDirectory, { recursive: true });
       dir = await mkdtemp(join(logsDirectory, 'bot-'));
     }
-    const output = join(dir, `${++count}.match-log.json`);
-    await writeFile(output, JSON.stringify(log, null, 2) + '\n', { flag: 'wx' });
+    const output = join(dir, matchLogFilename(String(++count)));
+    await writeFile(output, serializeMatchLogJsonl(log), { flag: 'wx' });
     console.log(JSON.stringify({ matchLog: output }));
   } };
 }

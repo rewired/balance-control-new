@@ -584,3 +584,7 @@
 - Wer zuerst sieben echte Einflussmarker auf dem Brett hat (acht zu fünft oder sechst), gewinnt nach dem Effekt, der den letzten Marker platziert. Der Sieg beendet auch eine laufende Hotspot-Reihenfolge vor dem nächsten Ereignis.
 - Der leere Plättchenstapel bleibt die Auffangregel mit Schlussabrechnung und geteiltem Sieg bei Gleichstand.
 - Spielprotokolle nach der früheren Regel können beim Replay ab dem ersten Erreichen des Einflusslimits abweichen.
+
+## 2026-11-09 – Kompakte Spielprotokolle in JSONL
+
+- Hotseat, Netzwerk, Bot-Läufe und Exporte speichern Match-Logs als `.match-log.jsonl` mit einer Zeile pro bestätigter Aktion. Replay-Daten und Checkpoints bleiben vollständig erhalten. `match:log verify` liest auch das bisherige JSON-Format.
