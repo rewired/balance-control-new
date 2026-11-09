@@ -6,6 +6,7 @@ import { computeMajority } from './majority.js';
 import { isFullySurrounded } from './hotspot.js';
 
 export { CoreStages, CoreTurn } from './turn.js';
+export { influenceLimit } from './influence.js';
 export { checkStartCommitteeFormalization, isProhibited, startCommitteeCost } from './resolver.js';
 export { engineMoveOptions, type EngineMoveOption } from './move-options.js';
 export { planProductionForTile, productionReceipt } from './production.plan.js';

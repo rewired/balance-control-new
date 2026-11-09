@@ -34,6 +34,7 @@ describe('CORE hotseat', () => {
     expect(placement).toContain('Player 1 to act');
     expect(placement).toContain('Start Committee');
     expect(placement).toContain('Place the drawn tile');
+    expect(placement).toContain('7 to win');
     expect(placement).not.toContain('Expansion tools');
     expect(placement.match(/aria-label="Place tile at /g)).toHaveLength(options().length);
     const waiting = render('1');
@@ -135,6 +136,7 @@ it('shows all six players on one tile and all six active resources alongside the
   const supplies = markup.match(/<table class="core-supplies">.*?<\/table>/)?.[0];
   expect(supplies?.match(/class="resource-icon"/g)).toHaveLength(6);
   expect(supplies).toContain('Player 6');
+  expect(supplies).toContain('8 to win');
   expect(markup).toContain('Open Measures');
 });
 

@@ -245,9 +245,11 @@ describe('S09: endgame replays through boardgame.io', () => {
 describe('CORE-01-09-00: victory at the Influence limit', () => {
   beforeEach(() => __resetRegisteredExpansionsForTest());
 
-  it.each([[2, 7], [5, 8], [6, 8]])('ends with %i players when the winner places marker %i', (numPlayers, limit) => {
+  it.each([
+    [2, 7, []], [2, 7, ['Committee-9']], [5, 8, ['Committee-9']], [6, 8, ['Committee-9']],
+  ])('ends with %i players on marker %i with remaining tiles %j', (numPlayers, limit, remaining) => {
     const draw = Array.from({ length: numPlayers + 1 }, (_, i) => `Committee-${i + 2}`);
-    if (numPlayers > 2) draw.push('Committee-9');
+    draw.push(...remaining);
     const client = fixtureClient({ matchSeed: 'influence-limit', addOn56: numPlayers > 2 }, [
       { tileId: 'Committee-1', coord: { q: 1, r: 0 } },
       { tileId: 'Committee-10', coord: { q: -1, r: 0 } },
@@ -279,11 +281,12 @@ describe('CORE-01-09-00: victory at the Influence limit', () => {
     client.moves.placeTile({ q: numPlayers + 2, r: 0 });
     const beforeWin = client.getState()!;
     expect(beforeWin.ctx.gameover).toBeUndefined();
-    expect(beforeWin.G.exp.core.tiles.drawPile).toEqual(numPlayers === 2 ? [] : ['Committee-9']);
+    expect(beforeWin.G.exp.core.tiles.drawPile).toEqual(remaining);
     moveMarker(client, lastMarker.id, `Committee-${numPlayers + 2}`);
 
     const { G } = terminalState(client, numPlayers + 1, '0', ['0']);
     expect(markerCounts(G)[0]).toBe(limit);
+    expect(G.exp.core.tiles.drawPile).toEqual(remaining);
     expect(G.exp.core.players['0'].personal.resources).toEqual(beforeWin.G.exp.core.players['0'].personal.resources);
   });
 

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { influenceLimit } from '@bc/exp-00-core';
 import { matchResourceIds, type CoreState, type Influence } from '@bc/rules';
 import { playerLabel } from './core-board-labels.js';
 import { playerColor } from './core-board-visuals.js';
@@ -37,7 +38,7 @@ export default function CoreSupplies({ G, activePlayer, computerPlayers }: {
             <th scope="colgroup" colSpan={resources.length}>Resources</th>
           </tr>
           <tr>
-            <th scope="col">On board</th>
+            <th scope="col">On board <span className="supply-breakdown">{influenceLimit(G)} to win</span></th>
             <th scope="col">In supply</th>
             {resources.map(resource => <th key={resource} scope="col"><ResourceBadge resource={resource} /></th>)}
           </tr>
