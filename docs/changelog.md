@@ -585,6 +585,11 @@
 - Der leere Plättchenstapel bleibt die Auffangregel mit Schlussabrechnung und geteiltem Sieg bei Gleichstand.
 - Spielprotokolle nach der früheren Regel können beim Replay ab dem ersten Erreichen des Einflusslimits abweichen.
 
+## 2026-11-09 – Kompaktere Spielansicht
+
+- Zugstatus, Plättchenzahl und Zoom stehen in einer Leiste. Auf breiten Fenstern nutzt das Spielfeld mehr von der verfügbaren Höhe.
+- Seed und aktive Erweiterungen stehen unter „Match details“ am Spielfeldrand. Die Hotseat-Schaltfläche für das Match-Setup ist dort direkt erreichbar.
+
 ## 2026-11-09 – Kompakte Spielprotokolle in JSONL
 
 - Hotseat, Netzwerk, Bot-Läufe und Exporte speichern Match-Logs als `.match-log.jsonl` mit einer Zeile pro bestätigter Aktion. Replay-Daten und Checkpoints bleiben vollständig erhalten. `match:log verify` liest auch das bisherige JSON-Format.

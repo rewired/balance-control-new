@@ -150,26 +150,27 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
 
   return (
     <div className="core-match" style={{ '--acting-color': result ? '#94a3b8' : playerColor(activePlayer) } as CSSProperties}>
-      <header className="core-heading core-panel">
-        <div className="core-modules" aria-label="Active modules">
-          <span className="core-module">CORE</span>
-          {enabledExpansions.map(({ id, resource, label }) => (
-            <span key={id} className="core-module" title={label}><ResourceBadge resource={resource} /> EXP {id.slice(-2)}</span>
-          ))}
-        </div>
-        <div className="core-turn" aria-live="polite">
-          <p className="turn-number">Turn {ctx.turn}{!result && activePlayer !== ctx.currentPlayer
-            && ` · ${playerLabel(ctx.currentPlayer)}'s turn`}</p>
-          {!result && <PlayerMarker id={activePlayer} />}
-          <div>
-            {!result && <p className="core-kicker">{phase}</p>}
-            <h2>{status}</h2>
-          </div>
-        </div>
-        <p className="core-match-seed">Seed <code>{G.matchSeed}</code></p>
-      </header>
       <div className="core-play">
         <CoreHexBoard G={G} selectedTile={selectedTile} selectedCoord={selectedCoord} tileActions={tileActions} preview={preview}
+          status={<div className="core-turn" aria-live="polite">
+            <p className="turn-number">Turn {ctx.turn}{!result && activePlayer !== ctx.currentPlayer
+              && ` · ${playerLabel(ctx.currentPlayer)}'s turn`}</p>
+            <h2>{!result && <PlayerMarker id={activePlayer} />}{status}</h2>
+            {!result && <p className="core-kicker">{phase}</p>}
+          </div>}
+          matchDetails={<details className="core-match-details">
+            <summary>Match details</summary>
+            <div className="core-modules" role="group" aria-label="Active modules">
+              <span className="core-module">CORE</span>
+              {enabledExpansions.map(({ id, resource, label }) => (
+                <span key={id} className="core-module" title={label}><ResourceBadge resource={resource} /> EXP {id.slice(-2)}</span>
+              ))}
+            </div>
+            <p className="core-match-seed">Seed <code>{G.matchSeed}</code></p>
+          </details>}
+          matchAction={onNewMatch && <button type="button" className={result ? 'new-match' : undefined} onClick={onNewMatch}>
+            {result ? 'Start a new match' : 'Back to match setup'}
+          </button>}
           legalCoords={Array.from(placements.values(), entry => entry.coord)}
           onInspect={tileId => selectedTile === tileId ? setSelection(undefined) : inspectTile(tileId)}
           onPlace={coord => {
@@ -181,7 +182,7 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
         <aside className="core-inspector core-panel" aria-label="Tile details and actions" ref={inspector} tabIndex={-1}
           data-inspecting-tile={!!inspectedTile}>
           <header className="core-inspector-heading">
-            <div><p className="core-kicker">Details and actions</p><h3>{selectedMeasure ? 'Measure inspector' : 'Tile inspector'}</h3></div>
+            <h3>{selectedMeasure ? 'Measure inspector' : 'Tile inspector'}</h3>
             {(selectedTile || selectedCoord || selectedMeasure) && <button type="button" onClick={() => setSelection(undefined)}>Clear</button>}
           </header>
           <div className="core-inspector-body" key={selectedTile ?? selectedMeasure?.id ?? selectedCoord ?? 'board'}
@@ -267,7 +268,6 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
           </section>
         )}
       </div>
-      {result && onNewMatch && <div><button type="button" className="new-match" onClick={onNewMatch}>Start a new match</button></div>}
     </div>
   );
 }

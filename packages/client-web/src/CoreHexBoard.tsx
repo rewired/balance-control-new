@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { EngineMoveOption } from '@bc/game';
 import type { AxialCoord, CoreState, RegulationKind, Tile } from '@bc/rules';
 import committeeIcon from '@bc/exp-00-core/assets/tile-icons/committee.svg';
@@ -75,6 +75,9 @@ function MoveArrow({ source, destination, viewBox }: {
 
 interface Props {
   G: CoreState;
+  status: ReactNode;
+  matchDetails: ReactNode;
+  matchAction?: ReactNode;
   legalCoords: AxialCoord[];
   tileActions: ReadonlyMap<string, EngineMoveOption[]>;
   selectedTile?: string;
@@ -84,7 +87,9 @@ interface Props {
   onInspect: (tileId: string) => void;
 }
 
-export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile, selectedCoord, preview, onPlace, onInspect }: Props) {
+export default function CoreHexBoard({
+  G, status, matchDetails, matchAction, legalCoords, tileActions, selectedTile, selectedCoord, preview, onPlace, onInspect,
+}: Props) {
   const core = G.exp.core;
   const tiles = core.tiles.board.map(placement => ({
     ...placement, ...pixel(placement.coord),
@@ -104,7 +109,7 @@ export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile
 
   return (
     <section className="core-board core-panel" aria-label="Game board">
-      <HexBoardViewport tileCount={tiles.length} width={width} height={height} center={center}
+      <HexBoardViewport status={status} tileCount={tiles.length} width={width} height={height} center={center}
         origin={{ x: left - fieldPadding - tileWidth / 2, y: top - fieldPadding - tileHeight / 2 }}>
           {tiles.map(placement => {
             const { tileId, coord, x, y } = placement;
@@ -159,13 +164,17 @@ export default function CoreHexBoard({ G, legalCoords, tileActions, selectedTile
           {source && destination && <MoveArrow source={source} destination={destination}
             viewBox={`${left - fieldPadding} ${top - fieldPadding} ${width} ${height}`} />}
       </HexBoardViewport>
-      <footer className="core-map-key">
-        <span><PlayerMarker id="0" /> Influence <span className="virtual-influence">+ virtual</span></span>
-        <span><i className="majority-key" data-majority="control" aria-hidden="true" /> Controls tile</span>
-        <span><i className="majority-key" data-majority="tie" aria-hidden="true" /> Tied lead</span>
-        {G.exp.exp02?.regulations && <span><RegulationBadge kind="Administration" /> Regulation</span>}
-        {legalCoords.length > 0 && <span><b>+</b> Legal tile placement</span>}
-        {tileActions.size > 0 && <span><b>Place / Move</b> Marker action</span>}
+      <footer className="core-board-footer">
+        <div className="core-map-key">
+          <span><PlayerMarker id="0" /> Influence <span className="virtual-influence">+ virtual</span></span>
+          <span><i className="majority-key" data-majority="control" aria-hidden="true" /> Controls tile</span>
+          <span><i className="majority-key" data-majority="tie" aria-hidden="true" /> Tied lead</span>
+          {G.exp.exp02?.regulations && <span><RegulationBadge kind="Administration" /> Regulation</span>}
+          {legalCoords.length > 0 && <span><b>+</b> Legal tile placement</span>}
+          {tileActions.size > 0 && <span><b>Place / Move</b> Marker action</span>}
+        </div>
+        {matchAction}
+        {matchDetails}
       </footer>
     </section>
   );

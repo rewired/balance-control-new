@@ -101,7 +101,6 @@ function HotseatMatch({ settings, onNewMatch, server }: { settings: CoreMatchSet
   const playerID = Object.keys(ctx.activePlayers ?? {})[0] ?? ctx.currentPlayer;
   const isComputerTurn = computerPlayers.has(playerID);
   return <>
-    {!ctx.gameover && <div><button type="button" onClick={onNewMatch}>Back to match setup</button></div>}
     {saveError && <p role="alert">
       Could not save the match log.{' '}
       <button type="button" onClick={() => void saveLog()}>Retry saving</button>
