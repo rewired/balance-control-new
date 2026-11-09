@@ -11,6 +11,7 @@ import {
   type ResourceAmounts, type ResourceId, type ResourceRegistry, type RulesModule, type Surcharge, type TakeMeasureEffect,
 } from '@bc/rules';
 import { isFullySurrounded } from './hotspot.js';
+import { influenceLimit, influenceLimitWinners } from './influence.js';
 import { planProductionForTile, productionReceipt } from './production.plan.js';
 import { computeMajority, getControl } from './majority.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
@@ -309,7 +310,7 @@ function planPoliticalAction(
     if (amount !== 0 && amount !== 1) return { ok: false, reason: 'invalid-influence-output' };
     const owned = [...supply, ...board.filter(marker => marker.owner === player.id)];
     // CORE-01-08-01 and ADD56-01-03-00-01: cap the total across both zones.
-    if (owned.length + amount > (G.cfg.addOn56 ? 8 : 7)) return { ok: false, reason: 'influence-cap' };
+    if (owned.length + amount > influenceLimit(G)) return { ok: false, reason: 'influence-cap' };
     const ids = new Set(owned.map(marker => marker.id));
     let serial = 1;
     while (ids.has(`INF-${player.id}-F${serial}`)) serial++;
@@ -685,6 +686,8 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
 
   function resumeHotspots(G: CoreState, tileIds: string[]): void {
     for (const [index, id] of tileIds.entries()) {
+      // CORE-01-09-00A: a completed winning enclosure stops the remaining events.
+      if (influenceLimitWinners(G).length) return;
       if (G.exp.core.pendingRegulationChoices) {
         G.exp.core.remainingHotspots = tileIds.slice(index);
         return;

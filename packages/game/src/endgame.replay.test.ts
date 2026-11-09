@@ -1,8 +1,9 @@
 import { Client } from 'boardgame.io/client';
 import { coreStateForHash } from '@bc/exp-00-core';
 import { exp01Economy } from '@bc/exp-01-economy';
+import { exp03Climate } from '@bc/exp-03-climate';
 import {
-  __resetRegisteredExpansionsForTest, ensureExpansionSlice, registerExpansion,
+  __resetRegisteredExpansionsForTest, createResolver, ensureExpansionSlice, registerExpansion,
   type BoardPlacement, type CoreState,
 } from '@bc/rules';
 import { stableHash } from '@bc/shared';
@@ -25,6 +26,7 @@ function fixtureClient(
   board: BoardPlacement[],
   draw: string[],
   markers: { owner: string; tileId: string }[],
+  { numPlayers = 2, prepare }: { numPlayers?: number; prepare?: (G: CoreState) => void } = {},
 ): CoreClient {
   const game = createBCGame(config);
   const setup = game.setup!;
@@ -37,9 +39,16 @@ function fixtureClient(
       const marker = G.exp.core.players[owner].personal.influence.shift()!;
       return { ...marker, tileId };
     });
+    prepare?.(G);
     return G;
   };
-  return Client({ game, numPlayers: 2 });
+  return Client({ game, numPlayers });
+}
+
+function seedBoardInfluence(G: CoreState, owner: string, tileId: string, count: number): void {
+  const markers = G.exp.core.players[owner].personal.influence.splice(0, count);
+  const formalized = Array.from({ length: count - markers.length }, (_, i) => ({ id: `INF-${owner}-F${i + 1}`, owner }));
+  G.exp.core.influencesOnBoard!.push(...[...markers, ...formalized].map(marker => ({ ...marker, tileId })));
 }
 
 function terminalState(client: CoreClient, turn: number, playerID: string, winners: string[]) {
@@ -230,5 +239,101 @@ describe('S09: endgame replays through boardgame.io', () => {
       },
     });
     expect(replayUnsuccessfulFinalDraw()).toEqual(replayUnsuccessfulFinalDraw());
+  });
+});
+
+describe('CORE-01-09-00: victory at the Influence limit', () => {
+  beforeEach(() => __resetRegisteredExpansionsForTest());
+
+  it.each([[2, 7], [5, 8], [6, 8]])('ends with %i players when the winner places marker %i', (numPlayers, limit) => {
+    const draw = Array.from({ length: numPlayers + 1 }, (_, i) => `Committee-${i + 2}`);
+    if (numPlayers > 2) draw.push('Committee-9');
+    const client = fixtureClient({ matchSeed: 'influence-limit', addOn56: numPlayers > 2 }, [
+      { tileId: 'Committee-1', coord: { q: 1, r: 0 } },
+      { tileId: 'Committee-10', coord: { q: -1, r: 0 } },
+      { tileId: 'DOM-W1-1', coord: { q: 0, r: 1 } },
+    ], draw, [{ owner: '0', tileId: 'DOM-W1-1' }], {
+      numPlayers,
+      prepare: G => {
+        seedBoardInfluence(G, '0', 'Committee-1', limit - 2);
+        for (const player of Object.values(G.exp.core.players).slice(1)) {
+          seedBoardInfluence(G, player.id, 'Committee-10', player.personal.influence.length);
+        }
+        Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 1, FOR: 1 });
+      },
+    });
+
+    client.moves.placeTile({ q: 2, r: 0 });
+    client.moves.doPoliticalAction({ type: 'formalizeInfluence', payload: { tileId: 'Committee-1', resources: ['DOM', 'FOR'] } });
+    const formalized = client.getState()!;
+    expect(formalized.ctx.gameover).toBeUndefined();
+    expect(formalized.ctx.currentPlayer).toBe('1');
+    expect(markerCounts(formalized.G)[0]).toBe(limit - 1);
+    const [lastMarker] = formalized.G.exp.core.players['0'].personal.influence;
+    expect(lastMarker).toBeDefined();
+
+    for (let i = 1; i < numPlayers; i++) {
+      client.moves.placeTile({ q: i + 2, r: 0 });
+      moveMarker(client, `INF-${i}-1`, `Committee-${i + 2}`, 'Committee-10');
+    }
+    client.moves.placeTile({ q: numPlayers + 2, r: 0 });
+    const beforeWin = client.getState()!;
+    expect(beforeWin.ctx.gameover).toBeUndefined();
+    expect(beforeWin.G.exp.core.tiles.drawPile).toEqual(numPlayers === 2 ? [] : ['Committee-9']);
+    moveMarker(client, lastMarker.id, `Committee-${numPlayers + 2}`);
+
+    const { G } = terminalState(client, numPlayers + 1, '0', ['0']);
+    expect(markerCounts(G)[0]).toBe(limit);
+    expect(G.exp.core.players['0'].personal.resources).toEqual(beforeWin.G.exp.core.players['0'].personal.resources);
+  });
+
+  it.each([false, true])('stops later enclosures when the winning Hotspot award requires a fee: %s', paid => {
+    if (paid) registerExpansion(exp03Climate());
+    const client = fixtureClient({ matchSeed: 'hotspot-influence-limit', expansions: { exp03: paid } }, [
+      { tileId: 'Hotspot-1', coord: { q: 2, r: 0 } },
+      { tileId: 'Committee-1', coord: { q: 2, r: -1 } },
+      { tileId: 'Lobbyist-1', coord: { q: 1, r: -1 } },
+      { tileId: 'Committee-2', coord: { q: 0, r: 1 } },
+      { tileId: 'Committee-3', coord: { q: 1, r: 1 } },
+      { tileId: 'Committee-4', coord: { q: 3, r: 0 } },
+      { tileId: 'Committee-5', coord: { q: 3, r: -1 } },
+      { tileId: 'Committee-6', coord: { q: 2, r: 1 } },
+    ], ['Hotspot-2', 'Committee-7'], [], {
+      prepare: G => {
+        seedBoardInfluence(G, '0', 'Lobbyist-1', 6);
+        seedBoardInfluence(G, '1', 'Hotspot-1', 6);
+        for (const player of Object.values(G.exp.core.players)) {
+          player.personal.influence.push({ id: `INF-${player.id}-F3`, owner: player.id });
+          if (paid) player.personal.resources.CLM = 1;
+        }
+        if (paid) {
+          const registration = createResolver()(G, { kind: 'registerMeasureEffect', instance: {
+            sourceCardId: 'CLM_M05', owner: '1', playNumber: 1, duration: 'ownerNextTurn',
+          } });
+          expect(registration.ok).toBe(true);
+        }
+      },
+    });
+
+    client.moves.placeTile({ q: 1, r: 0 });
+    if (paid) {
+      expect(client.getState()!.ctx.activePlayers).toEqual({ '1': 'ResolveHotspot' });
+      expect(client.getState()!.ctx.gameover).toBeUndefined();
+      client.updatePlayerID('1');
+      client.moves.chooseHotspotOutcome({ kind: 'greenwashing', resource: 'CLM' });
+    }
+
+    const { G } = terminalState(client, 1, '0', ['1']);
+    expect(markerCounts(G)).toEqual([6, 7]);
+    expect(G.exp.core.tiles.drawPile).toEqual(['Committee-7']);
+    expect(G.exp.core.pendingHotspot).toBeUndefined();
+    expect(G.exp.core.remainingHotspots).toBeUndefined();
+    expect(G.exp.core.tiles.board.find(tile => tile.tileId === 'Hotspot-1')?.enclosureProcessed).toBe(true);
+    expect(G.exp.core.tiles.board.find(tile => tile.tileId === 'Hotspot-2')?.enclosureProcessed).toBeUndefined();
+    if (paid) {
+      expect(G.exp.core.players['1'].personal.resources.CLM).toBe(0);
+      expect(G.exp.core.players['0'].personal.resources.CLM).toBe(1);
+      expect(G.exp.core.resources.bank.CLM).toBe(1);
+    }
   });
 });

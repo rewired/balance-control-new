@@ -5,6 +5,7 @@ import {
   assertExpansionStateMatchesConfig, buildMoveCatalog,
   createExpansionRegistry, createResolver, HotspotChoiceSchema, PaymentSelectionSchema, politicalMoveOptions, z,
 } from '@bc/rules';
+import { boardInfluenceScores, influenceLimitWinners } from './influence.js';
 import { resolveRoundSettlement } from './production.js';
 
 export const CoreStages = {
@@ -48,6 +49,7 @@ const chooseRegulationFollowUp: Move<CoreState> = ({ G, ctx, events, playerID },
   if (!chosen.ok) return INVALID_MOVE;
   const continuation = G.exp.core.decisionContinuation;
   const turn = { G, ctx, events };
+  if (endAtInfluenceLimit(turn)) return;
   if (suspendForRegulation(turn, continuation)) return;
   resolve(G, { kind: 'recordDecisionContinuation' });
   if (continuation === 'enclosures') afterEnclosure(turn);
@@ -68,22 +70,35 @@ function finishTurn(turn: TurnContext, final: boolean): void {
       return;
     }
   }
-  // AGENTS 5.3: record the completed state before the next turn begins.
-  resolve(G, { kind: 'recordTurnHash', turn: ctx.turn, playerID: ctx.currentPlayer });
+  recordTurnHash(turn);
   if (!final) {
     events.endTurn();
     return;
   }
   // CORE-01-09-03/-04: compare real Board markers and share ties.
-  const scores = Object.keys(G.exp.core.players).map(playerID => ({
-    playerID,
-    influence: (G.exp.core.influencesOnBoard ?? []).filter(marker => marker.owner === playerID).length,
-  }));
-  const highest = Math.max(...scores.map(score => score.influence));
-  events.endGame({ winners: scores.filter(score => score.influence === highest).map(score => score.playerID) });
+  const scores = boardInfluenceScores(G);
+  const highest = Math.max(...scores.map(([, count]) => count));
+  events.endGame({ winners: scores.filter(([, count]) => count === highest).map(([playerID]) => playerID) });
 }
 
 type TurnContext = Pick<FnContext<CoreState>, 'G' | 'ctx' | 'events'>;
+
+function recordTurnHash({ G, ctx }: TurnContext): void {
+  // AGENTS 5.3: record the completed or terminal state.
+  createResolver()(G, { kind: 'recordTurnHash', turn: ctx.turn, playerID: ctx.currentPlayer });
+}
+
+function endAtInfluenceLimit(turn: TurnContext): boolean {
+  const { G, events } = turn;
+  const winners = influenceLimitWinners(G);
+  if (winners.length === 0) return false;
+
+  // CORE-01-09-00/-00A: score the completed effect before advancing the turn or settling.
+  if (G.exp.core.decisionContinuation) createResolver()(G, { kind: 'recordDecisionContinuation' });
+  recordTurnHash(turn);
+  events.endGame({ winners });
+  return true;
+}
 
 function suspendForRegulation(turn: TurnContext, continuation: DecisionContinuation): boolean {
   const resolve = createResolver();
@@ -96,6 +111,7 @@ function suspendForRegulation(turn: TurnContext, continuation: DecisionContinuat
 }
 
 function afterEnclosure(turn: TurnContext): void {
+  if (endAtInfluenceLimit(turn)) return;
   if (suspendForRegulation(turn, 'enclosures')) return;
   const pending = turn.G.exp.core.pendingHotspot;
   if (pending) {
@@ -146,6 +162,7 @@ const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown)
     return;
   }
 
+  if (endAtInfluenceLimit({ G, ctx, events })) return;
   // EXP-01-06-05(b) and CORE-01-07-08: complete the whole action sequence in this turn.
   if (suspendForRegulation({ G, ctx, events }, definition.isPlayMeasure ? 'additional' : 'turnEnd')) return;
   if (definition.isPlayMeasure) beginPoliticalSlot({ G, ctx, events }, true);

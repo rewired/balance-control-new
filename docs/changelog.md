@@ -573,3 +573,9 @@
 
 - Die Local AI bewertet Measures und Regulations anhand ihrer Ziele und der erwarteten Folgen für beide Seiten. Einmalige Produktionsboni und bleibende Regulationen erhalten unterschiedliche Gewichte.
 - Für konkrete Security-Vorhaben berücksichtigt sie fehlendes SEC, Grassroots-Kontrolle und legale Tausche. Ein deterministischer Test deckt Kartenaufnahme, SEC-Beschaffung und die Blockade eines gegnerischen Ressorts ab.
+
+## 2026-11-09 – Sofortsieg am Einflusslimit
+
+- Wer zuerst sieben echte Einflussmarker auf dem Brett hat (acht zu fünft oder sechst), gewinnt nach dem Effekt, der den letzten Marker platziert. Der Sieg beendet auch eine laufende Hotspot-Reihenfolge vor dem nächsten Ereignis.
+- Der leere Plättchenstapel bleibt die Auffangregel mit Schlussabrechnung und geteiltem Sieg bei Gleichstand.
+- Spielprotokolle nach der früheren Regel können beim Replay ab dem ersten Erreichen des Einflusslimits abweichen.
