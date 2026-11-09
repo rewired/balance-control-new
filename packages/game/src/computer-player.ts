@@ -1,5 +1,6 @@
 import type { Ctx, Game } from 'boardgame.io';
-import { computeMajority, getTopology, type AxialCoord, type CoreState, type PaymentSelection } from '@bc/rules';
+import { computeMajority, getTopology, type AxialCoord, type CoreState, type PaymentSelection, type RegulationOperation } from '@bc/rules';
+import { inspectExpansions } from './computer-expansions.js';
 import type { ComputerPosition } from './computer-position.js';
 import { engineMoveOptions, previewEngineOptions, type EngineMoveOption, type EngineSnapshot } from './legal-options.js';
 
@@ -19,11 +20,15 @@ function evaluate({ G, ctx }: EngineSnapshot): PositionValue {
     45 * personal.influence.length + Object.values(personal.resources).reduce((sum, amount) => sum + amount, 0),
   ]));
   for (const { owner } of influencesOnBoard ?? []) scores[owner] += 100;
-  for (const { tileId, coord } of tiles.board) {
-    const tile = allTiles[tileId];
-    if (tile.kind !== 'ResortTile') continue;
-    const controller = computeMajority(G, coord);
-    if (controller !== null) scores[controller] += 3 * tile.w;
+  const expansions = inspectExpansions(G);
+  if (expansions) expansions.score(scores);
+  else {
+    for (const { tileId, coord } of tiles.board) {
+      const tile = allTiles[tileId];
+      if (tile.kind !== 'ResortTile') continue;
+      const controller = computeMajority(G, coord);
+      if (controller !== null) scores[controller] += 3 * tile.w;
+    }
   }
   // CORE-01-09-03/-04: use the actual settlement result for a finished game.
   const result = ctx.gameover as { winners: string[] } | undefined;
@@ -40,6 +45,12 @@ function compare(left: PositionValue, right: PositionValue, playerID: string): n
     ...Object.entries(scores).filter(([id]) => id !== playerID).map(([, score]) => score),
   );
   return rank(left) - rank(right) || margin(left) - margin(right);
+}
+
+function valueWithImmediateEffects(later: PositionValue, immediate: PositionValue): PositionValue {
+  const scores = Object.fromEntries(Object.entries(later.scores).map(([id, score]) =>
+    [id, score + (immediate.scores[id] - score) / 8]));
+  return { ...later, scores };
 }
 
 function actionType(option: EngineMoveOption): string {
@@ -100,8 +111,15 @@ export function sampleComputerOptions({ G, ctx }: ComputerPosition, playerID: st
 }
 
 function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: string, budget: number) {
-  const candidates = sampleComputerOptions({ G: state.G, ctx: state.ctx, revision: state._stateID }, playerID, budget);
+  const legal = engineMoveOptions(state.G, state.ctx, playerID);
+  if (!legal.length) return [];
+  const options = uniqueMarkerOptions(state.G, playerID, legal);
   const countNeighbors = compactness(state.G);
+  const sampled = shortlist(options, budget, countNeighbors);
+  const preferred = options.length > budget && options[0].moveType !== 'placeTile'
+    ? inspectExpansions(state.G)?.preferred(options, playerID, Math.ceil(budget / 4)) ?? []
+    : [];
+  const candidates = new Set([...sampled, ...preferred]);
   const ranked = Array.from(previewEngineOptions(game, state, candidates), ({ option, next }) => {
     const neighbors = option.moveType === 'placeTile' ? countNeighbors(option) : 0;
     return { option, next, value: evaluate(next), neighbors };
@@ -111,14 +129,22 @@ function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: s
 
 type Variation = ReturnType<typeof rankedOptions>[number];
 
-function distinctLines(ranked: Variation[], width: number): Variation[] {
+function distinctLines(ranked: Variation[], width: number, expanded: boolean): Variation[] {
   const seen = new Set<string>();
   const lines: Variation[] = [];
   for (const line of ranked) {
     const { option } = line;
-    const action = option.parameters[0] as { payload?: { sourceTileId?: string; measureId?: string } };
-    const key = option.moveType === 'placeTile' ? JSON.stringify(option.parameters[0])
-      : JSON.stringify([actionType(option), option.contextTile, action.payload?.sourceTileId, action.payload?.measureId]);
+    const action = option.parameters[0] as {
+      regulation?: RegulationOperation;
+      payload?: {
+        sourceTileId?: string; measureId?: string; targetPlayerID?: string; targetResort?: string;
+        output?: string; regulation?: RegulationOperation; targetRegulationId?: string;
+      };
+    };
+    const political = [actionType(option), option.contextTile, action.payload?.sourceTileId, action.payload?.measureId];
+    const targets = expanded ? [action.payload?.targetPlayerID, action.payload?.targetResort, action.payload?.output,
+      action.regulation ?? action.payload?.regulation, action.payload?.targetRegulationId] : [];
+    const key = JSON.stringify(option.moveType === 'placeTile' ? option.parameters[0] : [...political, ...targets]);
     if (seen.has(key)) continue;
     seen.add(key);
     lines.push(line);
@@ -131,6 +157,7 @@ function distinctLines(ranked: Variation[], width: number): Variation[] {
 export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision }: ComputerPosition, playerID: string): EngineMoveOption | undefined {
   if (ctx.gameover !== undefined || actingPlayer(ctx) !== playerID) return undefined;
   const state: EngineSnapshot = { G, ctx, _stateID: revision, plugins: { random: { data: { seed: G.matchSeed } } } };
+  const expanded = Object.values(G.cfg.expansions).some(Boolean);
   const lastTurn = state.ctx.turn + TURN_HORIZON;
   // Quoting and replaying each action gets more expensive as the board grows. Keep the horizon and narrow the search.
   const largeBoard = G.exp.core.tiles.board.length >= 25;
@@ -145,7 +172,7 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision }: 
     const actor = actingPlayer(next.ctx);
     const ranked = rankedOptions(game, next, actor, followUpSamples);
     const branch = canBranch && actor !== playerID;
-    const replies = distinctLines(ranked, branch ? REPLY_WIDTH : 1);
+    const replies = distinctLines(ranked, branch ? REPLY_WIDTH : 1, expanded);
     let best: PositionValue | undefined;
     for (const reply of replies) {
       const result = follow(reply, remaining - 1, canBranch && replies.length === 1);
@@ -155,13 +182,15 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision }: 
   }
 
   const ranked = rankedOptions(game, state, playerID, rootSamples);
-  const lines = distinctLines(ranked, rootWidth);
+  const lines = distinctLines(ranked, rootWidth, expanded);
   if (lines.length === 1 || lines[0]?.value.winners?.length === 1 && lines[0].value.winners[0] === playerID) {
     return lines[0].option;
   }
   let best: { option: EngineMoveOption; value: PositionValue } | undefined;
   for (const line of lines) {
-    const value = follow(line, ACTION_HORIZON - 1, true);
+    const later = follow(line, ACTION_HORIZON - 1, true);
+    // A useful effect can expire before the search horizon, even if it matters this round.
+    const value = expanded ? valueWithImmediateEffects(later, line.value) : later;
     if (!best || compare(value, best.value, playerID) > 0) best = { option: line.option, value };
   }
   if (best) return best.option;

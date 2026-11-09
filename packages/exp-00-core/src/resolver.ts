@@ -11,7 +11,7 @@ import {
   type ResourceAmounts, type ResourceId, type ResourceRegistry, type RulesModule, type Surcharge, type TakeMeasureEffect,
 } from '@bc/rules';
 import { isFullySurrounded } from './hotspot.js';
-import { planProductionForTile } from './production.plan.js';
+import { planProductionForTile, productionReceipt } from './production.plan.js';
 import { computeMajority, getControl } from './majority.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
 import { coreStateForHash } from './state-migration.js';
@@ -146,7 +146,7 @@ function planPayment(
   return first ? { ok: true, transaction: first } : { ok: false, reason };
 }
 
-function isProhibited(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[]): boolean {
+export function isProhibited(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[]): boolean {
   // CORE-01-06-00-07(c) and -10: priority prohibitions run before the other checks and before pricing.
   const context = { G, effect };
   return hooks.some(hook => hook.priorityProhibition?.(context)) || hooks.some(hook => hook.prohibitions?.(context));
@@ -968,7 +968,7 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
         const transaction = createBankTransaction(G, createMatchResourceRegistry(active));
         // CORE-01-06-16A: apply registered receipt limits after the regular split.
         for (const pid of plan.winners) {
-          const amount = Math.min(plan.share, ...hooks.map(hook => hook.productionReceiptLimit?.(G, pid) ?? plan.share));
+          const amount = productionReceipt(G, pid, plan.share, hooks);
           const payout = transaction.transfer({ from: 'Bank', to: 'PersonalSupply', playerID: pid, resource: plan.resort, amount });
           if (!payout.ok) return payout;
         }

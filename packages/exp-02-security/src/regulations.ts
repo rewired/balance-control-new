@@ -93,8 +93,7 @@ function queueRegulationFollowUps(G: CoreState, playerID: string, placed?: Board
   if (choices.length) (G.exp.core.pendingRegulationChoices ??= []).unshift(...choices);
 }
 
-function regulationPrice(G: CoreState, operation: RegulationOperation): { amount: number; discounts: string[] } {
-  if (operation.operation !== 'place') return { amount: 0, discounts: [] };
+export function regulationPlacementPrice(G: CoreState): { amount: number; discounts: string[] } {
   // EXP-02-04-A-01 and EXP-02-08-M15-03: discount the next placement this round with a floor of one SEC.
   const discounts = G.exp.core.activeMeasureEffects?.filter(instance => instance.sourceCardId === 'SEC_M15' && !instance.used)
     .map(instance => instance.id) ?? [];
@@ -124,12 +123,12 @@ export function initializeRegulations(G: CoreState): void {
 function planOperation(G: CoreState, operation: RegulationOperation, playerID: string, authorityTileId?: string) {
   const mutate = planRegulationMutation(G, operation);
   if (!mutate) return;
-  const { amount, discounts } = regulationPrice(G, operation);
+  const price = operation.operation === 'place' ? regulationPlacementPrice(G) : undefined;
   return {
-    cost: amount ? { SEC: amount } : undefined,
+    cost: price && { SEC: price.amount },
     commit: () => {
       const placed = mutate();
-      commitRegulationDiscounts(G, discounts);
+      commitRegulationDiscounts(G, price?.discounts);
       queueRegulationFollowUps(G, playerID, placed, authorityTileId);
     },
   };

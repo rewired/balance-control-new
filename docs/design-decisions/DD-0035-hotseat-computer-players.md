@@ -6,6 +6,10 @@ Die Suche simuliert den Rest des laufenden Zugs und bis zu zwei weitere Spielerz
 
 Die Bewertung berücksichtigt das Spielergebnis, Einfluss auf dem Brett, verfügbare Marker und die wirtschaftliche Position. Die Kontrolle stammt aus dem kanonischen Mehrheitsdienst. Gleichwertige Platzierungen bevorzugen mehr Nachbarn laut aktiver Topologie. Bei weiterem Gleichstand entscheidet die Reihenfolge der Engine.
 
+In Partien mit Erweiterungen gewichtet die Local AI das nächste Settlement mit den laufenden Measures und die längerfristige Produktion mit den bleibenden Regulations. Sie bevorzugt Ziele, an denen die Wirkung den eigenen Ertrag erhöht oder gegnerische Aktionen und Erträge begrenzt. Die Suche berücksichtigt auch den unmittelbar erwarteten Effekt, wenn er vor dem Ende der Vorschau ausläuft.
+
+Für eine aussichtsreiche Security-Measure auf der Hand, eine vorgemerkte Platzierung oder einen nahen Inner-Order-Auslöser schätzt die KI den SEC-Bedarf. Sie bewertet vorhandenes SEC bis zu diesem Bedarf höher und berücksichtigt den Zugang zu einem Grassroots. Die Zugauswahl reserviert einige Plätze für besonders aussichtsreiche Karten-, Tausch- und Regulationsoptionen aus der legalen Engine-Liste. Die Schätzung dient der Auswahl. Über Ziele, Zahlungen und Wirkung entscheidet weiterhin der Resolver in der Vorschau.
+
 Der Client leitet den verbleibenden Inhalt verdeckter Stapel aus dem Material und den sichtbaren Zonen ab. Für die Suche mischt er diesen Inhalt einmal mit einem separaten, deterministischen Seed. Alle Varianten einer Entscheidung verwenden dieselbe hypothetische Reihenfolge. Der Worker erhält weder die tatsächliche Stapelreihenfolge noch den echten Seed, die PRNG-Daten oder den Zughash. Karten auf der Hand sind im Hotseat einsehbar. Die Suche läuft im Worker. Der Client verwirft Antworten für ältere Spielstände.
 
 Die Engine ermittelt das Vorhandensein legaler politischer Aktionen über dieselben Zahlungsangebote wie zuvor. Die Angebote werden nacheinander berechnet, damit die Suche nach der ersten legalen Aktion abbrechen kann.

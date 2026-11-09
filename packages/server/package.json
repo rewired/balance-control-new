@@ -21,6 +21,7 @@
               ],
     "scripts":  {
                     "bot:run":  "tsx src/bot.runner.ts",
+                    "match:log": "tsx src/match-log-cli.ts",
                     "build":  "tsc -b",
                     "lint":  "eslint src --ext .ts",
                     "test":  "vitest run",

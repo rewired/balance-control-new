@@ -13,7 +13,7 @@ Decision: DD-0017, R23; approved by the user during the rules review.
 
 The authoritative correction is incorporated in `003-expansion03.md`:
 
-- EXP-03-06-06/-07 and EXP-03-08-M05-04/-09 define Greenwashing's global scope: FormalizeInfluence and normal Hotspot Influence payouts, including Labor Market and Transformationsdruck. The existing-marker transfer is explicitly a gain for this purpose.
+- EXP-03-06-06/-07 and EXP-03-08-M05-04/-09 define Greenwashing's global scope: FormalizeInfluence and normal Hotspot Influence payouts, including Labor Market and Transformation Pressure. The existing-marker transfer is explicitly a gain for this purpose.
 - EXP-03-08-M07-04/-05 restrict Protest Movement to those Hotspot Influence payouts. Both cards leave ordinary PlaceOrMoveInfluence, virtual Influence, majority, Resources, and Inner Order's Regulation outcome unaffected.
 - EXP-03-06-08 preserves Start Committee immunity with no replacement fee, retaining its timing, once-per-game limit, and base costs. Suppressed Hotspots remain processed once without later retry.
 - EXP-03-08-M05-05 charges the beneficiary 1 CLM or 1 INF to Bank once per affected gain resolution, not per marker or per active Greenwashing instance. This is an explicit recipient-paid replacement even for an otherwise free automatic Hotspot payout.

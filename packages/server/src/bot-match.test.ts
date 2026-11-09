@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { Client } from 'boardgame.io/client';
-import { createBCGame, createComputerPosition, type EngineMoveOption } from '@bc/game';
+import { createBCGame, createComputerPosition, verifyMatchLog, type EngineMoveOption, type MatchLog } from '@bc/game';
 import { describeBotPosition, runBotDuel, runBotMatch } from './bot-match.js';
 
 describe('Bot match through boardgame.io', () => {
+  it('exports a turn-limited bot run with its seed, seat policies, and actual final revision', async () => {
+    const game = createBCGame({ matchSeed: 'bot-log', expansions: { exp03: true } });
+    const logs: MatchLog[] = [];
+    const run = await runBotMatch(2, undefined, game, { onLog: log => { logs.push(log); } });
+    expect(logs).toHaveLength(1);
+    const log = verifyMatchLog(JSON.parse(JSON.stringify(logs[0])));
+    expect(log.source.seats).toEqual({ '0': 'first-legal', '1': 'first-legal' });
+    expect(log.setup.game).toMatchObject({ matchSeed: 'bot-log', expansions: { exp03: true } });
+    expect(log.result).toBeNull();
+    expect(log.steps.at(-1)?.after.stateHash).toBe(run.hash);
+  });
+
   it('plays a paid Measure, completes its additional action, and replays the final settlement', async () => {
     const game = createBCGame({ expansions: { exp01: true } });
     const setup = game.setup!;

@@ -17,7 +17,7 @@ The authoritative correction is incorporated in `001-expansion01.md` and `003-ex
 - EXP-01-03-01/-07 explicitly shuffle these two Tiles with the already defined ECO set. Component descriptions and setup reference the same copies. Measures remain in their separate zones; inactive EXP-01 contributes none of these Tiles.
 - ECO quantities remain unchanged: W1×2/W2×1/W3×1 for 2–4 players, plus one of each for 5–6. Including the special Tiles, EXP-01 adds six or nine Tiles respectively.
 - EXP-03-02-A-02/-02A specify one additional CLM-W1 and one additional CLM-W2 for 5–6 players. The total CLM set is two of each for 2–4, or three of each for 5–6.
-- Transformationsdruck remains a separate single Hotspot. R18's inactive Countdown state and deck exclusions remain applicable.
+- Transformation Pressure remains a separate single Hotspot. R18's inactive Countdown state and deck exclusions remain applicable.
 
 The CLM additional values are an explicit approved design choice preserving the base set's equal W1/W2 distribution, not a conclusion uniquely derivable from the previous wording. This clarification is not a balance-test result.
 
@@ -25,7 +25,7 @@ The CLM additional values are an explicit approved design choice preserving the 
 
 1. With EXP-01 and 2–4 players, add four ECO ResortTiles, one Labor Market, and one Investment Program: six Tiles total.
 2. With EXP-01 and 5–6 players, add seven ECO ResortTiles plus the same two single special Tiles: nine total.
-3. With EXP-03 and 2–4 players, add two CLM-W1 and two CLM-W2; with 5–6, add three of each. The one Transformationsdruck is additional to those ResortTiles.
+3. With EXP-03 and 2–4 players, add two CLM-W1 and two CLM-W2; with 5–6, add three of each. The one Transformation Pressure is additional to those ResortTiles.
 4. A component heading and a setup instruction do not produce duplicate special Tiles. MeasureCards never enter the Tile DrawPile.
 5. Disabled expansions contribute no corresponding Tiles, regardless of player count. No Countdown state is introduced by the extra CLM Tiles.
 

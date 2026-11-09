@@ -6,6 +6,8 @@ import {
   attachedRegulationTarget, initializeRegulations, innerOrderDecision, operationTarget, regulationActions, regulationFollowUp, regulationOperations,
 } from './regulations.js';
 
+export { regulationPlacementPrice } from './regulations.js';
+
 function attachedAt(G: CoreState, context?: AxialCoord): BoardRegulation[] {
   const tile = context && G.exp.core.tiles.board.find(({ coord }) => coord.q === context.q && coord.r === context.r);
   return tile ? G.exp?.exp02?.regulations?.attached.filter(regulation => regulation.tileId === tile.tileId) ?? [] : [];

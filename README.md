@@ -26,6 +26,7 @@
 - Leave **Seed (optional)** blank for a fresh seed. To repeat an opening, copy the seed from the match header and enter it with the same match settings.
 - In a match with expansions, use **Measures** to browse the market and hands. Select a card to read its rules and choose a legal action with its target and payment. Security matches also show **Regulations**, with links to the affected tiles.
 - For the playtest instructions, see [Task 0031](docs/tasks/0031_core_hotseat_playtest.md).
+- Download a replayable JSON log with **Download match log** in Hotseat. See [Match logs](docs/design-decisions/DD-0037-match-logs.md) for bot runs, network exports, and replay verification. Keep generated logs outside the Git checkout.
 
 
 ## LLM Bot (Local)

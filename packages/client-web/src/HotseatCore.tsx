@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Client } from 'boardgame.io/client';
-import { createBCGame, createComputerPosition } from '@bc/game';
+import { createBCGame, createComputerPosition, createMatchLog } from '@bc/game';
 import { CoreView, submitCoreOption } from './BoardCore.js';
 import CoreMatchSetup, { type CoreMatchSettings } from './CoreMatchSetup.js';
 import type { ComputerMoveRequest, ComputerMoveResponse } from './computer.worker.js';
@@ -11,7 +11,10 @@ function HotseatMatch({ settings, onNewMatch, server }: { settings: CoreMatchSet
   const [client] = useState(() => Client({
     game, numPlayers: settings.numPlayers, playerID: '0', debug: false,
   }));
+  // The local reducer can mutate nested boardgame.io counters in the original context.
+  const [initialState] = useState(() => structuredClone(client.getInitialState()));
   const [state, setState] = useState(() => client.getState());
+  const [exportError, setExportError] = useState<string>();
   const [computerError, setComputerError] = useState<string>();
   const [retry, setRetry] = useState(0);
   const computerWorker = useRef<Worker>();
@@ -68,8 +71,28 @@ function HotseatMatch({ settings, onNewMatch, server }: { settings: CoreMatchSet
   const { G, ctx, _stateID } = state;
   const playerID = Object.keys(ctx.activePlayers ?? {})[0] ?? ctx.currentPlayer;
   const isComputerTurn = computerPlayers.has(playerID);
+  const downloadLog = () => {
+    setExportError(undefined);
+    try {
+      const seats = Object.fromEntries(settings.players?.map((seat, index) => [String(index), seat]) ?? []);
+      const log = createMatchLog(initialState, client.store.getState(), client.log ?? [], { mode: 'hotseat', seats });
+      const url = URL.createObjectURL(new Blob([JSON.stringify(log, null, 2) + '\n'], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'hotseat.match-log.json';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (error) {
+      console.error('Match log export failed', error);
+      setExportError('The match log could not be exported.');
+    }
+  };
   return <>
-    {!ctx.gameover && <div><button type="button" onClick={onNewMatch}>Back to match setup</button></div>}
+    <div>
+      {!ctx.gameover && <button type="button" onClick={onNewMatch}>Back to match setup</button>}
+      <button type="button" onClick={downloadLog}>Download match log</button>
+    </div>
+    {exportError && <p role="alert">{exportError}</p>}
     {computerError && <div role="alert">
       {computerError}{' '}
       <button type="button" onClick={() => { setComputerError(undefined); setRetry(attempt => attempt + 1); }}>Retry move</button>

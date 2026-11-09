@@ -1,6 +1,6 @@
 import type { AxialCoord, CoreState, ResourceId, ResortTile } from '@bc/rules';
 import { computeMajority } from './majority.js';
-import { createExpansionRegistry, type ProductionModifier, type RulesModule } from '@bc/rules';
+import { createExpansionRegistry, type ExpansionHooks, type ProductionModifier, type RulesModule } from '@bc/rules';
 
 // CORE-01-06-16-00: collect modifiers from active sources before applying any.
 export function collectProductionModifiers(G: CoreState, coord: AxialCoord, tile: ResortTile, modules: readonly RulesModule[]): ProductionModifier[] {
@@ -26,6 +26,11 @@ export interface PlannedProduction {
   winners: string[]; // positive leaders who receive a regular share
   share: number;     // per-winner amount
   remainder: number; // to noise
+}
+
+// CORE-01-06-16A: limits cap each recipient's regular share without redistributing it.
+export function productionReceipt(G: CoreState, playerID: string, share: number, hooks: readonly ExpansionHooks[]): number {
+  return Math.min(share, ...hooks.map(hook => hook.productionReceiptLimit?.(G, playerID) ?? share));
 }
 
 export function planProductionForTile(state: CoreState, coord: AxialCoord, modules: readonly RulesModule[] = []): PlannedProduction | null {

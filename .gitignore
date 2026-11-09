@@ -10,6 +10,7 @@ node_modules/
 # Coverage and logs
 coverage/
 *.log
+*.match-log.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

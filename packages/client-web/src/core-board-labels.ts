@@ -15,6 +15,7 @@ export function words(value: string): string {
 }
 
 export function tileLabel(tile: Tile): string {
+  if (tile.id === 'Transformationsdruck') return 'Transformation Pressure'; // EXP-03-02-B-01
   if (tile.kind === 'Hotspot' && !tile.id.startsWith('Hotspot')) return words(tile.id);
   return tile.kind === 'ResortTile' ? `${tile.resort} · ${tile.w}` : words(tile.kind);
 }

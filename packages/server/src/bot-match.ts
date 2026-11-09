@@ -1,8 +1,8 @@
 import { Client } from '#boardgame-client';
 import { existsSync, readFileSync } from 'node:fs';
 import {
-  chooseComputerMove, createBCGame, createComputerPosition, engineMoveOptions, hashEngineState, legalMoveOptions,
-  type EngineMoveOption, type EngineSnapshot,
+  chooseComputerMove, createBCGame, createComputerPosition, createMatchLog, engineMoveOptions, hashEngineState, legalMoveOptions,
+  type EngineMoveOption, type EngineSnapshot, type MatchLog, type MatchLogSource,
 } from '@bc/game';
 import { chooseOllamaMove, createBotPositionDescriber, type LLMBackend, type LLMFallback } from '@bc/bot-llm';
 
@@ -16,6 +16,7 @@ export const describeBotPosition = createBotPositionDescriber(file => {
 
 type CoreGame = ReturnType<typeof createBCGame>;
 type Policy = (game: CoreGame, state: EngineSnapshot, playerID: string) => EngineMoveOption | undefined | Promise<EngineMoveOption | undefined>;
+type BotLogging = { model?: string; onLog: (log: MatchLog) => void | Promise<void> };
 
 const firstLegal: Policy = (_game, { G, ctx }, playerID) => engineMoveOptions(G, ctx, playerID)[0];
 const hotseat: Policy = (game, state, playerID) => chooseComputerMove(game, createComputerPosition(state), playerID);
@@ -25,8 +26,10 @@ function ollamaPolicy(backend: LLMBackend, onRequest?: () => void, onFallback?: 
     describeBotPosition, backend, onRequest, onFallback);
 }
 
-async function playBotMatch(game: CoreGame, policy: Policy, endTurn: number, openingTurns: number) {
+async function playBotMatch(game: CoreGame, policy: Policy, endTurn: number, openingTurns: number,
+  logSource?: () => MatchLogSource) {
   const client = Client({ game, numPlayers: 2, playerID: '0' });
+  const initialState = logSource && structuredClone(client.getInitialState());
   let state: EngineSnapshot = client.store.getState();
   let openingHash: string | undefined;
   while (state.ctx.gameover === undefined && state.ctx.turn <= endTurn) {
@@ -51,14 +54,23 @@ async function playBotMatch(game: CoreGame, policy: Policy, endTurn: number, ope
   const markers = state.G.exp.core.influencesOnBoard ?? [];
   const scores = Object.fromEntries(state.ctx.playOrder.map(id => [id, markers.filter(marker => marker.owner === id).length]));
   return { turn: state.ctx.turn, gameover: state.ctx.gameover as { winners: string[] } | undefined,
-    hash: hashEngineState(state), scores, openingHash };
+    hash: hashEngineState(state), scores, openingHash,
+    log: initialState && logSource && createMatchLog(initialState, client.store.getState(), client.log ?? [], logSource()) };
 }
 
 export async function runBotMatch(turns: number, backend?: LLMBackend, game = createBCGame({
   matchSeed: 'runner', expansions: { exp01: true },
-})) {
+}), logging?: BotLogging) {
   if (!Number.isSafeInteger(turns) || turns < 0) throw new RangeError('Turn count must be a nonnegative integer');
-  const { turn, gameover, hash } = await playBotMatch(game, backend ? ollamaPolicy(backend) : firstLegal, turns, 0);
+  let ollamaRequests = 0;
+  let ollamaFallbacks = 0;
+  const policy = backend ? ollamaPolicy(backend, () => ollamaRequests++, () => ollamaFallbacks++) : firstLegal;
+  const seat = backend ? `ollama:${logging?.model ?? 'unknown'}` : 'first-legal';
+  const { turn, gameover, hash, log } = await playBotMatch(game, policy, turns, 0, logging && (() => ({
+    mode: 'bot', seats: { '0': seat, '1': seat },
+    ...(backend && { ollamaRequests, ollamaFallbacks }),
+  })));
+  if (log) await logging?.onLog(log);
   return { turn, gameover, hash };
 }
 
@@ -77,11 +89,13 @@ export async function runBotDuel(seeds: readonly string[], backend: LLMBackend, 
   makeGame = (matchSeed: string) => createBCGame({ matchSeed }),
   onProgress,
   onGame,
+  logging,
 }: {
   openingTurns?: number;
   makeGame?: (seed: string) => CoreGame;
   onProgress?: (progress: Pick<DuelGame, 'seed' | 'ollamaSeat' | 'turn' | 'requests' | 'fallbacks'>) => void;
   onGame?: (result: DuelGame) => void;
+  logging?: BotLogging;
 } = {}) {
   if (!seeds.length || new Set(seeds).size !== seeds.length || seeds.some(seed => !seed.trim())) {
     throw new RangeError('Provide one or more distinct, nonempty match seeds');
@@ -107,12 +121,15 @@ export async function runBotDuel(seeds: readonly string[], backend: LLMBackend, 
         }
         return (playerID === ollamaSeat ? llm : hotseat)(game, state, playerID);
       };
-      const result = await playBotMatch(makeGame(seed), policy, Infinity, openingTurns);
+      const hotseatSeat = ollamaSeat === '0' ? '1' : '0';
+      const result = await playBotMatch(makeGame(seed), policy, Infinity, openingTurns, logging && (() => ({
+        mode: 'bot', openingTurns, seats: { [ollamaSeat]: `ollama:${logging.model ?? 'unknown'}`, [hotseatSeat]: 'search' },
+        ollamaRequests: requests, ollamaFallbacks: fallbacks,
+      })));
       if (!result.openingHash) throw new Error('The neutral opening ended the game before either bot could play');
       if (openingHash !== undefined && result.openingHash !== openingHash) throw new Error('Paired games did not start from the same state');
       openingHash = result.openingHash;
       const winners = result.gameover!.winners;
-      const hotseatSeat = ollamaSeat === '0' ? '1' : '0';
       const leg: DuelGame = {
         seed, ollamaSeat, turn: result.turn,
         scores: { ollama: result.scores[ollamaSeat], hotseat: result.scores[hotseatSeat] },
@@ -120,6 +137,7 @@ export async function runBotDuel(seeds: readonly string[], backend: LLMBackend, 
         requests, fallbacks,
       };
       pair.push(leg);
+      if (result.log) await logging?.onLog(result.log);
       onGame?.(leg);
     }
     if (pair.some(leg => leg.fallbacks || !leg.requests)) totals.excludedPairs++;

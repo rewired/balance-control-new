@@ -32,7 +32,7 @@ EXP-03-00-01 EXP-03 extends CORE-01.
 EXP-03-00-02 CORE-01 remains valid unless explicitly overridden.
 EXP-03-00-03 EXP-03 introduces the Resource type CLM.
 EXP-03-00-04 EXP-03 introduces Climate ResortTiles.
-EXP-03-00-05 EXP-03 introduces one Hotspot Tile “Transformationsdruck”.
+EXP-03-00-05 EXP-03 introduces one Hotspot Tile “Transformation Pressure”.
 EXP-03-00-06 EXP-03 introduces a Measure deck.
 EXP-03-00-07 Victory conditions remain unchanged.
 EXP-03-00-08 CountdownMarkers are reserved and inactive in this rule version under EXP-03-02-C-00. EXP-03 does not create CountdownMarker state.
@@ -63,19 +63,19 @@ EXP-03-02-A-01 For 2–4 players add:
 EXP-03-02-A-02 For 5–6 players additionally add:
 • CLM-W1 ×1
 • CLM-W2 ×1
-EXP-03-02-A-02A Thus the total CLM ResortTile set is CLM-W1×2 and CLM-W2×2 for 2–4 players, or CLM-W1×3 and CLM-W2×3 for 5–6. These totals include the base set and, where applicable, the two additions; do not add another copy from this summary. Transformationsdruck remains the separate single Hotspot under EXP-03-03-04.
+EXP-03-02-A-02A Thus the total CLM ResortTile set is CLM-W1×2 and CLM-W2×2 for 2–4 players, or CLM-W1×3 and CLM-W2×3 for 5–6. These totals include the base set and, where applicable, the two additions; do not add another copy from this summary. Transformation Pressure remains the separate single Hotspot under EXP-03-03-04.
 
 EXP-03-02-A-03 CLM ResortTiles are ResortTiles.
 EXP-03-02-A-04 CLM ResortTiles follow CORE Resort production rules.
 
 ---
 
-## EXP-03-02-B Hotspot — Transformationsdruck
+## EXP-03-02-B Hotspot — Transformation Pressure
 
-EXP-03-02-B-01 Add Hotspot “Transformationsdruck” ×1 to DrawPile.
-EXP-03-02-B-02 Transformationsdruck resolves as an ordinary CORE Hotspot, including the normal majority Influence payout and one-time enclosure processing under CORE-01-06-04 through -07. Its reserved Countdown reference grants no additional effect.
-EXP-03-02-B-03 Transformationsdruck produces no Resources.
-EXP-03-02-B-04 Transformationsdruck's capacity to hold CountdownMarkers is reserved under EXP-03-02-C-00; no such markers may be created or attached in this rule version.
+EXP-03-02-B-01 Add Hotspot “Transformation Pressure” ×1 to DrawPile.
+EXP-03-02-B-02 Transformation Pressure resolves as an ordinary CORE Hotspot, including the normal majority Influence payout and one-time enclosure processing under CORE-01-06-04 through -07. Its reserved Countdown reference grants no additional effect.
+EXP-03-02-B-03 Transformation Pressure produces no Resources.
+EXP-03-02-B-04 Transformation Pressure's capacity to hold CountdownMarkers is reserved under EXP-03-02-C-00; no such markers may be created or attached in this rule version.
 
 ---
 
@@ -85,7 +85,7 @@ EXP-03-02-C-00 Reserved, Inactive Mechanic
 All CountdownMarker provisions in this specification are reserved descriptions, not active match rules in this version. Create no CountdownMarkers, CountdownSupply, Countdown-specific BoardAttached entries, counters, or empty placeholder state. The reserved definitions authorize no action, placement, removal, scoring effect, or automatic resolution. Activation requires a separate rule revision defining supply, placement, and actual function; it cannot be inferred from the reserved text.
 EXP-03-02-C-01 CountdownMarker is a reserved persistent object type, inactive under EXP-03-02-C-00.
 EXP-03-02-C-02 A CountdownMarker exists in exactly one of two zones: CountdownSupply or BoardAttached.
-EXP-03-02-C-03 A CountdownMarker attached to Board references exactly one Transformationsdruck Hotspot.
+EXP-03-02-C-03 A CountdownMarker attached to Board references exactly one Transformation Pressure Hotspot.
 EXP-03-02-C-04 CountdownMarkers have no intrinsic effect.
 EXP-03-02-C-05 CountdownMarkers are placed only when explicitly instructed by a Climate effect.
 EXP-03-02-C-06 CountdownMarkers are persistent until removed by explicit effect.
@@ -129,10 +129,10 @@ EXP-03-03-02B Eligibility is determined at setup under EXP-03-03-02A/-02D, befor
 EXP-03-03-02C For the listed EXP-03 Measure set, the eligible deck contains 13 cards with EXP-01 active and 10 without EXP-01. These counts are before the three setup cards are moved to OpenMeasures.
 EXP-03-03-02D Transformation Blockade (EXP-03-08-M14) and Future Committee (EXP-03-08-M15) are reserved and excluded from match material in this rule version, regardless of EXP-01 activation. They exist in none of the match's zones and cannot enter through draw, refill, recycling, or cost substitution.
 EXP-03-03-03 Place exactly 3 EXP-03 Measures face up in EXP-03 OpenMeasures.
-EXP-03-03-04 Add Transformationsdruck Hotspot ×1 to DrawPile.
+EXP-03-03-04 Add Transformation Pressure Hotspot ×1 to DrawPile.
 EXP-03-03-05 No modification to Starting Influence.
 EXP-03-03-06 No modification to Round structure.
-EXP-03-03-07 Do not initialize any CountdownMarker objects, supply, counters, or Countdown-specific attached entries, including empty placeholders. Apply EXP-03-02-C-00 even while EXP-03 is active. Transformationsdruck remains exactly one ordinary Hotspot added under EXP-03-03-04, not an additional copy from its component description.
+EXP-03-03-07 Do not initialize any CountdownMarker objects, supply, counters, or Countdown-specific attached entries, including empty placeholders. Apply EXP-03-02-C-00 even while EXP-03 is active. Transformation Pressure remains exactly one ordinary Hotspot added under EXP-03-03-04, not an additional copy from its component description.
 
 ---
 
@@ -150,7 +150,7 @@ EXP-03-04-A-04 Next round follows CORE-01-07-12, beginning only with the actual 
 ## EXP-03-04-B Countdown Placement (reserved under EXP-03-02-C-00)
 
 EXP-03-04-B-01 CountdownMarkers are placed only when an effect explicitly instructs placement.
-EXP-03-04-B-02 Placement requires moving one CountdownMarker from CountdownSupply to BoardAttached on Transformationsdruck.
+EXP-03-04-B-02 Placement requires moving one CountdownMarker from CountdownSupply to BoardAttached on Transformation Pressure.
 EXP-03-04-B-03 If CountdownSupply is empty, placement fails with no partial effect.
 EXP-03-04-B-04 Placement is not automatic at any timing window.
 EXP-03-04-B-05 No CountdownMarker moves automatically between rounds.
@@ -261,7 +261,7 @@ EXP-03-08-M04-05 Effect: The targeted player may not perform PlayMeasure.
 EXP-03-08-M05-01 Name: Greenwashing.
 EXP-03-08-M05-02 Cost: CLM + INF.
 EXP-03-08-M05-03 Duration: Until the beginning of your next turn.
-EXP-03-08-M05-04 Effect: For all players, prohibit new Influence from FormalizeInfluence and the normal Hotspot Influence payout, including Labor Market and Transformationsdruck. A Hotspot payout is an Influence gain for this rule even though it transfers an existing marker from PersonalSupply. Apply Start Committee immunity under EXP-03-06-08.
+EXP-03-08-M05-04 Effect: For all players, prohibit new Influence from FormalizeInfluence and the normal Hotspot Influence payout, including Labor Market and Transformation Pressure. A Hotspot payout is an Influence gain for this rule even though it transfers an existing marker from PersonalSupply. Apply Start Committee immunity under EXP-03-06-08.
 EXP-03-08-M05-05 Replacement Rule: The player entitled to the gain may pay exactly 1 CLM or 1 INF from their PersonalSupply to Bank once for that formalization or Hotspot-payout resolution to lift only its Greenwashing suppression. The price is per gain resolution, not per marker; multiple applicable Greenwashing instances do not multiply it. This explicitly assigns the replacement payment to the recipient even for the otherwise cost-free automatic Hotspot payout.
 EXP-03-08-M05-06 Without the selected, fully payable replacement, the gain remains prohibited. A formalization prohibited this way is not a legal action option. Execute the replacement atomically with formalization's complete payment and permitted result, or with the permitted Hotspot outcome, under CORE-01-06-00-10/-11. A failed resolution makes no partial transfer; explicit consumption-on-failure exceptions remain applicable.
 EXP-03-08-M05-07 This fixed replacement payment is not an additional surcharge eligible for waiver, further replacement, or transfer; Supplemental Budget and Intergenerational Pact cannot replace or transfer it. It creates no separate taxed resolution, general Hotspot fee, or additional Political Action.
@@ -285,7 +285,7 @@ EXP-03-08-M06-05 If the additional cost cannot be paid, ConvertResources fails.
 EXP-03-08-M07-01 Name: Protest Movement.
 EXP-03-08-M07-02 Cost: CLM.
 EXP-03-08-M07-03 Duration: Until the beginning of your next turn.
-EXP-03-08-M07-04 Effect: For all players, prohibit only the normal Hotspot Influence payout, including Labor Market and Transformationsdruck.
+EXP-03-08-M07-04 Effect: For all players, prohibit only the normal Hotspot Influence payout, including Labor Market and Transformation Pressure.
 EXP-03-08-M07-05 FormalizeInfluence, ordinary PlaceOrMoveInfluence, virtual Influence, canonical majority, Resource effects, and Inner Order's Regulation outcome are unaffected. Start Committee immunity remains applicable.
 EXP-03-08-M07-06 This card defines no replacement payment. Greenwashing's replacement lifts only Greenwashing and cannot lift Protest Movement; no Greenwashing fee is paid for an outcome that Protest Movement still prohibits. Process the suppressed Hotspot enclosure once without deferred payout under EXP-03-06-08. Printed card cost and duration remain unchanged.
 

@@ -559,3 +559,17 @@
 ## 2026-11-09 – Counter-Demo aus dem Webclient entfernt
 
 - Hotseat und Netzwerklobby bieten nur noch BALANCE // CONTROL an. Bestehende Counter-Demopartien erscheinen nicht mehr in der Lobby.
+
+## 2026-11-09 – Englischer Name für den Climate-Hotspot
+
+- Der Climate-Hotspot heißt im Webclient und in der Regelreferenz „Transformation Pressure“. Die interne Kachel-ID bleibt für bestehende Spielstände und Replays erhalten.
+
+## 2026-11-09 – Spielprotokolle für Playtests
+
+- Hotseat-Partien lassen sich als JSON herunterladen. Netzwerkpartien mit Dateispeicherung und Bot-Läufe können dasselbe Format außerhalb des Repos exportieren.
+- Die Protokolle enthalten Setup, bestätigte Aktionen, Zustandshashes sowie den Verlauf von Einfluss, Vorräten und Noise. Ein Replay prüft die Daten und meldet die erste Abweichung. Die Spielregeln bleiben unverändert.
+
+## 2026-11-09 – Measures und Regulations für die Local AI
+
+- Die Local AI bewertet Measures und Regulations anhand ihrer Ziele und der erwarteten Folgen für beide Seiten. Einmalige Produktionsboni und bleibende Regulationen erhalten unterschiedliche Gewichte.
+- Für konkrete Security-Vorhaben berücksichtigt sie fehlendes SEC, Grassroots-Kontrolle und legale Tausche. Ein deterministischer Test deckt Kartenaufnahme, SEC-Beschaffung und die Blockade eines gegnerischen Ressorts ab.

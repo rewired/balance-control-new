@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { CoreStages, createBCGame, engineMoveOptions, type EngineMoveOption } from '@bc/game';
 import { CoreView, submitCoreOption } from './BoardCore.js';
+import { TileFace } from './CoreHexBoard.js';
 import { MeasurePanel, RegulationPanel } from './ExpansionPanels.js';
 import { describeOption, measureAction, optionCost } from './core-board-labels.js';
 
@@ -94,6 +95,12 @@ describe('CORE hotseat', () => {
     expect(end).toContain('Start a new match');
     expect(end).not.toContain('<select');
   });
+});
+
+it('shows the English name of the Climate Hotspot on the tile', () => {
+  const { state } = hotseat(createBCGame({ expansions: { exp03: true } }));
+  const tile = state().G.exp.core.allTiles.Transformationsdruck;
+  expect(renderToStaticMarkup(<TileFace tile={tile} />)).toContain('>Transformation Pressure</span>');
 });
 
 it('shows all six players on one tile and all six active resources alongside the market', () => {

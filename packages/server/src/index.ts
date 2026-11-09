@@ -2,6 +2,7 @@ import { Server } from '#boardgame-server';
 import { CoreGame, CounterGame } from '@bc/game';
 import { CoreSaveStorage } from './core-save-storage.js';
 import { addOllamaRoutes } from './ollama-routes.js';
+import { matchLogDirectory } from './match-log-path.js';
 
 const PORT = Number(process.env.PORT) || 8000;
 const origins = [
@@ -11,9 +12,10 @@ const origins = [
   'https://127.0.0.1:5173',
 ];
 
+const saveDirectory = process.env.FLATFILE_DIR;
 const server = Server({
   games: [CounterGame, CoreGame],
-  db: process.env.FLATFILE_DIR ? new CoreSaveStorage({ dir: process.env.FLATFILE_DIR }) : undefined,
+  db: saveDirectory ? new CoreSaveStorage({ dir: await matchLogDirectory(saveDirectory) }) : undefined,
   // Dev-only permissive origin; tightened in later tasks
   origins,
 });

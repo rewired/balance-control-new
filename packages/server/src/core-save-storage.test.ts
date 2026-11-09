@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { State } from 'boardgame.io';
 import { Client } from 'boardgame.io/client';
 import { CreateGameReducer, InitializeGame } from 'boardgame.io/internal';
-import { CounterGame, createBCGame, hashEngineState, migrateCoreMatchState, type setupCoreMatch } from '@bc/game';
+import { CoreGame, CounterGame, createBCGame, hashEngineState, migrateCoreMatchState, verifyMatchLog, type setupCoreMatch } from '@bc/game';
 import { describe, expect, it } from 'vitest';
 import { FlatFile } from '#boardgame-server';
 import { CoreSaveStorage } from './core-save-storage.js';
@@ -28,6 +28,40 @@ function json(value: unknown): unknown {
 }
 
 describe('CORE saves in boardgame.io FlatFile storage', () => {
+  it('exports authoritative persisted actions without exposing lobby data', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'bc-core-log-'));
+    try {
+      const storage = new CoreSaveStorage({ dir });
+      await storage.connect();
+      const initialState = InitializeGame({ game: CoreGame, numPlayers: 2, setupData: { matchSeed: 'network-log' } });
+      await storage.createMatch('logged-match', { initialState, metadata: {
+        gameName: 'core', players: { '0': { id: 0, name: 'private-name', credentials: 'private-credential' } },
+        createdAt: 0, updatedAt: 0,
+      } });
+      expect((await storage.exportMatchLog('logged-match')).steps).toHaveLength(0);
+      const reduce = CreateGameReducer({ game: CoreGame });
+      const coord = initialState.G.exp.core.tiles.drawResolution!.legalCoords[0];
+      for (const action of [
+        { type: 'MAKE_MOVE', payload: { type: 'placeTile', args: [coord], playerID: '0' } },
+        { type: 'UNDO', payload: { type: null, args: null, playerID: '0' } },
+      ] as const) {
+        const { state } = await storage.fetch('logged-match', { state: true });
+        const next = reduce(state, action);
+        expect(next._stateID).toBe(state._stateID + 1);
+        await storage.setState('logged-match', next, next.deltalog);
+      }
+      const exported = await storage.exportMatchLog('logged-match');
+      const serialized = JSON.stringify(exported);
+      expect(serialized).not.toMatch(/private-name|private-credential/);
+      expect(exported.setup.game.matchSeed).toBe('network-log');
+      expect(exported.steps.map(step => step.action.kind)).toEqual(['move', 'undo']);
+      expect(exported.steps[1].after.stateHash).toBe(exported.initial.stateHash);
+      expect(verifyMatchLog(JSON.parse(serialized))).toEqual(exported);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('keeps a saved match with a retired topology closed without rewriting its file', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'bc-core-save-'));
     try {
