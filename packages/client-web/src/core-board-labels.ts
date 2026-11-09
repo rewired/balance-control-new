@@ -1,5 +1,5 @@
 import {
-  computeMajority, type AxialCoord, type BoardPlacement, type BoardRegulation, type CoreExpansionState,
+  computeMajority, type AxialCoord, type BoardPlacement, type BoardRegulation, type ConversionSelection, type CoreExpansionState,
   type CoreState, type HotspotChoice, type PaymentSelection, type RegulationOperation, type Tile,
 } from '@bc/rules';
 import type { EngineMoveOption } from '@bc/game';
@@ -29,11 +29,11 @@ export function tileRuleSummary(tile: Tile): string {
       // CORE-01-08-04, CORE-01-08-05, CORE-01-08-06
       return 'The Start Committee is immune to effects, measures and regulations. Players cannot place markers here or control it.';
     case 'Committee':
-      // CORE-01-04-14A, CORE-01-04-15, CORE-01-04-17, CORE-01-08-02, CORE-01-08-03
-      return 'If you control this tile, you can pay 2 resources from different resorts as a political action to add 1 influence marker to your supply. Everyone must first place all their starting markers.';
+      // CORE-01-04-14A/-15/-17/-19A, CORE-01-08-02/-03
+      return 'If you control this tile, you can pay 2 resources from different resorts to add 1 influence marker to your supply. You may include one Grassroots trade to help pay. Everyone must first place all their starting markers.';
     case 'Grassroots':
-      // CORE-01-04-21A, CORE-01-04-22A, CORE-01-04-22B, CORE-01-04-22D
-      return 'If you control this tile, you can trade 3 resources of one active resort for 1 of another active resort as a political action. Each action allows one exchange.';
+      // CORE-01-04-19A/-19B/-21A/-22A..22D
+      return 'If you control this tile or it has no controller, you can trade 3 resources of one active resort for 1 of another. Trade as your political action or spend the resource immediately as part of formalizing influence.';
     case 'Lobbyist':
       // CORE-01-05-04, CORE-01-05-05, CORE-01-05-06
       return 'The controller adds 1 virtual influence to each adjacent tile except other Lobbyists and the Start Committee. This bonus counts only toward majority.';
@@ -46,7 +46,7 @@ export function tileRuleSummary(tile: Tile): string {
       return 'The first time this tile is fully surrounded, the player with the majority places 1 available influence marker here from their supply, subject to applicable effects.';
     case 'InvestmentProgram':
       // EXP-01-05-01, EXP-01-05-02, EXP-01-05-05, EXP-01-05-07
-      return 'If you control this tile and a Grassroots, you can use that Grassroots to trade 2 ECO for 1 resource of another active resort as your conversion action.';
+      return 'If you control this tile and a Grassroots, you can use that Grassroots to trade 2 ECO for 1 resource of another active resort.';
     case 'AuthorityApparatus':
       // EXP-02-05-02, EXP-02-05-02A, EXP-02-05-03
       return 'If you control this tile, you can move one regulation to another legal tile or remove it as a political action. The base cost is 0 resources.';
@@ -90,6 +90,7 @@ type PoliticalOption = {
     input?: string;
     output?: string;
     alternative?: string;
+    conversion?: ConversionSelection;
     measureId?: string;
     targetPlayerID?: string;
     targetResort?: string;
@@ -207,6 +208,12 @@ export function describeOption(G: CoreState, option: EngineMoveOption): string {
       return action + payment;
     }
     if (type === 'formalizeInfluence' && payload.tileId) {
+      const trade = payload.conversion;
+      if (trade) {
+        const alternative = trade.alternative ? ' with Investment Program' : '';
+        const exchange = `Trade ${trade.input} for ${trade.output} at ${boardTileLabel(core, trade.tileId)}${alternative}`;
+        return `${exchange}${paymentLabel(trade.payment)} · Formalize via ${boardTileLabel(core, payload.tileId)}${payment}`;
+      }
       return `Formalize influence via ${boardTileLabel(core, payload.tileId)}${payment}`;
     }
     if (type === 'convertResources' && payload.tileId) {

@@ -594,3 +594,15 @@
 ## 2026-11-09 – Kompakte Spielprotokolle in JSONL
 
 - Hotseat, Netzwerk, Bot-Läufe und Exporte speichern Match-Logs als `.match-log.jsonl` mit einer Zeile pro bestätigter Aktion. Replay-Daten und Checkpoints bleiben vollständig erhalten. `match:log verify` liest auch das bisherige JSON-Format.
+
+## 2026-11-09 – Suchbot plant Einfluss und Maßnahmen
+
+- Der Suchbot prüft mögliche Sofortsiege auch außerhalb seiner üblichen Stichprobe und bewertet Einfluss auf dem Brett stärker, je näher ein Spieler dem Siegziel kommt. Vorräte haben einen abnehmenden Wert.
+- Kontrollierbare Standardkomitees und angrenzende Lobbyisten bleiben als Zugkandidaten in der Suche. Der Bot bewertet den Zugang besonders hoch, wenn der eigene Vorrat an Einflussmarkern knapp ist.
+- Der Bot richtet Produktion und Ressourcentausch auf den Bedarf einer konkreten Maßnahme aus. Ein aussichtsreicher legaler Einsatz einer Maßnahme bleibt auch bei vielen anderen legalen Aktionen in der engeren Suche.
+
+## 2026-11-09 – Ressourcentausch zur Formalisierung
+
+- Das Regelwerk erlaubt den Standardtausch zu 3:1 auch auf neutralen Grassroots. Neutrale Grassroots haben nach der Mehrheitsberechnung keinen kontrollierenden Spieler.
+- Ein Spieler kann einen Tausch und eine Formalisierung zu einer politischen Aktion verbinden, wenn er die ertauschte Ressource direkt dafür bezahlt. Beide Effekte werden gemeinsam ausgeführt und verwenden ihre jeweiligen Kontextkacheln.
+- ERRATA-0033 ist in der Engine umgesetzt. Der Webclient zeigt beide Kacheln und die Zahlungen zur kombinierten Aktion an. Bots erhalten dieselben legalen Optionen.

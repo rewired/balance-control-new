@@ -11,6 +11,7 @@ Applied errata: ERRATA-0012 (2026-11-07, future Measure triggers).
 Applied errata: ERRATA-0013 (2026-11-07, Authority Apparatus activation).
 Applied errata: ERRATA-0014 (2026-11-07, effect costs and payers).
 Applied errata: ERRATA-0015 (2026-11-07, Round Settlement sequence).
+Applied errata: ERRATA-0033 (2026-11-09, neutral Grassroots and conversion-assisted formalization).
 
 ---
 
@@ -181,7 +182,7 @@ EXP-02-04-B-01 When resolving an effect on a Tile, evaluate Regulations in the f
 EXP-02-04-B-02 Multiple cost increases stack additively.
 EXP-02-04-B-03 Multiple SecurityLevel Regulations stack additively.
 EXP-02-04-B-04 Minimum output after reduction is 0.
-EXP-02-04-B-05 An otherwise legal, fully payable action whose output is reduced to 0 remains legal and resolves successfully. Pay its full applicable costs and consume its action slot without refund. This includes ConvertResources and FormalizeInfluence; zero resulting gain is not an inability to execute the action. Such an available option prevents mandatory completion without an action under CORE-01-04-09A/-09B.
+EXP-02-04-B-05 An otherwise legal, fully payable action whose output is reduced to 0 remains legal and resolves successfully. Pay its full applicable costs and consume its action slot without refund. This includes standalone ConvertResources and FormalizeInfluence without an exchange. Such an available option prevents mandatory completion without an action under CORE-01-04-09A/-09B. Conversion-assisted FormalizeInfluence requires positive output from both effects under CORE-01-04-19B.
 EXP-02-04-B-06 A prohibition, invalid target, unmet prerequisite, or inability to pay still prevents resolution under its applicable rule. The zero-output rule does not waive any such requirement, any explicit consumption-on-failure exception, or Start Committee immunity.
 EXP-02-04-B-07 A Hotspot payout reduced to 0 still processes its enclosure event exactly once under CORE-01-06-04A. No payout is deferred or retried when SecurityLevel later ceases to apply.
 

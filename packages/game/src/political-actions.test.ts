@@ -8,12 +8,15 @@ import {
 } from '@bc/rules';
 import { createBCGame } from './factory.js';
 import { checkStartCommitteeFormalization } from './index.js';
-import { engineMoveOptions } from './legal-options.js';
+import { sampleComputerOptions } from './computer-player.js';
+import { createComputerPosition } from './computer-position.js';
+import { engineMoveOptions, hashEngineState, legalMoveOptions } from './legal-options.js';
 
 const committee = { tileId: 'Committee-1', coord: { q: 1, r: 0 } };
 const lobbyist = { tileId: 'Lobbyist-1', coord: { q: 2, r: 0 } };
 const grassroots = { tileId: 'Grassroots-1', coord: { q: 3, r: 0 } };
 const otherGrassroots = { tileId: 'Grassroots-2', coord: { q: 0, r: -1 } };
+const neutralGrassroots = { tileId: 'Grassroots-3', coord: { q: 0, r: -2 } };
 const draw = ['Committee-2', 'Committee-3', 'Committee-4', 'Committee-5'];
 
 function clientWithBoard(
@@ -306,6 +309,138 @@ describe('CORE political actions through boardgame.io', () => {
     influence(client, 'INF-1-1', placeDraw(client), otherGrassroots.tileId);
     placeDraw(client);
     expectRejected(client, () => convert(client, grassroots.tileId, 'DOM', 'ECO'));
+  });
+
+  it('permits the standard exchange at a tied Grassroots and preserves the Investment Program control requirement', () => {
+    registerExpansion(exp01Economy());
+    const investment = { tileId: 'InvestmentProgram', coord: { q: 1, r: -1 } };
+    const client = clientWithBoard(G => {
+      const player = G.exp.core.players['0'];
+      const opponent = G.exp.core.players['1'];
+      G.exp.core.influencesOnBoard = [
+        { ...player.personal.influence.shift()!, tileId: investment.tileId },
+        { ...player.personal.influence.shift()!, tileId: neutralGrassroots.tileId },
+        { ...opponent.personal.influence.shift()!, tileId: neutralGrassroots.tileId },
+      ];
+      player.personal.resources.ECO = 3;
+    }, { expansions: { exp01: true } }, 2, [committee, neutralGrassroots, investment]);
+    placeDraw(client);
+    const payload = { tileId: neutralGrassroots.tileId, input: 'ECO', output: 'DOM' };
+    expectRejected(client, () => client.moves.doPoliticalAction({
+      type: 'convertResources', payload: { ...payload, alternative: 'investmentProgram' },
+    }));
+    const { G, ctx } = client.getState()!;
+    expect(engineMoveOptions(G, ctx, '0')).toContainEqual(expect.objectContaining({
+      parameters: [{ type: 'convertResources', payload }],
+      costBreakdown: [{ playerID: '0', resource: 'ECO', amount: 3 }],
+    }));
+    client.moves.doPoliticalAction({ type: 'convertResources', payload });
+    expect(client.getState()!.G.exp.core.players['0'].personal.resources.ECO).toBe(0);
+  });
+
+  it('quotes a neutral exchange and immediate formalization as one atomic action', () => {
+    const client = clientWithBoard(G => {
+      placeStartingMarkers(G);
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 0, FOR: 0, INF: 4 });
+    }, {}, 2, [committee, lobbyist, otherGrassroots, neutralGrassroots]);
+    placeDraw(client);
+    const before = client.getState()!;
+    const conversion = { tileId: neutralGrassroots.tileId, input: 'INF', output: 'DOM' };
+    const payload = { tileId: committee.tileId, resources: ['DOM', 'INF'], conversion };
+    const action = { type: 'formalizeInfluence', payload };
+    expectRejected(client, () => formalize(client, committee.tileId, payload.resources));
+    expectRejected(client, () => client.moves.doPoliticalAction({
+      ...action, payload: { ...payload, resources: ['FOR', 'INF'] },
+    }));
+    expectRejected(client, () => client.moves.doPoliticalAction({
+      ...action, payload: { ...payload, conversion: { ...conversion, tileId: otherGrassroots.tileId } },
+    }));
+    const quotes = engineMoveOptions(before.G, before.ctx, '0');
+    const option = quotes.find(item => JSON.stringify(item.parameters) === JSON.stringify([action]));
+    expect(option?.contextTile).toBe(committee.tileId);
+    expect(option?.costBreakdown).toEqual([
+      { playerID: '0', resource: 'INF', amount: 3 },
+      { playerID: '0', resource: 'DOM', amount: 1 },
+      { playerID: '0', resource: 'INF', amount: 1 },
+    ]);
+    expect(sampleComputerOptions(createComputerPosition(before), '0', 2).some(item =>
+      (item.parameters[0] as { payload?: { conversion?: unknown } }).payload?.conversion)).toBe(true);
+    const [preview] = legalMoveOptions(createBCGame(), before, '0', [option!]);
+    client.moves.doPoliticalAction(action);
+    const after = client.getState()!;
+    expect(hashEngineState(after)).toBe(preview.resultingStateHashPreview);
+    expect(after.ctx.currentPlayer).toBe('1');
+    expect(after.G.exp.core.players['0'].personal).toMatchObject({
+      influence: [{ id: 'INF-0-F1', owner: '0' }], resources: { DOM: 0, INF: 0 },
+    });
+    expect(after.G.exp.core.resources.bank).toMatchObject({ DOM: 1, INF: 4 });
+  });
+
+  it('charges Budget Deficit once and shares the Supplemental Budget replacement across both payments', () => {
+    registerExpansion(exp01Economy());
+    enableHooks({ surcharges: ({ effect }) => effect.kind === 'formalizeInfluence'
+      ? [{ id: 'committee-surcharge', source: 'regulation', resources: ['FOR'] }] : undefined });
+    const client = clientWithBoard(G => {
+      placeStartingMarkers(G);
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 0, FOR: 0, INF: 4, ECO: 2 });
+      const resolve = createResolver();
+      resolve(G, { kind: 'registerMeasureEffect', instance: {
+        sourceCardId: 'ECO_M06', owner: '1', playNumber: 1, duration: 'untilConsumed', targetPlayerID: '0',
+      } });
+      resolve(G, { kind: 'registerMeasureEffect', instance: {
+        sourceCardId: 'ECO_M10', owner: '0', playNumber: 1, duration: 'thisTurn',
+      } });
+    }, { expansions: { exp01: true, exp02: true } });
+    placeDraw(client);
+    const conversion = { tileId: grassroots.tileId, input: 'INF', output: 'DOM' };
+    const payload = {
+      tileId: committee.tileId, resources: ['DOM', 'INF'],
+      payment: { replacement: { costId: 'committee-surcharge', resource: 'ECO' } },
+    };
+    expectRejected(client, () => client.moves.doPoliticalAction({
+      type: 'formalizeInfluence', payload: { ...payload, conversion: { ...conversion,
+        payment: { replacement: { costId: 'ECO_M06:1', resource: 'ECO' } },
+      } },
+    }));
+    client.moves.doPoliticalAction({
+      type: 'formalizeInfluence', payload: { ...payload, conversion: { ...conversion,
+        payment: { surcharges: { 'ECO_M06:1': 'ECO' } },
+      } },
+    });
+    const { G, ctx } = client.getState()!;
+    expect(ctx.currentPlayer).toBe('1');
+    expect(G.exp.core.players['0'].personal).toMatchObject({
+      influence: [{ id: 'INF-0-F1', owner: '0' }], resources: { DOM: 0, FOR: 0, INF: 0, ECO: 0 },
+    });
+    expect(G.exp.core.activeMeasureEffects?.some(effect => effect.sourceCardId === 'ECO_M06')).toBeFalsy();
+  });
+
+  it('keeps the exchange subject to local restrictions even with Start Committee immunity', () => {
+    enableHooks({
+      prohibitions: ({ effect }) => effect.kind === 'formalizeInfluence' ||
+        (effect.kind === 'convertResources' && effect.tileId === grassroots.tileId),
+      outputModifiers: ({ effect }) => effect.kind === 'convertResources' && effect.output === 'FOR' ? 0 : undefined,
+    });
+    const client = clientWithBoard(G => {
+      placeStartingMarkers(G);
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 0, FOR: 1, INF: 5 });
+    }, { expansions: { exp02: true } }, 2, [committee, lobbyist, grassroots, otherGrassroots, neutralGrassroots]);
+    placeDraw(client);
+    const payload = {
+      tileId: 'StartCommittee', resources: ['DOM', 'FOR', 'INF', 'INF'],
+      conversion: { tileId: neutralGrassroots.tileId, input: 'INF', output: 'DOM' },
+    };
+    expectRejected(client, () => client.moves.doPoliticalAction({
+      type: 'formalizeInfluence', payload: { ...payload, conversion: { ...payload.conversion, tileId: grassroots.tileId } },
+    }));
+    expectRejected(client, () => client.moves.doPoliticalAction({
+      type: 'formalizeInfluence', payload: { ...payload, conversion: { ...payload.conversion, output: 'FOR' } },
+    }));
+    expect(checkStartCommitteeFormalization(client.getState()!.G, '0', payload.tileId)).toEqual({ ok: true });
+    client.moves.doPoliticalAction({ type: 'formalizeInfluence', payload });
+    expect(client.getState()!.G.exp.core.players['0']).toMatchObject({
+      usedStartCommittee: true, personal: { influence: [{ id: 'INF-0-F1', owner: '0' }] },
+    });
   });
 
   it('treats a paid conversion reduced to zero output as a legal action', () => {

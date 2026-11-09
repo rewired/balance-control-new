@@ -7,6 +7,7 @@ Applied errata: ERRATA-0009 (2026-11-07, Measure acquisition and market refill).
 Applied errata: ERRATA-0010 (2026-11-07, shared Measure framework).
 Applied errata: ERRATA-0012 (2026-11-07, future Measure triggers).
 Applied errata: ERRATA-0014 (2026-11-07, effect costs and payers).
+Applied errata: ERRATA-0033 (2026-11-09, neutral Grassroots and conversion-assisted formalization).
 
 ---
 
@@ -130,14 +131,14 @@ EXP-01-04-B-03 EXP-01 production reductions and increases are additive output mo
 
 # EXP-01-05 SYSTEM TILE — INVESTMENT PROGRAM
 
-EXP-01-05-01 When performing ConvertResources through a Grassroots controlled by the active player under CORE-01-04-21A, that player may exchange 2 ECO for 1 Resource of a different active resort if they also control Investment Program under the canonical majority rules.
-EXP-01-05-02 This exchange is optional and replaces the ordinary 3:1 exchange for that action. The player may instead choose the ordinary legal Grassroots exchange.
+EXP-01-05-01 When performing ConvertResources, the active player may exchange 2 ECO for 1 Resource of a different active resort if they control both the chosen Grassroots and Investment Program under CORE-01-05-03A/-03B. This option is available for both standalone and conversion-assisted actions.
+EXP-01-05-02 This exchange is optional and replaces the ordinary 3:1 exchange for that action. The player may instead choose the ordinary legal Grassroots exchange under CORE-01-04-21A/-22A.
 EXP-01-05-03 This option grants no new Political Action, additional exchange, or separate Investment Program activation.
 EXP-01-05-04 Perform exactly one of the two exchange options per action. The option does not stack and permits neither repetition nor chaining within that action.
-EXP-01-05-05 Canonical control, including virtual-only control under CORE-01-05-03B, is sufficient for both Investment Program and the chosen Grassroots. The Tiles need not be adjacent. Controlling Investment Program without a controlled Grassroots does not provide a conversion action.
+EXP-01-05-05 Canonical control, including virtual-only control under CORE-01-05-03B, is sufficient for both Investment Program and the chosen Grassroots. The Tiles need not be adjacent. An exchange at a neutral Grassroots uses the ordinary rate.
 EXP-01-05-06 ContextTile is exclusively the chosen Grassroots. Apply its prohibitions, cost modifiers, and output modifiers once under the canonical resolver. Investment Program supplies only the eligibility condition and is not a second execution Tile; its Tile-local modifiers are not evaluated for this exchange. A Blockade on Investment Program alone does not disable this passive option; a Blockade on the chosen Grassroots prevents the exchange.
 EXP-01-05-07 The 2 ECO replace only the ordinary three-Resource base payment. Add all applicable additional costs. Pay from the active player's PersonalSupply to Bank and transfer the output from Bank to that PersonalSupply atomically under CORE-01-06-00-10/-11. Any different active resort is a permitted output; ECO itself and inactive resorts are not.
-EXP-01-05-08 Applicable output modifiers at the Grassroots affect this alternative normally. If SecurityLevel reduces output 1 to 0, an otherwise legal fully paid exchange still succeeds under EXP-02-04-B-05; the payment is not refunded and the action is used.
+EXP-01-05-08 Applicable output modifiers at the Grassroots affect this alternative normally. If SecurityLevel reduces output 1 to 0, an otherwise legal fully paid standalone exchange still succeeds under EXP-02-04-B-05. Conversion-assisted FormalizeInfluence requires a positive exchange output under CORE-01-04-19B.
 
 ---
 
@@ -286,7 +287,7 @@ EXP-01-08-M06-07A Mandatory completion without an action under CORE-01-04-09B co
 EXP-01-08-M07-01 Name: Debt Brake.
 EXP-01-08-M07-02 Cost: DOM + ECO + ECO.
 EXP-01-08-M07-03 Duration: Next round.
-EXP-01-08-M07-04 Effect: During the next round, ConvertResources may not be chosen as a Political Action by any player.
+EXP-01-08-M07-04 Effect: During the next round, no player may perform ConvertResources, either as a standalone Political Action or as part of FormalizeInfluence.
 
 ---
 

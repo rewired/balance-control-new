@@ -2,6 +2,7 @@ import type { Ctx, Game } from 'boardgame.io';
 import { computeMajority, getTopology, type AxialCoord, type CoreState, type PaymentSelection, type RegulationOperation } from '@bc/rules';
 import { inspectExpansions } from './computer-expansions.js';
 import type { ComputerPosition } from './computer-position.js';
+import { activeComputerHooks, committeeCandidates, influenceValue, resourceValue, winningCandidates } from './computer-priorities.js';
 import { engineMoveOptions, previewEngineOptions, type EngineMoveOption, type EngineSnapshot } from './legal-options.js';
 
 const TURN_HORIZON = 3;
@@ -14,12 +15,8 @@ interface PositionValue {
 }
 
 function evaluate({ G, ctx }: EngineSnapshot): PositionValue {
-  const { allTiles, influencesOnBoard, players, tiles } = G.exp.core;
-  // Heuristic only: value real markers first, then future influence and economic position.
-  const scores = Object.fromEntries(Object.values(players).map(({ id, personal }) => [id,
-    45 * personal.influence.length + Object.values(personal.resources).reduce((sum, amount) => sum + amount, 0),
-  ]));
-  for (const { owner } of influencesOnBoard ?? []) scores[owner] += 100;
+  const { allTiles, players, tiles } = G.exp.core;
+  const scores = influenceValue(G, activeComputerHooks(G));
   const expansions = inspectExpansions(G);
   if (expansions) expansions.score(scores);
   else {
@@ -27,7 +24,9 @@ function evaluate({ G, ctx }: EngineSnapshot): PositionValue {
       const tile = allTiles[tileId];
       if (tile.kind !== 'ResortTile') continue;
       const controller = computeMajority(G, coord);
-      if (controller !== null) scores[controller] += 3 * tile.w;
+      if (controller !== null) {
+        scores[controller] += 3 * resourceValue(tile.w) / (1 + 0.03 * (players[controller].personal.resources[tile.resort] ?? 0));
+      }
     }
   }
   // CORE-01-09-03/-04: use the actual settlement result for a finished game.
@@ -54,7 +53,9 @@ function valueWithImmediateEffects(later: PositionValue, immediate: PositionValu
 }
 
 function actionType(option: EngineMoveOption): string {
-  return option.moveType === 'doPoliticalAction' ? (option.parameters[0] as { type: string }).type : option.moveType;
+  if (option.moveType !== 'doPoliticalAction') return option.moveType;
+  const { type, payload } = option.parameters[0] as { type: string; payload?: { conversion?: unknown } };
+  return type === 'formalizeInfluence' && payload?.conversion ? 'formalizeWithConversion' : type;
 }
 
 function uniqueMarkerOptions(G: CoreState, playerID: string, options: EngineMoveOption[]): EngineMoveOption[] {
@@ -116,13 +117,19 @@ function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: s
   const options = uniqueMarkerOptions(state.G, playerID, legal);
   const countNeighbors = compactness(state.G);
   const sampled = shortlist(options, budget, countNeighbors);
+  const expansions = options[0].moveType === 'doPoliticalAction' ? inspectExpansions(state.G) : undefined;
   const preferred = options.length > budget && options[0].moveType !== 'placeTile'
-    ? inspectExpansions(state.G)?.preferred(options, playerID, Math.ceil(budget / 4)) ?? []
+    ? expansions?.preferred(options, playerID, Math.ceil(budget / 4)) ?? []
     : [];
-  const candidates = new Set([...sampled, ...preferred]);
+  const candidates = new Set([
+    ...winningCandidates(state.G, playerID, options), ...sampled, ...preferred,
+    ...committeeCandidates(state.G, playerID, options),
+  ]);
   const ranked = Array.from(previewEngineOptions(game, state, candidates), ({ option, next }) => {
     const neighbors = option.moveType === 'placeTile' ? countNeighbors(option) : 0;
-    return { option, next, value: evaluate(next), neighbors };
+    const playValue = expansions?.playValue(option, playerID) ?? 0;
+    const fundingValue = expansions?.fundingValue(option, playerID) ?? 0;
+    return { option, next, value: evaluate(next), neighbors, playValue, fundingValue };
   });
   return ranked.sort((a, b) => compare(b.value, a.value, playerID) || b.neighbors - a.neighbors);
 }
@@ -186,11 +193,16 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision }: 
   if (lines.length === 1 || lines[0]?.value.winners?.length === 1 && lines[0].value.winners[0] === playerID) {
     return lines[0].option;
   }
+  for (const key of ['playValue', 'fundingValue'] as const) {
+    const bestTactic = ranked.reduce<Variation | undefined>((best, line) => line[key] > (best?.[key] ?? 0) ? line : best, undefined);
+    if (bestTactic && !lines.includes(bestTactic)) lines.push(bestTactic);
+  }
   let best: { option: EngineMoveOption; value: PositionValue } | undefined;
   for (const line of lines) {
     const later = follow(line, ACTION_HORIZON - 1, true);
     // A useful effect can expire before the search horizon, even if it matters this round.
     const value = expanded ? valueWithImmediateEffects(later, line.value) : later;
+    if (expanded) value.scores[playerID] += line.playValue + line.fundingValue;
     if (!best || compare(value, best.value, playerID) > 0) best = { option: line.option, value };
   }
   if (best) return best.option;

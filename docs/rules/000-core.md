@@ -17,6 +17,7 @@ Applied errata: ERRATA-0014 (2026-11-07, effect costs and payers).
 Applied errata: ERRATA-0015 (2026-11-07, Round Settlement sequence).
 Applied errata: ERRATA-0031 (2026-11-09, hexagonal topology).
 Applied errata: ERRATA-0032 (2026-11-09, victory at the Influence limit).
+Applied errata: ERRATA-0033 (2026-11-09, neutral Grassroots and conversion-assisted formalization).
 
 ---
 
@@ -99,7 +100,7 @@ CORE-01-02-04G Each Resource object has exactly one resort attribute.
 
 CORE-01-02-05 ResortTiles produce Resources during Round Settlement.
 CORE-01-02-06 Committees enable the FormalizeInfluence action.
-CORE-01-02-07 Grassroots enable the ConvertResources action.
+CORE-01-02-07 Grassroots enable ConvertResources both as a standalone Political Action and as part of FormalizeInfluence under CORE-01-04-19A through -19D.
 CORE-01-02-08 Lobbyists contribute virtual Influence for majority calculation only.
 CORE-01-02-09 Each Hotspot triggers one enclosure event when it first becomes fully surrounded, following CORE-01-06-01 through -07.
 
@@ -162,15 +163,19 @@ CORE-01-04-16 FormalizeInfluence (Standard Committee) moves paid Resources from 
 CORE-01-04-17 FormalizeInfluence (Standard Committee) creates exactly one new Influence in the active player’s PersonalSupply.
 CORE-01-04-18 FormalizeInfluence fails if the required Resources cannot be fully paid.
 CORE-01-04-19 If FormalizeInfluence fails, no state change occurs.
+CORE-01-04-19A The active player may include exactly one ConvertResources exchange in a FormalizeInfluence action. Declare the Grassroots, the exchanged resorts, the Committee, and the selected payment choices for both effects together. The two effects occupy one Political Action slot. This option is also available in the additional non-PlayMeasure slot and grants no further action.
+CORE-01-04-19B Plan the exchange first, applying CORE-01-04-21 through -22E. Then plan the formalization against the projected state after the exchange, including its costs, Resource output, and payment-effect usage. The exchange must yield one Resource and the active player must use that Resource in their own payment for this formalization. The formalization must create one new Influence. All ordinary Committee eligibility, timing, and Influence limits apply.
+CORE-01-04-19C Resolve each effect at its own ContextTile under CORE-01-06-00-05C. A cost imposed once on the Political Action as a whole is assigned to the exchange. An effect that limits its use per Political Action shares that limit across both payments. Costs specific to an effect or its ContextTile apply to the corresponding effect.
+CORE-01-04-19D Commit both effects, their payments, and payment-effect usage together only if the complete plan is legal and payable. Neither effect opens a timing window between the two. If the plan fails, neither effect commits. Explicit action-attempt exceptions apply to the single Political Action under CORE-01-06-00-11/-12.
 
 CORE-01-04-20 ConvertResources may be chosen as the Political Action.
 CORE-01-04-21 ConvertResources is performed via a Grassroots tile.
-CORE-01-04-21A The active player must control the Grassroots used for ConvertResources, determined under CORE-01-05-03A/-03B.
+CORE-01-04-21A The active player may use a Grassroots they control or a neutral Grassroots. A Grassroots is neutral when canonical majority under CORE-01-05-03A/-03B returns no controller, including a tie or zero Influence. A Grassroots controlled by another player is unavailable. This rule applies to standalone exchanges and exchanges within FormalizeInfluence.
 CORE-01-04-22 ConvertResources cost and effect are defined by the specific Grassroots tile text.
 CORE-01-04-22A The printed text of every core Grassroots is: “Pay 3 Resources of the same resort to gain exactly 1 Resource of a different resort.”
 CORE-01-04-22B Both the input resort and the output resort must be active in the match. Resource resorts introduced by active expansions are eligible as inputs and outputs; inactive resorts cannot be selected.
 CORE-01-04-22C The three paid Resources move from the active player's PersonalSupply to Bank. The gained Resource moves from Bank to that player's PersonalSupply.
-CORE-01-04-22D Unless explicitly overridden, ConvertResources performs exactly one exchange per Political Action. The exchange may not be repeated or chained within that action.
+CORE-01-04-22D Unless explicitly overridden, a Political Action that includes ConvertResources performs exactly one exchange. The exchange may not be repeated or chained with another exchange within that action.
 CORE-01-04-22E Applicable additional costs are added to the three-Resource base cost; they do not replace any of the three same-resort Resources required by the printed text. Payment and output resolve atomically under CORE-01-06-00-02 and -03.
 
 ---
@@ -238,6 +243,9 @@ For PlaceOrMoveInfluence, ContextTile is the destination Tile. For a movement be
 CORE-01-06-00-05B Local Modifiers and Explicit Object Restrictions
 Tile-local prohibitions, cost modifiers, and output modifiers are evaluated only at the assigned ContextTile. An explicit restriction on moving or removing an object must additionally be checked even when the object is on a different Tile. This independent legality check does not assign another ContextTile or apply that other Tile's local effect modifiers.
 
+CORE-01-06-00-05C Conversion-Assisted Formalization
+Under CORE-01-04-19A through -19D, the chosen Grassroots is the exchange's ContextTile and the chosen Committee is the formalization's ContextTile. Start Committee immunity applies only to the formalization effect at the Start Committee.
+
 CORE-01-06-00-06 Multiple-Tile References
 If an instruction references multiple Tiles, it must explicitly state which Tile is the ContextTile; otherwise the effect is invalid and does not resolve.
 
@@ -247,7 +255,7 @@ CORE-01-06-00-07 Effect Costs and Payers
 (c) Evaluate prohibitions before payment. Required costs must be fully paid from the prescribed sources before execution; inability to pay causes atomic failure. Explicit consumption-on-failure exceptions and Start Committee immunity remain applicable.
 
 CORE-01-06-00-08 One Cost-Modifier Pass per Resolution
-A single action or Measure resolution receives one cost-modifier pass. If a Measure contains an immediate Regulation placement, combine the card's printed cost and the Regulation's normal placement cost into that resolution's base cost, then apply applicable cost modifiers once. Internal resolver steps, payment, bookkeeping, and majority/modifier evaluation do not create further taxed resolutions. An additional Political Action granted by PlayMeasure is its own resolution with its own applicable costs.
+A single action or Measure resolution receives one cost-modifier pass. Conversion-assisted FormalizeInfluence uses the separate effect-specific cost checks in CORE-01-04-19C within its single Political Action. If a Measure contains an immediate Regulation placement, combine the card's printed cost and the Regulation's normal placement cost into that resolution's base cost, then apply applicable cost modifiers once. Internal resolver steps, payment, bookkeeping, and majority/modifier evaluation do not create further taxed resolutions. An additional Political Action granted by PlayMeasure has its own applicable costs.
 
 CORE-01-06-00-09 Separately Triggered Later Operations
 An explicitly separate later operation, including a Regulation placement or movement instructed by a previously played Measure, receives its own cost check at its actual trigger under CORE-01-06-00-07. Previously paid card costs are not recalculated or refunded because the later operation fails. This does not create charges for applying a passive modifier to the automatic outcomes exempted by CORE-01-06-00-07(a).

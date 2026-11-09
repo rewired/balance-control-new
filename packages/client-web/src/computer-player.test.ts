@@ -51,10 +51,9 @@ it('finishes and replays a local match with two bots, including a decision in th
 
     for (let step = 0; step < 10 && state().ctx.gameover === undefined; step++) computerMove();
     expect(state().ctx.gameover).toBeDefined();
-    expect(state().G.exp.core.influencesOnBoard).toEqual(expect.arrayContaining([
-      expect.objectContaining({ owner: '1', tileId: 'DOM-W1-1' }),
-      expect.objectContaining({ owner: '2' }),
-    ]));
+    const markers = state().G.exp.core.influencesOnBoard ?? [];
+    expect(markers.filter(marker => marker.owner === '1').length).toBeGreaterThan(1);
+    expect(markers).toContainEqual(expect.objectContaining({ owner: '2' }));
     return hashEngineState(state());
   };
 

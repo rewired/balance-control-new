@@ -65,7 +65,9 @@ export function exp01Economy(): ExpansionModule {
             .flatMap(instance => resources.filter(resource => resource !== 'ECO').map(resource => ({
               choice: { effectId: instance.id, resource }, from: 'ECO', to: resource, markUsed: instance.id,
             }))) }],
-          replacements: isPoliticalEffect(effect) && owned.some(instance => instance.sourceCardId === 'ECO_M10')
+          // CORE-01-04-19C: both payments share the one replacement allowed per Political Action.
+          replacements: isPoliticalEffect(effect) && !effect.politicalContinuation?.replacementUsed &&
+            owned.some(instance => instance.sourceCardId === 'ECO_M10')
             ? () => resources.map(resource => ({ resource, amount: 1 })) : undefined,
         };
       },
@@ -76,8 +78,8 @@ export function exp01Economy(): ExpansionModule {
         const controller = freezes?.length ? getControl(G, coord) : null;
         return controller !== null && Boolean(freezes?.some(effect => effect.targetPlayerID === controller));
       },
-      // EXP-01-08-M06-05: one unrestricted surcharge on the targeted player's next Political Action.
-      surcharges: ({ G, effect }) => isPoliticalEffect(effect) && 'playerID' in effect
+      // EXP-01-08-M06-05 and CORE-01-04-19C: charge the action-wide surcharge on the first effect.
+      surcharges: ({ G, effect }) => isPoliticalEffect(effect) && !effect.politicalContinuation && 'playerID' in effect
         ? G.exp.core.activeMeasureEffects?.flatMap(instance => instance.sourceCardId === 'ECO_M06' && instance.targetPlayerID === effect.playerID
           ? [{ id: instance.id, source: 'measure' as const }] : [])
         : undefined,

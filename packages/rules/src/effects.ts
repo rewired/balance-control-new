@@ -30,6 +30,7 @@ export interface BaseEffect {
   contextCoord?: AxialCoord; // ContextTile binding (AGENTS §3.5 step 1)
   payment?: PaymentSelection;
   political?: true; // Set by the resolver for a registered political action.
+  politicalContinuation?: { replacementUsed: boolean }; // CORE-01-04-19C, set by the resolver.
 }
 
 export interface AddResourcesEffect extends BaseEffect {
@@ -111,10 +112,18 @@ export interface AddNoiseEffect extends BaseEffect {
   amount: number;
 }
 
+export interface ConversionSelection {
+  tileId: string;
+  input: ResourceId;
+  output: ResourceId;
+  alternative?: string;
+  payment?: PaymentSelection;
+}
+
 export type PoliticalActionEffect = BaseEffect & { playerID: string } & (
   | { kind: 'placeOrMoveInfluence'; markerId: string; targetTileId: string; sourceTileId?: string }
-  | { kind: 'formalizeInfluence'; tileId: string; resources: ResourceId[] }
-  | { kind: 'convertResources'; tileId: string; input: ResourceId; output: ResourceId; alternative?: string }
+  | { kind: 'formalizeInfluence'; tileId: string; resources: ResourceId[]; conversion?: ConversionSelection }
+  | ({ kind: 'convertResources' } & ConversionSelection)
 );
 
 export interface InitMeasuresEffect extends BaseEffect {

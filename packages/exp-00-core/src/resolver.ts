@@ -1,11 +1,12 @@
 import { shuffleSeeded, stableHash } from '@bc/shared';
 import {
-  createExpansionRegistry, createMatchResourceRegistry, ensureExpansionSlice,
+  buildMoveCatalog, createExpansionRegistry, createMatchResourceRegistry, ensureExpansionSlice,
   getTopology, isRegisteredAction, MeasureExtensionTargetSchema, paymentPlans,
-  type ActiveMeasureEffect, type AxialCoord, type CoreState,
+  type ActiveMeasureEffect, type AxialCoord, type ConversionSelection, type CoreState,
   type DecisionQuote, type DrawTileEffect, type EffectDecision, type EffectDescriptor, type EffectResolver,
   type ExpansionHooks, type ExpansionId, type ExpansionModule, type ExpireMeasureEffects, type Influence,
-  type MeasureDeckState, type PaymentQuote, type PendingHotspot, type PendingRegulationChoice, type PlaceTileEffect,
+  type MeasureDeckState, type MoveQuote, type PaymentQuote, type PendingHotspot, type PendingRegulationChoice, type PlaceTileEffect,
+  type PlannedPayment,
   type PlayMeasureEffect, type PoliticalActionEffect, type RegisterMeasureEffect,
   type ResolveHotspotAtEffect, type ResolveRegulationEffect, type ResolveResult,
   type ResourceAmounts, type ResourceId, type ResourceRegistry, type RulesModule, type Surcharge, type TakeMeasureEffect,
@@ -103,7 +104,7 @@ function planPayment(
   hooks: readonly ExpansionHooks[],
   baseCost?: Partial<ResourceAmounts>,
   preview?: PaymentPreview,
-): { ok: true; transaction: ReturnType<typeof createBankTransaction> } | { ok: false; reason?: string } {
+): { ok: true; transaction: ReturnType<typeof createBankTransaction>; payment: PlannedPayment } | { ok: false; reason?: string } {
   const cost: Partial<ResourceAmounts> = Object.assign(Object.create(null), baseCost);
   const units: Surcharge[] = [];
   for (const hook of hooks) {
@@ -116,7 +117,7 @@ function planPayment(
     if (!registry.has(resource)) return { ok: false, reason: 'inactive-resource' };
     if (!isResourceCount(amount ?? 0)) return { ok: false, reason: 'invalid-resource-amount' };
   }
-  let first: ReturnType<typeof createBankTransaction> | undefined;
+  let first: { transaction: ReturnType<typeof createBankTransaction>; payment: PlannedPayment } | undefined;
   let reason = effect.payment ? 'invalid-or-unpayable-cost' : 'insufficient';
   const explore = preview === true || typeof preview === 'function';
   const ignoredSurcharges = typeof preview === 'object' ? preview : undefined;
@@ -129,14 +130,14 @@ function planPayment(
       reason = result.reason ?? reason;
       continue;
     }
-    first ??= { ...transaction, commit: () => {
+    first ??= { payment: selected, transaction: { ...transaction, commit: () => {
       transaction.commit();
       // CORE-01-06-00-11: apply planned usage only with successful payment.
       for (const instance of G.exp.core.activeMeasureEffects ?? []) {
         if (selected.markUsed.includes(instance.id)) instance.used = true;
       }
       consumeMeasureEffects(G, selected.consumeEffects);
-    } };
+    } } };
     if (typeof preview !== 'function') break;
     preview({
       ...(selected.selection ? { payment: selected.selection } : {}),
@@ -144,7 +145,7 @@ function planPayment(
       contextTile: effect.kind === 'placeTile' ? effect.tileId : findTileAt(G, effect.contextCoord)?.tileId ?? null,
     });
   }
-  return first ? { ok: true, transaction: first } : { ok: false, reason };
+  return first ? { ok: true, ...first } : { ok: false, reason };
 }
 
 export function isProhibited(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[]): boolean {
@@ -153,7 +154,7 @@ export function isProhibited(G: CoreState, effect: EffectDescriptor, hooks: read
   return hooks.some(hook => hook.priorityProhibition?.(context)) || hooks.some(hook => hook.prohibitions?.(context));
 }
 
-function modifyOutput(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[], baseAmount: number): number {
+export function modifyOutput(G: CoreState, effect: EffectDescriptor, hooks: readonly ExpansionHooks[], baseAmount: number): number {
   let amount = baseAmount;
   for (const hook of hooks) amount = hook.outputModifiers?.({ G, effect, amount }) ?? amount;
   return Math.max(0, amount);
@@ -243,12 +244,16 @@ export function* formalizationPayments(resources: ResourceId[], start: boolean):
   }
 }
 
+type FormalizationEffect = Extract<PoliticalActionEffect, { kind: 'formalizeInfluence' }>;
+type PoliticalPlan = { ok: true; commit: () => void; payment: PlannedPayment; output?: number }
+  | { ok: false; reason?: string };
+
 function planPoliticalAction(
   G: CoreState,
   requested: PoliticalActionEffect,
   active: readonly RulesModule[],
   preview?: PaymentPreview,
-): { ok: true; commit: () => void } | { ok: false; reason?: string } {
+): PoliticalPlan {
   const registry = createMatchResourceRegistry(active);
   const hooks = active.flatMap(module => module.hooks ?? []);
   if (!Object.hasOwn(G.exp.core.players, requested.playerID)) return { ok: false, reason: 'no-player' };
@@ -277,7 +282,7 @@ function planPoliticalAction(
     // CORE-01-06-00-07(b) and EXP-02-02-B-02B: cost increases apply; the marker is not output.
     const payment = planPayment(G, registry, effect, localHooks, undefined, preview);
     if (!payment.ok) return payment;
-    return { ok: true, commit: () => {
+    return { ok: true, payment: payment.payment, commit: () => {
       payment.transaction.commit();
       if (effect.sourceTileId === undefined) placeSupplyMarker(G, supply, index, tileId);
       else board[index].tileId = tileId;
@@ -314,15 +319,17 @@ function planPoliticalAction(
     const ids = new Set(owned.map(marker => marker.id));
     let serial = 1;
     while (ids.has(`INF-${player.id}-F${serial}`)) serial++;
-    return { ok: true, commit: () => {
+    return { ok: true, payment: payment.payment, output: amount, commit: () => {
       payment.transaction.commit();
       if (amount === 1) supply.push({ id: `INF-${player.id}-F${serial}`, owner: player.id });
       if (start) player.usedStartCommittee = true;
     } };
   }
 
-  // CORE-01-04-20..22E: one controlled Grassroots exchange between different active resorts.
-  if (tile.kind !== 'Grassroots' || getControl(G, placement.coord) !== player.id) {
+  // CORE-01-04-20..22E: use a Grassroots controlled by the payer or with no controller.
+  if (tile.kind !== 'Grassroots') return { ok: false, reason: 'grassroots-unavailable' };
+  const controller = getControl(G, placement.coord);
+  if (controller !== null && controller !== player.id) {
     return { ok: false, reason: 'grassroots-unavailable' };
   }
   if (effect.input === effect.output || !registry.has(effect.input) || !registry.has(effect.output)) {
@@ -332,7 +339,9 @@ function planPoliticalAction(
   const alternative = effect.alternative === undefined ? undefined : active
     .flatMap(module => module.conversionAlternatives?.(G, player.id) ?? [])
     .find(option => option.id === effect.alternative && option.input === effect.input);
-  if (effect.alternative !== undefined && !alternative) return { ok: false, reason: 'conversion-alternative-unavailable' };
+  if (effect.alternative !== undefined && (controller !== player.id || !alternative)) {
+    return { ok: false, reason: 'conversion-alternative-unavailable' };
+  }
   const payment = planPayment(G, registry, effect, localHooks, { [effect.input]: alternative?.cost ?? 3 }, preview);
   if (!payment.ok) return payment;
   const amount = modifyOutput(G, effect, localHooks, 1);
@@ -340,18 +349,125 @@ function planPoliticalAction(
     from: 'Bank', to: 'PersonalSupply', playerID: player.id, resource: effect.output, amount,
   });
   if (!payout.ok) return { ok: false, reason: payout.reason };
-  return { ok: true, commit: payment.transaction.commit };
+  return { ok: true, payment: payment.payment, output: amount, commit: payment.transaction.commit };
+}
+
+// CORE-01-04-19B..19D: project the exchange and its payment-effect usage in isolated zones.
+// The bank transaction replaces balances and can charge other players through payment transfers.
+function projectConversion(
+  G: CoreState, playerID: string, conversion: ConversionSelection, active: readonly RulesModule[], preview?: PaymentPreview,
+) {
+  const core = G.exp.core;
+  const players = Object.fromEntries(Object.entries(core.players).map(([id, player]) => [
+    id, { ...player, personal: { ...player.personal, influence: [...player.personal.influence] } },
+  ]));
+  const draft: CoreState = { ...G, exp: { ...G.exp, core: {
+    ...core, players,
+    ...(core.activeMeasureEffects ? { activeMeasureEffects: core.activeMeasureEffects.map(instance => ({ ...instance })) } : {}),
+  } } };
+  const exchange = planPoliticalAction(draft, { ...conversion, kind: 'convertResources', playerID }, active, preview);
+  if (!exchange.ok) return exchange;
+  if (exchange.output !== 1) return { ok: false, reason: 'conversion-must-produce' } as const;
+  exchange.commit();
+  return { ok: true, draft, output: conversion.output, costBreakdown: exchange.payment.transfers,
+    replacementUsed: exchange.payment.selection?.replacement !== undefined } as const;
+}
+
+type ConversionProjection = Extract<ReturnType<typeof projectConversion>, { ok: true }>;
+
+function spendsConvertedResource(transfers: PlannedPayment['transfers'], playerID: string, output: ResourceId): boolean {
+  return transfers.some(entry => entry.playerID === playerID && entry.resource === output && entry.amount > 0);
+}
+
+// CORE-01-04-19B/-19C and CORE-01-06-00-05C: pay for a new marker at the Committee with the exchange output.
+function planProjectedFormalization(
+  projection: ConversionProjection, effect: FormalizationEffect, active: readonly RulesModule[], preview?: PaymentPreview,
+): PoliticalPlan {
+  const { playerID, tileId, resources, payment } = effect;
+  const plan = planPoliticalAction(projection.draft, {
+    kind: 'formalizeInfluence', playerID, tileId, resources, payment,
+    politicalContinuation: { replacementUsed: projection.replacementUsed },
+  }, active, preview);
+  if (!plan.ok) return plan;
+  if (plan.output !== 1) return { ok: false, reason: 'formalization-must-produce' };
+  if (!spendsConvertedResource(plan.payment.transfers, effect.playerID, projection.output)) {
+    return { ok: false, reason: 'conversion-output-unspent' };
+  }
+  return plan;
+}
+
+function planConversionAssistedFormalization(
+  G: CoreState, effect: FormalizationEffect & { conversion: ConversionSelection }, active: readonly RulesModule[],
+  preview?: PaymentPreview,
+) {
+  const projected = projectConversion(G, effect.playerID, effect.conversion, active, preview);
+  if (!projected.ok) return projected;
+  const plan = planProjectedFormalization(projected, effect, active, preview);
+  if (!plan.ok) return plan;
+  // CORE-01-04-19D: commit only after both parts have been planned successfully.
+  return { ok: true, commit: () => {
+    plan.commit();
+    const before = G.exp.core;
+    const after = projected.draft.exp.core;
+    before.resources = after.resources;
+    for (const [id, player] of Object.entries(before.players)) {
+      player.personal.resources = after.players[id].personal.resources;
+    }
+    const player = before.players[effect.playerID];
+    const updated = after.players[effect.playerID];
+    player.personal.influence = updated.personal.influence;
+    player.usedStartCommittee = updated.usedStartCommittee;
+    if (after.activeMeasureEffects) before.activeMeasureEffects = after.activeMeasureEffects;
+    else delete before.activeMeasureEffects;
+  } } as const;
+}
+
+function projectedFormalizationQuotes(projection: ConversionProjection, effect: FormalizationEffect, active: readonly RulesModule[]) {
+  const options: PaymentQuote[] = [];
+  planProjectedFormalization(projection, effect, active, quote => {
+    if (spendsConvertedResource(quote.costBreakdown, effect.playerID, projection.output)) options.push(quote);
+  });
+  return options.filter(quote => planProjectedFormalization(projection, { ...effect, payment: quote.payment }, active).ok);
+}
+
+// CORE-01-04-09A and CORE-01-04-19A..19D: price each exchange once and quote its legal completions.
+export function* conversionAssistedQuotes(
+  G: CoreState, playerID: string, conversions: Iterable<MoveQuote<ConversionSelection>>,
+  candidates: Iterable<Pick<FormalizationEffect, 'tileId' | 'resources'>>,
+) {
+  const targets = [...candidates];
+  if (!targets.length) return;
+  const active = createExpansionRegistry(G.cfg.expansions);
+  for (const { payload: conversion, costBreakdown } of conversions) {
+    const projected = projectConversion(G, playerID, conversion, active);
+    if (!projected.ok) continue;
+    for (const target of targets) {
+      for (const quote of projectedFormalizationQuotes(projected, { ...target, kind: 'formalizeInfluence', playerID }, active)) {
+        yield {
+          contextTile: quote.contextTile,
+          costBreakdown: [...costBreakdown, ...quote.costBreakdown],
+          payload: { ...target, conversion, ...(quote.payment ? { payment: quote.payment } : {}) },
+        };
+      }
+    }
+  }
 }
 
 export function checkStartCommitteeFormalization(G: CoreState, playerID: string, tileId: string): ResolveResult {
   if (G.exp.core.allTiles[tileId]?.kind !== 'StartCommittee') return { ok: false, reason: 'invalid-target' };
   const active = createExpansionRegistry(G.cfg.expansions);
   const resorts = createMatchResourceRegistry(active).list();
-  for (const resources of formalizationPayments(resorts, true)) {
+  const candidates = [...formalizationPayments(resorts, true)].map(resources => ({ tileId, resources }));
+  for (const { resources } of candidates) {
     const plan = planPoliticalAction(G, { kind: 'formalizeInfluence', playerID, tileId, resources }, active);
     if (plan.ok) return { ok: true };
     // The Start Committee uses only the base payment. Try another combination if this one is unaffordable.
     if (plan.reason !== 'insufficient') return plan;
+  }
+  // CORE-01-04-19A and CORE-01-06-00-05C: the Start Committee also accepts a linked Grassroots payment.
+  const conversions = buildMoveCatalog(active).definitions.convertResources.quotes?.(G, playerID);
+  if (conversions && !conversionAssistedQuotes(G, playerID, conversions as Iterable<MoveQuote<ConversionSelection>>, candidates).next().done) {
+    return { ok: true };
   }
   return { ok: false, reason: 'insufficient' };
 }
@@ -580,6 +696,13 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
 
   function actionQuotes(G: CoreState, requested: PoliticalActionEffect | MeasureAction | ResolveRegulationEffect | PlaceTileEffect): PaymentQuote[] {
     const active = activeModules(G);
+    if (requested.kind === 'formalizeInfluence' && requested.conversion) {
+      const projected = projectConversion(G, requested.playerID, requested.conversion, active);
+      if (!projected.ok) return [];
+      return projectedFormalizationQuotes(projected, requested, active).map(quote => ({
+        ...quote, costBreakdown: [...projected.costBreakdown, ...quote.costBreakdown],
+      }));
+    }
     const quote = (effect: typeof requested, preview?: PaymentPreview) => {
       switch (effect.kind) {
         case 'takeMeasure':
@@ -939,6 +1062,10 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
     }
 
     if (effect.kind === 'placeOrMoveInfluence' || effect.kind === 'formalizeInfluence' || effect.kind === 'convertResources') {
+      if (effect.kind === 'formalizeInfluence' && effect.conversion) {
+        const linked = { ...effect, conversion: effect.conversion };
+        return executePoliticalPlan(G, effect.playerID, hooks, preview => planConversionAssistedFormalization(G, linked, active, preview));
+      }
       return executePoliticalPlan(G, effect.playerID, hooks, preview => planPoliticalAction(G, effect, active, preview));
     }
 

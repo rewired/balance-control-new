@@ -185,3 +185,115 @@ it('plays a production Measure on the most productive friendly resort', () => {
     parameters: [{ type: 'exp01_playMeasure', payload: { measureId: 'ECO_M02', targetTileId: 'FOR-W5-1' } }],
   });
 });
+
+it('trades surplus resources for the CLM missing from a Climate Measure in hand', () => {
+  const game = createBCGame({ matchSeed: 'climate-planning', expansions: { exp03: true } });
+  const setup = game.setup!;
+  game.setup = (context, data) => {
+    const G = setup(context, data);
+    const { players, tiles } = G.exp.core;
+    const board = [
+      { tileId: 'Grassroots-1', coord: { q: 1, r: 0 } },
+      { tileId: 'FOR-W5-1', coord: { q: 0, r: 1 } },
+      { tileId: 'DOM-W5-1', coord: { q: -1, r: 0 } },
+    ];
+    tiles.board.push(...board);
+    const draw = Array.from({ length: 7 }, (_, i) => `Hotspot-${i + 1}`);
+    tiles.discardFaceUp = tiles.drawPile.filter(id => !draw.includes(id) && !board.some(site => site.tileId === id));
+    tiles.drawPile = draw;
+    G.exp.core.influencesOnBoard = [
+      ...players['0'].personal.influence.splice(0).map((marker, i) => ({ ...marker, tileId: board[i % 2].tileId })),
+      ...players['1'].personal.influence.splice(0).map(marker => ({ ...marker, tileId: 'DOM-W5-1' })),
+    ];
+    players['0'].personal.resources.FOR = 9;
+    players['0'].usedStartCommittee = true;
+    const deck = G.exp.exp03!.measures!;
+    const card = 'CLM_M12';
+    const openSlot = deck.open.indexOf(card);
+    if (openSlot >= 0) deck.open[openSlot] = deck.drawPile.shift()!;
+    else deck.drawPile.splice(deck.drawPile.indexOf(card), 1);
+    deck.hands['0'].push(card);
+    return G;
+  };
+
+  const client = Client({ game, numPlayers: 2, playerID: '0' });
+  client.moves.placeTile({ q: 1, r: -1 });
+  const option = chooseComputerMove(game, createComputerPosition(client.store.getState()), '0');
+  expect(option).toMatchObject({
+    moveType: 'doPoliticalAction',
+    parameters: [{ type: 'convertResources', payload: { tileId: 'Grassroots-1', input: 'FOR', output: 'CLM' } }],
+  });
+  client.moves[option!.moveType](...option!.parameters);
+  expect(client.store.getState().G.exp.core.players['0'].personal.resources.CLM).toBe(1);
+});
+
+it('takes a Standard Committee when it needs more Influence and has spent its Start Committee use', () => {
+  const game = createBCGame({ matchSeed: 'committee-access' });
+  const setup = game.setup!;
+  game.setup = (context, data) => {
+    const G = setup(context, data);
+    const { players, tiles } = G.exp.core;
+    const board = [
+      { tileId: 'Committee-1', coord: { q: 1, r: 0 } },
+      { tileId: 'DOM-W5-1', coord: { q: 0, r: 1 } },
+      { tileId: 'FOR-W5-1', coord: { q: -1, r: 0 } },
+    ];
+    tiles.board.push(...board);
+    const draw = Array.from({ length: 7 }, (_, i) => `Grassroots-${i + 1}`);
+    tiles.discardFaceUp = tiles.drawPile.filter(id => !draw.includes(id) && !board.some(site => site.tileId === id));
+    tiles.drawPile = draw;
+    G.exp.core.influencesOnBoard = [
+      ...players['0'].personal.influence.splice(0).map(marker => ({ ...marker, tileId: 'DOM-W5-1' })),
+      ...players['1'].personal.influence.splice(0).map(marker => ({ ...marker, tileId: 'FOR-W5-1' })),
+    ];
+    Object.assign(players['0'].personal.resources, { DOM: 8, FOR: 6 });
+    players['0'].usedStartCommittee = true;
+    return G;
+  };
+
+  const client = Client({ game, numPlayers: 2, playerID: '0' });
+  client.moves.placeTile({ q: 1, r: -1 });
+  const state = client.store.getState();
+  const option = chooseComputerMove(game, createComputerPosition(state), '0');
+  expect(option).toMatchObject({ moveType: 'doPoliticalAction', contextTile: 'Committee-1' });
+  client.moves[option!.moveType](...option!.parameters);
+  expect(client.store.getState().G.exp.core.influencesOnBoard).toContainEqual(expect.objectContaining({
+    owner: '0', tileId: 'Committee-1',
+  }));
+});
+
+it('takes the immediate Hotspot win in the placement phase', () => {
+  const game = createBCGame({ matchSeed: 'winning-enclosure' });
+  const setup = game.setup!;
+  game.setup = (context, data) => {
+    const G = setup(context, data);
+    const { players, tiles } = G.exp.core;
+    const board = [
+      { tileId: 'Hotspot-1', coord: { q: 2, r: 0 } },
+      { tileId: 'Committee-1', coord: { q: 2, r: -1 } },
+      { tileId: 'Committee-2', coord: { q: 3, r: -1 } },
+      { tileId: 'Committee-3', coord: { q: 3, r: 0 } },
+      { tileId: 'Committee-4', coord: { q: 2, r: 1 } },
+      { tileId: 'Committee-5', coord: { q: 1, r: 1 } },
+      { tileId: 'DOM-W5-1', coord: { q: 0, r: 1 } },
+    ];
+    tiles.board.push(...board);
+    const draw = ['Grassroots-1', 'Committee-6', 'Committee-7'];
+    tiles.discardFaceUp = tiles.drawPile.filter(id => !draw.includes(id) && !board.some(site => site.tileId === id));
+    tiles.drawPile = draw;
+    const supply = players['0'].personal.influence;
+    G.exp.core.influencesOnBoard = [
+      ...supply.splice(0).map(marker => ({ ...marker, tileId: 'Hotspot-1' })),
+      ...Array.from({ length: 2 }, (_, i) => ({ id: `INF-0-F${i + 1}`, owner: '0', tileId: 'Hotspot-1' })),
+      ...players['1'].personal.influence.splice(0).map(marker => ({ ...marker, tileId: 'DOM-W5-1' })),
+    ];
+    supply.push({ id: 'INF-0-F3', owner: '0' });
+    return G;
+  };
+
+  const client = Client({ game, numPlayers: 2, playerID: '0' });
+  const option = chooseComputerMove(game, createComputerPosition(client.store.getState()), '0');
+  expect(option).toMatchObject({ moveType: 'placeTile', parameters: [{ q: 1, r: 0 }] });
+  client.moves[option!.moveType](...option!.parameters);
+  expect(client.store.getState().ctx.gameover).toEqual({ winners: ['0'] });
+});
