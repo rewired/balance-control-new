@@ -613,3 +613,9 @@
 ## 2026-11-10 – Kompakte Einflussanzeige
 
 - Spielsteine zeigen die Anzahl der Einflussmarker in Kreisen in den Spielerfarben. Virtueller Einfluss steht als `+`-Wert darunter. Durchgezogene und gestrichelte helle Ränder markieren Kontrolle und geteilte Führung.
+
+## 2026-11-10 – Spielfeld und Aktionen in einer Ansicht
+
+- Das Spielfeld nutzt die Fensterhöhe. Aktionen und Vorräte sind auf großen Bildschirmen gleichzeitig sichtbar. Measures und Regulations lassen sich daneben öffnen, und die Legende lässt sich ausklappen.
+- Die Vorräte bleiben unter den Aktionen an derselben Position. Jede Spielerzeile zeigt die Kennung im Farbquadrat und nur die Gesamtzahlen für Einfluss auf dem Brett und im Vorrat. Die Spaltensymbole werden beim Darüberfahren erklärt. Im Brettsymbol steht das Siegziel. Die aktive Zeile bleibt hervorgehoben.
+- „Formalize influence“ markiert beim Inspizieren eines Komitees die Spieler, die noch Startmarker zum ersten Mal setzen müssen.

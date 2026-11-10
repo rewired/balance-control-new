@@ -1,9 +1,17 @@
 import type { CSSProperties } from 'react';
 import type { RegulationKind } from '@bc/rules';
-import { playerColor, playerPalette, resortVisuals } from './core-board-visuals.js';
+import { playerLabel, playerShortLabel } from './core-board-labels.js';
+import { playerPalette, resortVisuals } from './core-board-visuals.js';
 
-export function PlayerMarker({ id }: { id: string }) {
-  return <span className="player-marker" style={{ '--player-color': playerColor(id) } as CSSProperties} aria-hidden="true" />;
+export function PlayerMarker({ id, numbered = false }: { id: string; numbered?: boolean }) {
+  const palette = playerPalette(id);
+  const label = numbered ? playerLabel(id) : undefined;
+  return <span className={numbered ? 'player-marker player-marker-numbered' : 'player-marker'} style={{
+    '--player-color': palette?.fill,
+    '--player-text': numbered ? palette?.text : undefined,
+  } as CSSProperties} role={numbered ? 'img' : undefined} aria-label={label} title={label} aria-hidden={!numbered || undefined}>
+    {numbered && playerShortLabel(id)}
+  </span>;
 }
 
 export function InfluenceChip({ id, count, virtual = 0, majority }: {

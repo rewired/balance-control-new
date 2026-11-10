@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { CoreStages, createBCGame, engineMoveOptions, type EngineMoveOption } from '@bc/game';
 import { CoreView, submitCoreOption } from './BoardCore.js';
+import CommitteeFormalization from './CommitteeFormalization.js';
 import { TileFace } from './CoreHexBoard.js';
 import { MeasurePanel, RegulationPanel } from './ExpansionPanels.js';
 import { describeOption, measureAction, optionCost } from './core-board-labels.js';
@@ -34,7 +35,8 @@ describe('CORE hotseat', () => {
     expect(placement).toContain('Player 1 to act');
     expect(placement).toContain('Start Committee');
     expect(placement).toContain('Place the drawn tile');
-    expect(placement).toContain('7 to win');
+    expect(placement).toContain('title="On board · 7 markers to win"');
+    expect(placement).toContain('>7</text>');
     expect(placement).not.toContain('Expansion tools');
     expect(placement.match(/aria-label="Place tile at /g)).toHaveLength(options().length);
     const waiting = render('1');
@@ -58,6 +60,8 @@ describe('CORE hotseat', () => {
     expect(state().ctx.currentPlayer).toBe('1');
     const nextTurn = render();
     expect(nextTurn).toContain('Player 2 to act');
+    expect(nextTurn).toMatch(/data-acting="true"[^>]*><th scope="row" aria-label="Player 2"[^>]*aria-current="true"/);
+    expect(nextTurn).not.toContain('>To act<');
     expect(nextTurn).toContain('Controlled by Player 1. Player 1 has 1 marker');
 
     submit(options()[0]);
@@ -95,10 +99,28 @@ describe('CORE hotseat', () => {
     const end = render();
     expect(end).toContain('Shared win · Player 1 and Player 2');
     expect(end).toContain('On board');
-    expect(end.match(/4 starting · 0 additional/g)).toHaveLength(2);
+    expect(end.match(/<\/th><td data-empty="false"><strong class="supply-count">4<\/strong><\/td><td data-empty="true"><strong class="supply-count">0<\/strong><\/td>/g)).toHaveLength(2);
     expect(end).toContain('Start a new match');
     expect(end).not.toContain('<select');
   });
+});
+
+it('marks only players who still owe a first placement when inspecting either kind of committee', () => {
+  const { state, options, submit } = hotseat();
+  submit(options()[0]);
+  const { G, ctx } = structuredClone(state());
+  const core = G.exp.core;
+  const [recalled, ...placed] = core.players['1'].personal.influence;
+  core.players['1'].personal.influence = [{ ...recalled, recalled: true }];
+  core.influencesOnBoard = placed.map(marker => ({ ...marker, tileId: core.tiles.board[1].tileId }));
+
+  for (const kind of ['StartCommittee', 'Committee'] as const) {
+    const markup = renderToStaticMarkup(<CommitteeFormalization G={G} ctx={ctx} kind={kind}
+      tileId="StartCommittee" available={false} />);
+    expect(markup).toContain('Still to place starting markers');
+    expect(markup).toContain('>P1</span>');
+    expect(markup).not.toContain('>P2</span>');
+  }
 });
 
 it('shows the English name of the Climate Hotspot on the tile', () => {
@@ -140,8 +162,12 @@ it('shows all six players on one tile and all six active resources alongside the
   expect(tiedTile?.match(/class="influence-chip" data-majority="tie"/g)).toHaveLength(6);
   const supplies = markup.match(/<table class="core-supplies">.*?<\/table>/)?.[0];
   expect(supplies?.match(/class="resource-icon"/g)).toHaveLength(6);
+  expect(supplies?.match(/class="supply-zone-icon"/g)).toHaveLength(2);
   expect(supplies).toContain('Player 6');
-  expect(supplies).toContain('8 to win');
+  expect(supplies).toContain('>P6</span>');
+  expect(supplies).toContain('title="On board · 8 markers to win"');
+  expect(supplies).toContain('title="In supply"');
+  expect(supplies).toContain('>8</text>');
   expect(markup).toContain('Open Measures');
 });
 

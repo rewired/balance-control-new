@@ -20,13 +20,14 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
 
   if (runningMatch && phase === 'play') {
     const { app: Match, matchID, playerID, credentials } = runningMatch;
-    return <>
+    return <div className="network-game">
       <button type="button" onClick={handleExitMatch}>Back to lobby</button>
       <Match matchID={matchID} playerID={playerID} credentials={credentials} />
-    </>;
+    </div>;
   }
 
-  if (phase === 'enter') return (
+  if (phase === 'enter') return <>
+    <h2>Network lobby</h2>
     <form className="core-setup" onSubmit={event => {
       event.preventDefault();
       if (name.trim()) handleEnterLobby(name.trim());
@@ -34,10 +35,11 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
       <label>Player name <input value={name} onChange={event => setName(event.target.value)} required /></label>
       <button type="submit" disabled={!name.trim()}>Enter lobby</button>
     </form>
-  );
+  </>;
 
   return (
     <div className="network-lobby">
+      <h2>Network lobby</h2>
       <p>Signed in as {playerName} <button type="button" onClick={() => void handleExitLobby()}>Leave lobby</button></p>
       <CoreMatchSetup title="New network match" buttonLabel="Create match" onStart={async settings => {
         setCreated(undefined);
@@ -82,10 +84,7 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
 
 export default function NetworkLobby({ server }: { server: string }) {
   return (
-    <>
-      <h2>Network lobby</h2>
-      <Lobby gameServer={server} lobbyServer={server} gameComponents={gameComponents}
-        renderer={lobby => <LobbyView server={server} lobby={lobby} />} />
-    </>
+    <Lobby gameServer={server} lobbyServer={server} gameComponents={gameComponents}
+      renderer={lobby => <LobbyView server={server} lobby={lobby} />} />
   );
 }

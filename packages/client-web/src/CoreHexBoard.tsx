@@ -162,14 +162,17 @@ export default function CoreHexBoard({
             viewBox={`${left - fieldPadding} ${top - fieldPadding} ${width} ${height}`} />}
       </HexBoardViewport>
       <footer className="core-board-footer">
-        <div className="core-map-key">
-          <span><InfluenceChip id="0" count={1} /> Influence <span className="virtual-influence">+ virtual</span></span>
-          <span><i className="majority-key" data-majority="control" aria-hidden="true" /> Controls tile</span>
-          <span><i className="majority-key" data-majority="tie" aria-hidden="true" /> Tied lead</span>
-          {G.exp.exp02?.regulations && <span><RegulationBadge kind="Administration" /> Regulation</span>}
-          {legalCoords.length > 0 && <span><b>+</b> Legal tile placement</span>}
-          {tileActions.size > 0 && <span><b>Place / Move</b> Marker action</span>}
-        </div>
+        <details className="core-map-legend">
+          <summary>Legend</summary>
+          <div className="core-map-key">
+            <span><InfluenceChip id="0" count={1} /> Influence <span className="virtual-influence">+ virtual</span></span>
+            <span><i className="majority-key" data-majority="control" aria-hidden="true" /> Controls tile</span>
+            <span><i className="majority-key" data-majority="tie" aria-hidden="true" /> Tied lead</span>
+            {G.exp.exp02?.regulations && <span><RegulationBadge kind="Administration" /> Regulation</span>}
+            {legalCoords.length > 0 && <span><b>+</b> Legal tile placement</span>}
+            {tileActions.size > 0 && <span><b>Place / Move</b> Marker action</span>}
+          </div>
+        </details>
         {matchAction}
         {matchDetails}
       </footer>

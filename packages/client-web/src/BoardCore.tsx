@@ -5,7 +5,7 @@ import { CoreStages, engineMoveOptions, type EngineMoveOption } from '@bc/game';
 import { MatchConfigSchema, type AxialCoord, type CoreState, type Tile } from '@bc/rules';
 import CoreHexBoard, { TileFace } from './CoreHexBoard.js';
 import CoreSupplies from './CoreSupplies.js';
-import StartCommitteeDetails from './StartCommitteeDetails.js';
+import CommitteeFormalization from './CommitteeFormalization.js';
 import { MeasureDetails, MeasurePanel, RegulationPanel } from './ExpansionPanels.js';
 import { expansions, measureName } from './expansion-data.js';
 import { playerColor, resortVisuals } from './core-board-visuals.js';
@@ -80,8 +80,10 @@ interface CoreViewProps {
   onNewMatch?: () => void;
 }
 
+type SidebarView = 'actions' | 'supplies' | 'measures' | 'regulations';
+
 export function CoreView({ G, ctx, revision, playerID, isActive = true, computerPlayers, submit, onNewMatch }: CoreViewProps) {
-  const [expansionView, setExpansionView] = useState<'measures' | 'regulations'>('measures');
+  const [sidebarView, setSidebarView] = useState<SidebarView>('actions');
   const inspector = useRef<HTMLElement>(null);
   const [selection, setSelection] = useState<{
     revision: number;
@@ -149,42 +151,56 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
     : `${playerLabel(activePlayer)} to act`;
 
   const inspectTile = (tileId: string) => {
+    setSidebarView('actions');
     setSelection({ revision, playerID, tile: tileId });
+  };
+
+  const focusInspector = () => {
+    requestAnimationFrame(() => inspector.current?.focus({ preventScroll: true }));
   };
 
   return (
     <div className="core-match" style={{ '--acting-color': result ? '#94a3b8' : playerColor(activePlayer) } as CSSProperties}>
-      <div className="core-play">
-        <CoreHexBoard G={G} selectedTile={selectedTile} selectedCoord={selectedCoord} tileActions={tileActions} preview={preview}
-          status={<div className="core-turn" aria-live="polite">
-            <p className="turn-number">Turn {ctx.turn}{!result && activePlayer !== ctx.currentPlayer
-              && ` · ${playerLabel(ctx.currentPlayer)}'s turn`}</p>
-            <h2>{!result && <PlayerMarker id={activePlayer} />}{status}</h2>
-            {!result && <p className="core-kicker">{phase}</p>}
-          </div>}
-          matchDetails={<details className="core-match-details">
-            <summary>Match details</summary>
-            <div className="core-modules" role="group" aria-label="Active modules">
-              <span className="core-module">CORE</span>
-              {enabledExpansions.map(({ id, resource, label }) => (
-                <span key={id} className="core-module" title={label}><ResourceBadge resource={resource} /> EXP {id.slice(-2)}</span>
-              ))}
-            </div>
-            <p className="core-match-seed">Seed <code>{G.matchSeed}</code></p>
-          </details>}
-          matchAction={onNewMatch && <button type="button" className={result ? 'new-match' : undefined} onClick={onNewMatch}>
-            {result ? 'Start a new match' : 'Back to match setup'}
-          </button>}
-          legalCoords={Array.from(placements.values(), entry => entry.coord)}
-          onInspect={tileId => selectedTile === tileId ? setSelection(undefined) : inspectTile(tileId)}
-          onPlace={coord => {
-            const key = coordLabel(coord);
-            const choices = placements.get(key)?.options ?? [];
-            if (choices.length === 1 && choices[0].costBreakdown.length === 0) submit(choices[0]);
-            else setSelection({ revision, playerID, coord: key });
-          }} />
+      <CoreHexBoard G={G} selectedTile={selectedTile} selectedCoord={selectedCoord} tileActions={tileActions} preview={preview}
+        status={<div className="core-turn" aria-live="polite">
+          <p className="turn-number">Turn {ctx.turn}{!result && activePlayer !== ctx.currentPlayer
+            && ` · ${playerLabel(ctx.currentPlayer)}'s turn`}</p>
+          <h2>{!result && <PlayerMarker id={activePlayer} />}{status}</h2>
+          {!result && <p className="core-kicker">{phase}</p>}
+        </div>}
+        matchDetails={<details className="core-match-details">
+          <summary>Match details</summary>
+          <div className="core-modules" role="group" aria-label="Active modules">
+            <span className="core-module">CORE</span>
+            {enabledExpansions.map(({ id, resource, label }) => (
+              <span key={id} className="core-module" title={label}><ResourceBadge resource={resource} /> EXP {id.slice(-2)}</span>
+            ))}
+          </div>
+          <p className="core-match-seed">Seed <code>{G.matchSeed}</code></p>
+        </details>}
+        matchAction={onNewMatch && <button type="button" className={result ? 'new-match' : undefined} onClick={onNewMatch}>
+          {result ? 'Start a new match' : 'Back to match setup'}
+        </button>}
+        legalCoords={Array.from(placements.values(), entry => entry.coord)}
+        onInspect={tileId => selectedTile === tileId && sidebarView === 'actions' ? setSelection(undefined) : inspectTile(tileId)}
+        onPlace={coord => {
+          setSidebarView('actions');
+          const key = coordLabel(coord);
+          const choices = placements.get(key)?.options ?? [];
+          if (choices.length === 1 && choices[0].costBreakdown.length === 0) submit(choices[0]);
+          else setSelection({ revision, playerID, coord: key });
+        }} />
+      <div className="core-sidebar" data-view={sidebarView}>
+        <div className="core-view-switch" role="group" aria-label="Match views">
+          <button type="button" aria-pressed={sidebarView === 'actions'} onClick={() => setSidebarView('actions')}>Actions</button>
+          <button type="button" aria-pressed={sidebarView === 'supplies'} onClick={() => setSidebarView('supplies')}>Supplies</button>
+          {enabledExpansions.length > 0 && <button type="button" aria-pressed={sidebarView === 'measures'}
+            onClick={() => setSidebarView('measures')}>Measures</button>}
+          {regulations && <button type="button" aria-pressed={sidebarView === 'regulations'}
+            onClick={() => setSidebarView('regulations')}>Regulations</button>}
+        </div>
         <aside className="core-inspector core-panel" aria-label="Tile details and actions" ref={inspector} tabIndex={-1}
-          data-inspecting-tile={!!inspectedTile}>
+          hidden={sidebarView !== 'actions'}>
           <header className="core-inspector-heading">
             <h3>{selectedMeasure ? 'Measure inspector' : 'Tile inspector'}</h3>
             {(selectedTile || selectedCoord || selectedMeasure) && <button type="button" onClick={() => setSelection(undefined)}>Clear</button>}
@@ -193,12 +209,12 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
             tabIndex={0} role="region" aria-label="Inspection details">
             {occupation && inspected && inspectedTile ? <>
               <TileSummary tile={inspectedTile} controller={occupation.controller} label={`Selected tile · ${coordLabel(inspected.coord)}`} />
-              <section className="tile-rules" aria-label="Tile rules">
-                <h4>Tile rules</h4>
+              <details className="tile-rules">
+                <summary>Tile rules</summary>
                 <p>{tileRuleSummary(inspectedTile)}</p>
-                {counterLobby && <p>Counter-lobby suspends the bonus from {counterLobby.lobbyistTileId} for {playerLabel(counterLobby.controller)}.</p>}
-                {damaged && <p>Permanent damage · −1 production</p>}
-              </section>
+              </details>
+              {counterLobby && <p>Counter-lobby suspends the bonus from {counterLobby.lobbyistTileId} for {playerLabel(counterLobby.controller)}.</p>}
+              {damaged && <p>Permanent damage · −1 production</p>}
               <p className="inspected-control"><strong>{occupation.control}</strong></p>
               {occupation.influence.length ? (
                 <table className="inspected-influence">
@@ -220,8 +236,10 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
                   </li>)}
                 </ul>
               </section>}
-              {startCommitteeSelected && <StartCommitteeDetails G={G} ctx={ctx} tileId={inspected.tileId} playerID={playerID}
-                available={visibleActions.some(isFormalization)} />}
+              {(inspectedTile.kind === 'StartCommittee' || inspectedTile.kind === 'Committee') && (
+                <CommitteeFormalization G={G} ctx={ctx} kind={inspectedTile.kind} tileId={inspected.tileId} playerID={playerID}
+                  available={visibleActions.some(isFormalization)} />
+              )}
             </> : selectedMeasure ? <>
               <h4>{measureName(selectedMeasure.id)}</h4>
               <MeasureDetails selection={selectedMeasure} available={!resolvingDecision && visibleActions.length > 0} />
@@ -249,30 +267,22 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
           {!result && visibleActions.length > 0 && <OptionPicker G={G} options={visibleActions} selected={actionIndex}
             onSelect={index => setSelection({ ...current, revision, playerID, actionIndex: index })} submit={submit} />}
         </aside>
-      </div>
-      <div className="core-dashboard" data-expanded={enabledExpansions.length > 0 || !!regulations}>
         <CoreSupplies G={G} activePlayer={result ? undefined : activePlayer} computerPlayers={computerPlayers} />
-        {(enabledExpansions.length > 0 || regulations) && (
-          <section className="core-operations core-panel" aria-label="Expansion tools">
-            {regulations && enabledExpansions.length > 0 && (
-              <div className="core-view-switch" role="group" aria-label="Expansion views">
-                <button type="button" aria-pressed={expansionView === 'measures'} onClick={() => setExpansionView('measures')}>Measures</button>
-                <button type="button" aria-pressed={expansionView === 'regulations'} onClick={() => setExpansionView('regulations')}>
-                  Regulations · {regulations.attached.length}
-                </button>
-              </div>
-            )}
-            {regulations && (expansionView === 'regulations' || !enabledExpansions.length)
-              ? <RegulationPanel G={G} options={otherActions} onInspect={tileId => {
-                inspectTile(tileId);
-                inspector.current?.focus();
-              }} />
-              : <MeasurePanel G={G} options={otherActions} selected={selectedMeasure} onSelect={measure => {
-                setSelection({ revision, playerID, measure });
-                inspector.current?.focus();
-              }} />}
-          </section>
-        )}
+        {enabledExpansions.length > 0 && <section className="core-operations core-panel" aria-label="Measures"
+          hidden={sidebarView !== 'measures'} tabIndex={0}>
+          <MeasurePanel G={G} options={otherActions} selected={selectedMeasure} onSelect={measure => {
+            setSidebarView('actions');
+            setSelection({ revision, playerID, measure });
+            focusInspector();
+          }} />
+        </section>}
+        {regulations && <section className="core-operations core-panel" aria-label="Regulation tools"
+          hidden={sidebarView !== 'regulations'} tabIndex={0}>
+          <RegulationPanel G={G} options={otherActions} onInspect={tileId => {
+            inspectTile(tileId);
+            focusInspector();
+          }} />
+        </section>}
       </div>
     </div>
   );
