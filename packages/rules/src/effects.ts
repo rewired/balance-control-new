@@ -113,7 +113,7 @@ export interface AddNoiseEffect extends BaseEffect {
 }
 
 export type PoliticalActionEffect = BaseEffect & { playerID: string } & (
-  | { kind: 'placeOrMoveInfluence'; markerId: string; targetTileId: string; sourceTileId?: string }
+  | { kind: 'placeOrMoveInfluence'; markerId: string; targetTileId: string; sourceTileId?: string; resources?: ResourceId[] }
   | { kind: 'recallInfluence'; markerId: string; resources: ResourceId[] }
   | { kind: 'formalizeInfluence'; tileId: string; resources: ResourceId[] }
   | { kind: 'convertResources'; tileId: string; input: ResourceId; output: ResourceId; alternative?: string }

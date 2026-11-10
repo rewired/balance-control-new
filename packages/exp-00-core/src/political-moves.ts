@@ -5,7 +5,8 @@ import { createResolver, type PoliticalActionEffect } from '@bc/rules';
 import type { MoveDefinition, MoveExtensionBuilder } from '@bc/rules';
 import { matchResourceIds } from '@bc/rules';
 import { PaymentSelectionSchema } from '@bc/rules';
-import { formalizationPayments, recallPayments } from './resolver.js';
+import { influenceMoveCost } from './influence.js';
+import { formalizationPayments, paymentCombinations, recallPayments } from './resolver.js';
 
 function corePoliticalMove<P extends object>(
   type: PoliticalActionEffect['kind'],
@@ -39,17 +40,27 @@ export function registerCorePoliticalMoves({ add }: MoveExtensionBuilder): void 
   const moves = [
     corePoliticalMove(
       'placeOrMoveInfluence',
-      z.object({ markerId: id, targetTileId: id, sourceTileId: id.optional(), payment: PaymentSelectionSchema.optional() }).strict(),
+      z.object({
+        markerId: id, targetTileId: id, sourceTileId: id.optional(),
+        resources: z.array(id).min(1).max(3).optional(), payment: PaymentSelectionSchema.optional(),
+      }).strict(),
       (playerID, payload) => ({ kind: 'placeOrMoveInfluence', playerID, ...payload }),
       function* (G, playerID) {
-        for (const { tileId: targetTileId } of G.exp.core.tiles.board) {
+        const resorts = G.cfg.variants.influenceDistance ? matchResourceIds(G) : [];
+        for (const { tileId: targetTileId, coord } of G.exp.core.tiles.board) {
           if (G.exp.core.allTiles[targetTileId].kind === 'StartCommittee') continue;
           for (const marker of G.exp.core.players[playerID]?.personal.influence ?? []) {
             yield { markerId: marker.id, targetTileId };
           }
           for (const marker of G.exp.core.influencesOnBoard ?? []) {
             if (marker.owner === playerID && marker.tileId !== targetTileId) {
-              yield { markerId: marker.id, sourceTileId: marker.tileId, targetTileId };
+              // VAR-01-03-02/-03: offer each choice of base payment once.
+              const cost = influenceMoveCost(G, marker.tileId, coord);
+              if (cost === undefined) continue;
+              const target = { markerId: marker.id, sourceTileId: marker.tileId, targetTileId };
+              for (const resources of paymentCombinations(resorts, cost)) {
+                yield resources.length ? { ...target, resources } : target;
+              }
             }
           }
         }

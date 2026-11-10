@@ -11,7 +11,7 @@ import {
   type ResourceAmounts, type ResourceId, type ResourceRegistry, type RulesModule, type Surcharge, type TakeMeasureEffect,
 } from '@bc/rules';
 import { isFullySurrounded } from './hotspot.js';
-import { influenceLimit, influenceLimitWinners } from './influence.js';
+import { influenceLimit, influenceLimitWinners, influenceMoveCost } from './influence.js';
 import { planProductionForTile, productionReceipt } from './production.plan.js';
 import { computeMajority, getControl } from './majority.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
@@ -227,7 +227,7 @@ function placeSupplyMarker(G: CoreState, supply: Influence[], index: number, til
 const committeeCost = { total: 2, distinct: 2 };
 export const startCommitteeCost = { total: 4, distinct: 3 } as const;
 
-function* paymentCombinations(resources: ResourceId[], size: number, offset = 0): Generator<ResourceId[]> {
+export function* paymentCombinations(resources: ResourceId[], size: number, offset = 0): Generator<ResourceId[]> {
   if (size === 0) {
     yield [];
     return;
@@ -309,8 +309,18 @@ function planPoliticalAction(
       : board.findIndex(marker => marker.id === effect.markerId && marker.owner === player.id && marker.tileId === effect.sourceTileId);
     if (index < 0) return { ok: false, reason: 'marker-not-in-source' };
 
+    // VAR-01-03-02 through -04: combine the chosen base cost with destination costs.
+    const distanceCost = influenceMoveCost(G, effect.sourceTileId, placement.coord);
+    if (distanceCost === undefined) return { ok: false, reason: 'influence-move-out-of-range' };
+    const resources = effect.resources ?? [];
+    if (resources.length !== distanceCost || resources.some(resource => !registry.has(resource))) {
+      return { ok: false, reason: 'invalid-influence-move-cost' };
+    }
+    const cost: ResourceAmounts = Object.create(null);
+    for (const resource of resources) cost[resource] = (cost[resource] ?? 0) + 1;
+
     // CORE-01-06-00-07(b) and EXP-02-02-B-02B: cost increases apply; the marker is not output.
-    const payment = planPayment(G, registry, effect, localHooks, undefined, preview);
+    const payment = planPayment(G, registry, effect, localHooks, cost, preview);
     if (!payment.ok) return payment;
     return { ok: true, commit: () => {
       payment.transaction.commit();

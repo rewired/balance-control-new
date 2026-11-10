@@ -434,6 +434,11 @@ VAR-01-02-06 FirstPlayerHandicap modifies CORE-01-03-06.
 VAR-01-02-07 If the 5–6 Player Add-On is active, FirstPlayerHandicap also modifies ADD56-01-02-01.
 VAR-01-02-08 If the 5–6 Player Add-On is active, FirstPlayerHandicap also modifies ADD56-01-02-02.
 
+VAR-01-03-01 InfluenceDistance is an optional playtest variant. It modifies only the ordinary Move under CORE-01-04-12.
+VAR-01-03-02 Measure distance by the minimum number of adjacent steps on the hex grid between the source and destination positions, including empty positions. A Move with a distance greater than three is illegal.
+VAR-01-03-03 The base cost is zero Resources at distance one, one Resource at distance two, and three Resources at distance three. The active player chooses each unit from any active resort. Multiple units may come from the same resort.
+VAR-01-03-04 The destination is the sole ContextTile under CORE-01-06-00-05A. Apply applicable prohibitions and payment rules to the complete action, including its base cost, under CORE-01-06-00-07 through -11. Pay from the active player's PersonalSupply to Bank.
+
 ---
 
 # ADD56-01 5–6 PLAYER ADD-ON (Simulation Specification)

@@ -131,6 +131,11 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, b
             onChange={event => setVariants({ ...variants, firstPlayerHandicap: event.target.checked })} />{' '}
           First-player handicap
         </label>
+        <label>
+          <input name="influenceDistance" type="checkbox" checked={variants.influenceDistance === true}
+            onChange={event => setVariants({ ...variants, influenceDistance: event.target.checked ? true : undefined })} />{' '}
+          Influence distance (playtest) · 0, 1, or 3 resources for 1, 2, or 3 hex steps
+        </label>
       </fieldset>
       <label className="core-seed-field">
         Seed (optional)

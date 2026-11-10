@@ -65,10 +65,12 @@ function uniqueMarkerOptions(G: CoreState, playerID: string, options: EngineMove
   return options.filter(option => {
     if (actionType(option) !== 'placeOrMoveInfluence') return true;
     const { payload } = option.parameters[0] as {
-      payload: { markerId: string; sourceTileId?: string; targetTileId: string; payment?: PaymentSelection };
+      payload: { markerId: string; sourceTileId?: string; targetTileId: string; resources?: string[]; payment?: PaymentSelection };
     };
     // Keep different routes and payments, and distinguish starting markers for formalization timing.
-    const key = JSON.stringify([payload.sourceTileId, payload.targetTileId, startingMarkers.has(payload.markerId), payload.payment]);
+    const key = JSON.stringify([
+      payload.sourceTileId, payload.targetTileId, startingMarkers.has(payload.markerId), payload.resources, payload.payment,
+    ]);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

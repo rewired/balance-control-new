@@ -14,6 +14,8 @@ const committee = { tileId: 'Committee-1', coord: { q: 1, r: 0 } };
 const lobbyist = { tileId: 'Lobbyist-1', coord: { q: 2, r: 0 } };
 const grassroots = { tileId: 'Grassroots-1', coord: { q: 3, r: 0 } };
 const otherGrassroots = { tileId: 'Grassroots-2', coord: { q: 0, r: -1 } };
+const threeSteps = { tileId: 'DOM-W3-1', coord: { q: 3, r: 1 } };
+const fourSteps = { tileId: 'DOM-W5-1', coord: { q: 4, r: 1 } };
 const draw = ['Committee-2', 'Committee-3', 'Committee-4', 'Committee-5'];
 
 function clientWithBoard(
@@ -43,8 +45,8 @@ function placeDraw(client: TestClient): string {
   return offer.tileId;
 }
 
-function influence(client: TestClient, markerId: string, targetTileId: string, sourceTileId?: string): void {
-  client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId, sourceTileId } });
+function influence(client: TestClient, markerId: string, targetTileId: string, sourceTileId?: string, resources?: string[]): void {
+  client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId, sourceTileId, resources } });
 }
 
 function formalize(client: TestClient, tileId: string, resources: string[], payment?: PaymentSelection): void {
@@ -111,7 +113,71 @@ describe('CORE political actions through boardgame.io', () => {
     ]);
   });
 
-  it('binds movement costs and prohibitions to the destination, and preserves the marker when payment fails', () => {
+  // VAR-01-03-01..04: exercise quoted payments and execution through the same public move.
+  it.each([
+    { target: lobbyist, resources: [], dom: 0, forAmount: 0 },
+    { target: otherGrassroots, resources: ['FOR'], dom: 0, forAmount: 1 },
+    { target: threeSteps, resources: ['DOM', 'DOM', 'FOR'], dom: 2, forAmount: 1 },
+  ])('quotes and charges the exact distance cost to $target.tileId', ({ target, resources, dom, forAmount }) => {
+    const client = clientWithBoard(G => {
+      const { personal } = G.exp.core.players['0'];
+      G.exp.core.influencesOnBoard = [{ ...personal.influence.shift()!, tileId: committee.tileId }];
+      Object.assign(personal.resources, { DOM: 3, FOR: 1 });
+    }, { variants: { influenceDistance: true } }, 2, [committee, lobbyist, grassroots, otherGrassroots, threeSteps, fourSteps]);
+    placeDraw(client);
+    const { G, ctx } = client.getState()!;
+    const marker = G.exp.core.influencesOnBoard![0];
+    const payload = { markerId: marker.id, sourceTileId: committee.tileId, targetTileId: target.tileId };
+    const options = engineMoveOptions(G, ctx, '0');
+    expect(options).toContainEqual(expect.objectContaining({
+      moveType: 'doPoliticalAction',
+      parameters: [{ type: 'placeOrMoveInfluence', payload: { ...payload, ...(resources.length && { resources }) } }],
+      costBreakdown: [
+        ...(dom ? [{ playerID: '0', resource: 'DOM', amount: dom }] : []),
+        ...(forAmount ? [{ playerID: '0', resource: 'FOR', amount: forAmount }] : []),
+      ],
+    }));
+    expect(options).not.toContainEqual(expect.objectContaining({
+      parameters: [{ type: 'placeOrMoveInfluence', payload: expect.objectContaining({
+        sourceTileId: committee.tileId, targetTileId: fourSteps.tileId,
+      }) }],
+    }));
+    for (const invalid of [
+      { ...payload, targetTileId: fourSteps.tileId, resources: ['DOM', 'DOM', 'DOM'] },
+      { ...payload, targetTileId: threeSteps.tileId, resources: ['FOR', 'FOR', 'FOR'] },
+      { ...payload, targetTileId: threeSteps.tileId, resources: ['DOM', 'DOM', 'SEC'] },
+      { ...payload, targetTileId: threeSteps.tileId, resources: ['DOM'] },
+    ]) {
+      expectRejected(client, () => client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: invalid }));
+    }
+    client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { ...payload, ...(resources.length && { resources }) } });
+    const after = client.getState()!.G.exp.core;
+    expect(after.influencesOnBoard).toEqual([{ ...marker, tileId: target.tileId }]);
+    expect(after.players['0'].personal.resources).toMatchObject({ DOM: 3 - dom, FOR: 1 - forAmount });
+    expect(after.resources.bank).toMatchObject({ DOM: dom, FOR: forAmount });
+  });
+
+  it.each([true, false])('keeps placement from supply free and gates the range by the variant (%s)', influenceDistance => {
+    const client = clientWithBoard(G => {
+      const { personal } = G.exp.core.players['0'];
+      G.exp.core.influencesOnBoard = [{ ...personal.influence.shift()!, tileId: committee.tileId }];
+    }, influenceDistance ? { variants: { influenceDistance: true } } : {}, 2, [committee, fourSteps]);
+    placeDraw(client);
+    const { G } = client.getState()!;
+    const marker = G.exp.core.influencesOnBoard![0];
+    const supply = G.exp.core.players['0'].personal.influence[0];
+    if (influenceDistance) {
+      expectRejected(client, () => influence(client, marker.id, fourSteps.tileId, committee.tileId));
+      influence(client, supply.id, fourSteps.tileId);
+    } else {
+      influence(client, marker.id, fourSteps.tileId, committee.tileId);
+    }
+    expect(client.getState()!.G.exp.core.influencesOnBoard).toContainEqual({
+      ...(influenceDistance ? supply : marker), tileId: fourSteps.tileId,
+    });
+  });
+
+  it.each([false, true])('binds movement costs and prohibitions to the destination (distance pricing %s)', influenceDistance => {
     const costs = vi.fn(({ effect }: CostIncreasesArgs) => {
       if (effect.kind === 'placeOrMoveInfluence' && effect.contextCoord?.q === grassroots.coord.q) return { DOM: 1, FOR: 1 };
     });
@@ -124,22 +190,27 @@ describe('CORE political actions through boardgame.io', () => {
     });
     const client = clientWithBoard(G => {
       placeStartingMarkers(G);
-      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: 1, FOR: 1 });
-    }, { expansions: { exp02: true } });
+      for (const marker of G.exp.core.influencesOnBoard!) {
+        if (marker.owner === '0') marker.tileId = committee.tileId;
+      }
+      Object.assign(G.exp.core.players['0'].personal.resources, { DOM: influenceDistance ? 2 : 1, FOR: 1 });
+      if (influenceDistance) G.exp.core.players['1'].personal.resources.FOR = 1;
+    }, { expansions: { exp02: true }, variants: influenceDistance ? { influenceDistance: true } : {} });
     placeDraw(client);
     const markerId = 'INF-0-1';
+    const resources = influenceDistance ? ['DOM'] : undefined;
     costs.mockClear();
-    influence(client, markerId, grassroots.tileId, lobbyist.tileId);
+    influence(client, markerId, grassroots.tileId, committee.tileId, resources);
     const { G } = client.getState()!;
     expect(costs.mock.calls.filter(([args]) => args.effect.kind === 'placeOrMoveInfluence')).toHaveLength(1);
-    expect(G.exp.core.resources.bank).toMatchObject({ DOM: 1, FOR: 1 });
+    expect(G.exp.core.resources.bank).toMatchObject({ DOM: influenceDistance ? 2 : 1, FOR: 1 });
     expect(G.exp.core.influencesOnBoard).toContainEqual({ id: markerId, owner: '0', starting: true, tileId: grassroots.tileId });
 
     placeDraw(client);
-    influence(client, 'INF-1-1', committee.tileId, otherGrassroots.tileId);
+    influence(client, 'INF-1-1', committee.tileId, otherGrassroots.tileId, influenceDistance ? ['FOR'] : undefined);
     placeDraw(client);
     expectRejected(client, () => influence(client, markerId, lobbyist.tileId, grassroots.tileId));
-    expectRejected(client, () => influence(client, 'INF-0-2', grassroots.tileId, lobbyist.tileId));
+    expectRejected(client, () => influence(client, 'INF-0-2', grassroots.tileId, committee.tileId, resources));
   });
 
   it('requires all starting markers before either kind of Committee can formalize', () => {
