@@ -1,16 +1,17 @@
 import type { CSSProperties, ReactNode } from 'react';
-import type { EngineMoveOption } from '@bc/game';
-import type { AxialCoord, CoreState, RegulationKind, Tile } from '@bc/rules';
+import { checkStartCommitteeFormalization, type EngineMoveOption } from '@bc/game';
+import type { AxialCoord, CoreState, Tile } from '@bc/rules';
 import committeeIcon from '@bc/exp-00-core/assets/tile-icons/committee.svg';
 import lobbyistIcon from '@bc/exp-00-core/assets/tile-icons/lobbyist.svg';
 import grassrootsIcon from '@bc/exp-00-core/assets/tile-icons/grassroots.svg';
 import hotspotIcon from '@bc/exp-00-core/assets/tile-icons/hotspot.svg';
 import startCommitteeIcon from '@bc/exp-00-core/assets/tile-icons/start-committee.svg';
 import { playerColor, resortVisuals } from './core-board-visuals.js';
-import { InfluenceChip, RegulationBadge } from './CoreSymbols.js';
+import { InfluenceChip, PlayerMarker, RegulationBadge } from './CoreSymbols.js';
 import HexBoardViewport from './HexBoardViewport.js';
 import {
-  coordLabel, influenceLabel, regulationLabel, tileActionLabel, tileLabel, tileOccupation, type MovePreview,
+  committeeProgress, coordLabel, influenceLabel, playerLabel, regulationLabel,
+  tileActionLabel, tileLabel, tileOccupation, type MovePreview,
 } from './core-board-labels.js';
 
 const tileVisuals: Record<string, { color: string; icon: string } | undefined> = {
@@ -26,15 +27,20 @@ const tileWidth = 144;
 const tileHeight = 166;
 const fieldPadding = 16;
 
-export function TileFace({ tile, controller, showOutput = false }: {
+export function TileFace({ tile, controller, regulation, showOutput = false }: {
   tile: Tile;
   controller?: string | null;
+  regulation?: ReactNode;
   showOutput?: boolean;
 }) {
   const visual = tile.kind === 'ResortTile' ? resortVisuals[tile.resort] : tileVisuals[tile.kind];
+  const name = tile.kind === 'ResortTile' ? tile.resort : tileLabel(tile);
   const emblem = <span className="tile-emblem">
-    {visual && <img className="tile-glyph" src={visual.icon} alt="" draggable={false} />}
-    <span className="tile-name">{tile.kind === 'ResortTile' ? tile.resort : tileLabel(tile)}</span>
+    <span className="tile-symbols">
+      {visual && <img className="tile-glyph" src={visual.icon} alt="" draggable={false} />}
+      {tile.kind !== 'ResortTile' && regulation}
+    </span>
+    <span className="tile-name">{name.replace('Transformation', 'Transfor\u00admation').replaceAll(' ', '\n')}</span>
   </span>;
   return (
     <span className="tile-face" aria-hidden="true" style={{
@@ -42,6 +48,7 @@ export function TileFace({ tile, controller, showOutput = false }: {
       '--tile-rim': controller == null ? '#677789' : playerColor(controller),
     } as CSSProperties}>
       <span className="tile-art" />
+      {tile.kind === 'ResortTile' && regulation && <span className="tile-regulations">{regulation}</span>}
       {showOutput && tile.kind === 'ResortTile' ? <span className="tile-production">
         <strong className="tile-yield">{tile.w}</strong>
         {emblem}
@@ -78,6 +85,8 @@ interface Props {
   status: ReactNode;
   matchDetails: ReactNode;
   matchAction?: ReactNode;
+  matchEnded: boolean;
+  formalizationPlayer?: string;
   legalCoords: AxialCoord[];
   tileActions: ReadonlyMap<string, EngineMoveOption[]>;
   selectedTile?: string;
@@ -88,7 +97,8 @@ interface Props {
 }
 
 export default function CoreHexBoard({
-  G, status, matchDetails, matchAction, legalCoords, tileActions, selectedTile, selectedCoord, preview, onPlace, onInspect,
+  G, status, matchDetails, matchAction, matchEnded, formalizationPlayer, legalCoords, tileActions,
+  selectedTile, selectedCoord, preview, onPlace, onInspect,
 }: Props) {
   const core = G.exp.core;
   const tiles = core.tiles.board.map(placement => ({
@@ -109,16 +119,29 @@ export default function CoreHexBoard({
 
   return (
     <section className="core-board core-panel" aria-label="Game board">
-      <HexBoardViewport status={status} tileCount={tiles.length} width={width} height={height} center={center}
+      <HexBoardViewport status={status} tileCount={tiles.length} drawPileCount={core.tiles.drawPile.length}
+        width={width} height={height} center={center}
         origin={{ x: left - fieldPadding - tileWidth / 2, y: top - fieldPadding - tileHeight / 2 }}>
           {tiles.map(placement => {
             const { tileId, coord, x, y } = placement;
             const tile = core.allTiles[tileId];
             const regulations = G.exp.exp02?.regulations?.attached.filter(item => item.tileId === tileId) ?? [];
-            const regulationCounts = new Map<RegulationKind, number>();
-            for (const { kind } of regulations) regulationCounts.set(kind, (regulationCounts.get(kind) ?? 0) + 1);
+            const regulationKinds = new Set(regulations.map(({ kind }) => kind));
+            const regulation = regulationKinds.size === 1
+              ? <RegulationBadge kind={regulations[0].kind} count={regulations.length} />
+              : regulations.length > 0 && <span className="regulation-badge" data-blockade={regulationKinds.has('Blockade')}>
+                REG ×{regulations.length}
+              </span>;
             const { controller, leaders, influence, control } = tileOccupation(G, placement);
-            const action = tileActionLabel(tileActions.get(tileId) ?? []);
+            const options = tileActions.get(tileId) ?? [];
+            const action = tileActionLabel(options);
+            const startProgress = tile.kind === 'StartCommittee' ? committeeProgress(G) : undefined;
+            const canFormalize = !!startProgress && formalizationPlayer !== undefined
+              && checkStartCommitteeFormalization(G, formalizationPlayer, tileId).ok;
+            const formalization = startProgress && (
+              matchEnded ? 'Ended' : canFormalize ? 'Available' : startProgress.pending.length ? 'Locked'
+                : startProgress.used.length === Object.keys(core.players).length ? 'All used' : 'Not ready'
+            );
             const endpoint = preview?.sourceTileId === tileId ? 'source'
               : preview?.targetTileId === tileId ? 'destination' : undefined;
             const name = tile.kind === 'ResortTile' ? resortVisuals[tile.resort]?.name ?? tile.resort : tileLabel(tile);
@@ -127,7 +150,9 @@ export default function CoreHexBoard({
               tile.kind === 'ResortTile' && `Printed output ${tile.w} ${tile.resort}`,
               control,
               influence.length ? influence.map(influenceLabel).join(', ') : 'No influence',
-              action && `Legal action: ${action}`,
+              formalization ? `Formalization: ${formalization}${canFormalize ? ` for ${playerLabel(formalizationPlayer)}` : ''}`
+                : action && `Legal action: ${action}`,
+              startProgress && `Used Start Committee: ${startProgress.used.map(({ id }) => playerLabel(id)).join(', ') || 'none'}`,
               endpoint && `Move preview: ${endpoint}`,
               regulations.length > 0 && `Regulations: ${regulations.map(regulationLabel).join(', ')}`,
             ].filter(Boolean).join('. ');
@@ -135,17 +160,21 @@ export default function CoreHexBoard({
               <button key={tileId} className="hex-cell" type="button" data-move-endpoint={endpoint}
                 style={{ left: x - left + fieldPadding, top: y - top + fieldPadding }} aria-pressed={selectedTile === tileId}
                 title={label} aria-label={label} onClick={() => onInspect(tileId)}>
-                <TileFace tile={tile} controller={controller} showOutput />
-                {regulations.length > 0 && <span className="tile-regulations" aria-hidden="true">
-                  {[...regulationCounts].map(([kind, count]) => <RegulationBadge key={kind} kind={kind} count={count} />)}
-                </span>}
-                <span className="tile-influence">
+                <TileFace tile={tile} controller={controller} regulation={regulation} showOutput />
+                <span className="tile-corners" aria-hidden="true">
                   {influence.map(({ id, count, virtual }) => (
-                    <InfluenceChip key={id} id={id} count={count} virtual={virtual}
-                      majority={controller === id ? 'control' : leaders.includes(id) ? 'tie' : undefined} />
+                    <span key={id} className="tile-corner" data-player={id}>
+                      <InfluenceChip id={id} count={count} virtual={virtual}
+                        majority={controller === id ? 'control' : leaders.includes(id) ? 'tie' : undefined} />
+                    </span>
                   ))}
+                  {startProgress?.used.map(({ id }) => <span key={id} className="tile-corner" data-player={id}>
+                    <PlayerMarker id={id} numbered />
+                  </span>)}
                 </span>
-                {endpoint ? <span className="tile-action tile-move-endpoint">{endpoint === 'source' ? 'From →' : '→ To'}</span>
+                {formalization ? <span className="tile-action tile-formalization" data-available={canFormalize}>
+                  {canFormalize ? 'Formalize' : formalization}
+                </span> : endpoint ? <span className="tile-action tile-move-endpoint">{endpoint === 'source' ? 'From →' : '→ To'}</span>
                   : action && <span className="tile-action">{action}</span>}
               </button>
             );
@@ -168,6 +197,7 @@ export default function CoreHexBoard({
             <span><InfluenceChip id="0" count={1} /> Influence <span className="virtual-influence">+ virtual</span></span>
             <span><i className="majority-key" data-majority="control" aria-hidden="true" /> Controls tile</span>
             <span><i className="majority-key" data-majority="tie" aria-hidden="true" /> Tied lead</span>
+            <span><PlayerMarker id="0" numbered /> Already used Start Committee</span>
             {G.exp.exp02?.regulations && <span><RegulationBadge kind="Administration" /> Regulation</span>}
             {legalCoords.length > 0 && <span><b>+</b> Legal tile placement</span>}
             {tileActions.size > 0 && <span><b>Place / Move</b> Marker action</span>}

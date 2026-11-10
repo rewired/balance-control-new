@@ -35,6 +35,7 @@ describe('CORE hotseat', () => {
     expect(placement).toContain('Player 1 to act');
     expect(placement).toContain('Start Committee');
     expect(placement).toContain('Place the drawn tile');
+    expect(placement).toContain(`1 on board · ${state().G.exp.core.tiles.drawPile.length} in bag`);
     expect(placement).toContain('title="On board · 7 markers to win"');
     expect(placement).toContain('>7</text>');
     expect(placement).not.toContain('Expansion tools');
@@ -123,10 +124,34 @@ it('marks only players who still owe a first placement when inspecting either ki
   }
 });
 
-it('shows the English name of the Climate Hotspot on the tile', () => {
+it('shows the legal Start Committee action and the player who has already used it', () => {
+  const { state, options, submit, render } = hotseat();
+  expect(render()).toContain('Formalization: Locked. Used Start Committee: none');
+  submit(options()[0]);
+  const { G, ctx, _stateID } = structuredClone(state());
+  const core = G.exp.core;
+  const tileId = core.tiles.board[1].tileId;
+  core.influencesOnBoard = Object.values(core.players).flatMap(({ personal }) =>
+    personal.influence.splice(0).map(marker => ({ ...marker, tileId })));
+  Object.assign(core.players['0'].personal.resources, { DOM: 2, FOR: 1, INF: 1 });
+  core.players['1'].usedStartCommittee = true;
+
+  const board = renderToStaticMarkup(<CoreView G={G} ctx={ctx} revision={_stateID} playerID="0" isActive={false}
+    computerPlayers={new Set(['0'])} submit={() => undefined} />);
+  const startTile = board.match(/<button [^>]*aria-label="Start Committee \(0, 0\)[^"]*"[^>]*>.*?<\/button>/s)?.[0];
+  expect(startTile).toContain('Formalization: Available for Player 1. Used Start Committee: Player 2');
+  expect(startTile).toMatch(/class="tile-corner" data-player="1">.*?>P2<\/span>/);
+  expect(startTile).toContain('data-available="true">Formalize</span>');
+  const details = renderToStaticMarkup(<CommitteeFormalization G={G} ctx={ctx} kind="StartCommittee"
+    tileId="StartCommittee" playerID="0" available />);
+  expect(details).toMatch(/Already used the Start Committee.*?>P2<\/span>/);
+});
+
+it('breaks multiword tile names at word boundaries', () => {
   const { state } = hotseat(createBCGame({ expansions: { exp03: true } }));
-  const tile = state().G.exp.core.allTiles.Transformationsdruck;
-  expect(renderToStaticMarkup(<TileFace tile={tile} />)).toContain('>Transformation Pressure</span>');
+  const { StartCommittee, Transformationsdruck } = state().G.exp.core.allTiles;
+  expect(renderToStaticMarkup(<TileFace tile={StartCommittee} />)).toContain('>Start\nCommittee</span>');
+  expect(renderToStaticMarkup(<TileFace tile={Transformationsdruck} />)).toContain('>Transfor\u00admation\nPressure</span>');
 });
 
 it('shows all six players on one tile and all six active resources alongside the market', () => {
@@ -150,6 +175,8 @@ it('shows all six players on one tile and all six active resources alongside the
   expect(tile).toBeDefined();
   expect(tile).toMatch(/<strong class="tile-yield">\d+<\/strong>/);
   expect(tile?.match(/class="influence-chip"/g)).toHaveLength(6);
+  expect(Array.from(tile?.matchAll(/class="tile-corner" data-player="(\d)"/g) ?? [], match => match[1]))
+    .toEqual(['0', '1', '2', '3', '4', '5']);
   expect(tile?.match(/<b>1<\/b>/g)).toHaveLength(6);
   expect(tile).not.toMatch(/>P[1-6]</);
   expect(tile?.match(/class="influence-chip" data-majority="control"/g)).toHaveLength(1);

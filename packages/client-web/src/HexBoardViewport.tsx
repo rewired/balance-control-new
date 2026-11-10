@@ -18,9 +18,10 @@ function zoomCamera(camera: Camera, amount: number, anchor = boardCenter): Camer
   };
 }
 
-export default function HexBoardViewport({ status, tileCount, width, height, origin, center, children }: {
+export default function HexBoardViewport({ status, tileCount, drawPileCount, width, height, origin, center, children }: {
   status: ReactNode;
   tileCount: number;
+  drawPileCount: number;
   width: number;
   height: number;
   origin: Point;
@@ -78,7 +79,7 @@ export default function HexBoardViewport({ status, tileCount, width, height, ori
     <header className="core-board-heading">
       {status}
       <div className="board-tools" role="group" aria-label="Board controls">
-        <span className="core-tile-total">{tileCount} {tileCount === 1 ? 'tile' : 'tiles'}</span>
+        <span className="core-tile-total">{tileCount} on board · {drawPileCount} in bag</span>
         <span className="board-gesture-hint" id={hint}>Wheel to zoom · Drag to pan</span>
         <button type="button" aria-label="Zoom out" disabled={camera.zoom <= minZoom}
           onClick={() => setCamera(current => zoomCamera(current, -25))}>−</button>

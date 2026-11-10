@@ -162,6 +162,9 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
   return (
     <div className="core-match" style={{ '--acting-color': result ? '#94a3b8' : playerColor(activePlayer) } as CSSProperties}>
       <CoreHexBoard G={G} selectedTile={selectedTile} selectedCoord={selectedCoord} tileActions={tileActions} preview={preview}
+        matchEnded={!!result}
+        formalizationPlayer={!result && (stage === CoreStages.ExactlyOnePoliticalAction || stage === CoreStages.AdditionalPoliticalAction)
+          ? activePlayer : undefined}
         status={<div className="core-turn" aria-live="polite">
           <p className="turn-number">Turn {ctx.turn}{!result && activePlayer !== ctx.currentPlayer
             && ` · ${playerLabel(ctx.currentPlayer)}'s turn`}</p>
@@ -252,7 +255,7 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
                     <summary>Drawn tile rules</summary>
                     <p>{tileRuleSummary(core.allTiles[drawn.tileId])}</p>
                   </details>
-                  <p>{core.tiles.drawPile.length} in draw pile · {core.tiles.discardFaceUp.length} discarded</p>
+                  <p>{core.tiles.discardFaceUp.length} discarded</p>
                 </div>}
                 {options.length === 0 ? <p>Waiting for {playerLabel(activePlayer)}{isComputerTurn && ' (computer)'}.</p>
                   : resolvingDecision ? <p>{phase}. Choose how to proceed below.</p>

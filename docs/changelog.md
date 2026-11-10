@@ -623,3 +623,9 @@
 ## 2026-11-10 – Rückrufe gegen unmittelbare Siegdrohungen
 
 - Steht der nächste Spieler mit einem Marker im Vorrat kurz vor dem Einflusslimit, simuliert die lokale Such-KI zusätzlich ihren bestbewerteten legalen Rückruf gegen ihn. Bei simulierten Niederlagen bevorzugt sie die Fortsetzung, die länger offenbleibt.
+
+## 2026-11-10 – Lesbare Hexfelder und Startkomitee-Status
+
+- Größere Einflusskreise stehen in festen Spielecken. P1 beginnt oben, P2 bis P6 folgen im Uhrzeigersinn. Die Plättchennamen sind im Innenkreis vertikal zentriert. Jedes Wort eines mehrteiligen Namens beginnt auf einer neuen Zeile.
+- Das Startkomitee zeigt, ob Formalisierung gerade möglich ist. Die Spielerkennungen in seinen Ecken zeigen, wer seine einmalige Formalisierung dort schon genutzt hat. Die Statusleiste zeigt, wie viele Plättchen noch im Sack liegen.
+- Neue Partien sind mit sechs Spielern und allen drei Erweiterungen vorausgewählt. Im Hotseat sind alle sechs Plätze mit Local AI belegt.

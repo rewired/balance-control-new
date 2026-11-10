@@ -1,5 +1,5 @@
 import {
-  computeMajority, type AxialCoord, type BoardPlacement, type BoardRegulation, type CoreExpansionState,
+  awaitsFirstPlacement, computeMajority, type AxialCoord, type BoardPlacement, type BoardRegulation, type CoreExpansionState,
   type CoreState, type HotspotChoice, type PaymentSelection, type RegulationOperation, type Tile,
 } from '@bc/rules';
 import type { EngineMoveOption } from '@bc/game';
@@ -78,6 +78,14 @@ export function tileOccupation(G: CoreState, { tileId, coord }: BoardPlacement) 
 
 export function influenceLabel({ id, count, virtual }: ReturnType<typeof tileOccupation>['influence'][number]): string {
   return `${playerLabel(id)} has ${count} ${count === 1 ? 'marker' : 'markers'}${virtual ? ` and ${virtual} virtual influence` : ''}`;
+}
+
+export function committeeProgress(G: CoreState) {
+  const players = Object.values(G.exp.core.players);
+  return {
+    pending: players.filter(({ personal }) => personal.influence.some(awaitsFirstPlacement)), // CORE-01-08-02, CORE-01-04-26
+    used: players.filter(({ usedStartCommittee }) => usedStartCommittee), // CORE-01-08-07
+  };
 }
 
 type PoliticalOption = {

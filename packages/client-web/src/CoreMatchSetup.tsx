@@ -23,7 +23,8 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, b
   initial?: CoreMatchSettings;
   botServer?: string;
 }) {
-  const [numPlayers, setNumPlayers] = useState(initial?.numPlayers ?? 2);
+  const [numPlayers, setNumPlayers] = useState(initial?.numPlayers ?? 6);
+  const defaultSeat: HotseatPlayer = botServer ? 'search' : 'human';
   const [players, setPlayers] = useState<HotseatPlayer[]>(initial?.players ?? []);
   const [models, setModels] = useState<string[]>([]);
   const [ollamaStatus, setOllamaStatus] = useState('Checking Ollama…');
@@ -45,7 +46,7 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, b
     return () => controller.abort();
   }, [botServer, modelCheck]);
   const [enabled, setEnabled] = useState<ExpansionFlags>(
-    initial?.setupData.expansions ?? { exp01: false, exp02: false, exp03: false },
+    initial?.setupData.expansions ?? { exp01: true, exp02: true, exp03: true },
   );
   const [variants, setVariants] = useState<MatchConfig['variants']>(
     initial?.setupData.variants ?? { tileRecycling: false, firstPlayerHandicap: false },
@@ -60,7 +61,7 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, b
       setError(undefined);
       setPending(true);
       try {
-        const selected = Array.from({ length: numPlayers }, (_, index) => players[index] ?? 'human');
+        const selected = Array.from({ length: numPlayers }, (_, index) => players[index] ?? defaultSeat);
         const requested = selected.filter(player => player.startsWith('ollama:')).map(player => player.slice(7));
         if (botServer && requested.length) {
           const available = await listOllamaModels(botServer);
@@ -91,14 +92,14 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, b
         <p role="status">{ollamaStatus}</p>
         <button type="button" onClick={() => setModelCheck(check => check + 1)}>Check Ollama</button>
         {Array.from({ length: numPlayers }, (_, index) => {
-          const selected = players[index] ?? 'human';
+          const selected = players[index] ?? defaultSeat;
           const unavailable = selected.startsWith('ollama:') && !models.includes(selected.slice(7));
           return <label key={index}>
             Player {index + 1}{' '}
             <select value={selected} onChange={event => {
               const choice = event.target.value as HotseatPlayer;
               setPlayers(previous => Array.from({ length: Math.max(previous.length, index + 1) },
-                (_, seat) => seat === index ? choice : previous[seat] ?? 'human'));
+                (_, seat) => seat === index ? choice : previous[seat] ?? defaultSeat));
             }}>
               <option value="human">Human</option>
               <option value="search">Local AI</option>
