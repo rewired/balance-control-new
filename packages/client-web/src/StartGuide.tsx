@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import pageStyles from './guide-page.css?raw';
+import { decorateGuidePills } from './guide-pills.js';
 
 const htmlFiles = import.meta.glob<string>('../../exp-*/assets/guide/en/*.html', {
   eager: true, import: 'default', query: '?raw',
@@ -20,12 +21,14 @@ function readGuide() {
     const overview = parser.parseFromString(htmlFiles[index], 'text/html');
     const chapters = chapterPaths.map((path): GuidePage => {
       const document = path === index ? overview : parser.parseFromString(htmlFiles[path], 'text/html');
+      const title = document.querySelector('h1')?.textContent?.trim() || document.title;
       const style = document.createElement('style');
       style.textContent = pageStyles;
       document.head.prepend(style);
+      decorateGuidePills(document);
       return {
         path,
-        title: document.querySelector('h1')?.textContent?.trim() || document.title,
+        title,
         html: `<!doctype html>\n${document.documentElement.outerHTML}`,
       };
     });
