@@ -17,6 +17,11 @@ interface PositionValue {
   economy: Record<string, number>;
 }
 
+interface Continuation {
+  preferred: PositionValue;
+  alternative?: PositionValue;
+}
+
 function reserveScores(G: CoreState, ctx: Ctx): Record<string, number> {
   const { tiles, players, pendingHotspot, decisionContinuation } = G.exp.core;
   const stage = ctx.activePlayers?.[ctx.currentPlayer];
@@ -61,25 +66,45 @@ function evaluate({ G, ctx }: EngineSnapshot): PositionValue {
   return { winners: result?.winners, turn: ctx.turn, influence, reserves: reserveScores(G, ctx), economy };
 }
 
-function compare(left: PositionValue, right: PositionValue, playerID: string, style: ComputerStyle): number {
-  const rank = ({ winners }: PositionValue) => {
-    if (!winners) return 0;
-    if (!winners.includes(playerID)) return -1;
-    return 1 / winners.length;
-  };
-  const margin = ({ influence, reserves, economy }: PositionValue) => {
-    const score = (id: string) => influence[id] + style.reserveWeight * reserves[id] + style.economyWeight * economy[id];
-    return score(playerID) - Math.max(...Object.keys(influence).filter(id => id !== playerID).map(score));
-  };
-  const outcome = rank(left);
-  // Between losing lines, prefer the one that keeps the game alive longer.
-  return outcome - rank(right) || (outcome === -1 ? left.turn - right.turn : 0) || margin(left) - margin(right);
+function outcomeRank({ winners }: PositionValue, playerID: string): number {
+  if (!winners) return 0;
+  return winners.includes(playerID) ? 1 / winners.length : -1;
 }
 
-function valueWithImmediateEffects(later: PositionValue, immediate: PositionValue): PositionValue {
+function margin({ influence, reserves, economy }: PositionValue, playerID: string, style: ComputerStyle): number {
+  const score = (id: string) => influence[id] + style.reserveWeight * reserves[id] + style.economyWeight * economy[id];
+  return score(playerID) - Math.max(...Object.keys(influence).filter(id => id !== playerID).map(score));
+}
+
+function compare(left: PositionValue, right: PositionValue, playerID: string, style: ComputerStyle): number {
+  const outcome = outcomeRank(left, playerID);
+  // Between losing lines, prefer the one that keeps the game alive longer.
+  return outcome - outcomeRank(right, playerID) || (outcome === -1 ? left.turn - right.turn : 0)
+    || margin(left, playerID, style) - margin(right, playerID, style);
+}
+
+function valueWithImmediateEffects(later: PositionValue, immediate: PositionValue, weight: number): PositionValue {
   const blend = (key: 'influence' | 'reserves' | 'economy') => Object.fromEntries(Object.entries(later[key])
-    .map(([id, score]) => [id, score + (immediate[key][id] - score) / 8]));
+    .map(([id, score]) => [id, score + (immediate[key][id] - score) * weight]));
   return { ...later, influence: blend('influence'), reserves: blend('reserves'), economy: blend('economy') };
+}
+
+function rateContinuation({ preferred, alternative = preferred }: Continuation, immediate: PositionValue, playerID: string,
+  style: ComputerStyle) {
+  // The expected value weights the opponent's second choice by one third.
+  // A cautious seat shifts weight from that estimate to its own worst case.
+  const alternativeWeight = style.riskTolerance / 3
+    + (compare(alternative, preferred, playerID, style) < 0 ? 1 - style.riskTolerance : 0);
+  const weighReplies = (first: number, second: number) => first + (second - first) * alternativeWeight;
+  const outcome = weighReplies(outcomeRank(preferred, playerID), outcomeRank(alternative, playerID));
+  // An immediate advantage can expire before the horizon. Blend only the positional scores.
+  const position = (later: PositionValue) => margin(valueWithImmediateEffects(later, immediate, style.impulsivity), playerID, style);
+  const preferredPosition = position(preferred);
+  return {
+    outcome,
+    survival: outcome === -1 ? weighReplies(preferred.turn, alternative.turn) : 0,
+    position: preferred === alternative ? preferredPosition : weighReplies(preferredPosition, position(alternative)),
+  };
 }
 
 function actionType(option: EngineMoveOption): string {
@@ -208,30 +233,31 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision, st
   const state: EngineSnapshot = { G, ctx, _stateID: revision, plugins: { random: { data: { seed: G.matchSeed } } } };
   const expanded = Object.values(G.cfg.expansions).some(Boolean);
   const lastTurn = state.ctx.turn + TURN_HORIZON;
+  const style = styles[playerID];
   // Quoting and replaying each action gets more expensive as the board grows. Keep the horizon and narrow the search.
   const largeBoard = G.exp.core.tiles.board.length >= 25;
   const rootWidth = largeBoard ? 2 : 4;
   const rootSamples = largeBoard ? 12 : 24;
   const followUpSamples = largeBoard ? 3 : 5;
 
-  function follow(line: Variation, remaining: number, canBranch: boolean): PositionValue {
+  function follow(line: Variation, remaining: number, canBranch: boolean): Continuation {
     const { next, value } = line;
-    if (!remaining || next.ctx.turn >= lastTurn || value.winners) return value;
+    if (!remaining || next.ctx.turn >= lastTurn || value.winners) return { preferred: value };
 
     const actor = actingPlayer(next.ctx);
-    const style = styles[actor];
-    const ranked = rankedOptions(game, next, actor, style, followUpSamples);
+    const actorStyle = styles[actor];
+    const ranked = rankedOptions(game, next, actor, actorStyle, followUpSamples);
     const branch = canBranch && actor !== playerID;
     const replies = distinctLines(ranked, branch ? REPLY_WIDTH : 1, expanded);
-    let best: PositionValue | undefined;
-    for (const reply of replies) {
-      const result = follow(reply, remaining - 1, canBranch && replies.length === 1);
-      if (!best || compare(result, best, actor, style) > 0) best = result;
-    }
-    return best ?? value;
+    if (!replies.length) return { preferred: value };
+    if (replies.length === 1) return follow(replies[0], remaining - 1, canBranch);
+
+    const [first, second] = replies.map(reply => follow(reply, remaining - 1, false).preferred);
+    return compare(second, first, actor, actorStyle) > 0
+      ? { preferred: second, alternative: first }
+      : { preferred: first, alternative: second };
   }
 
-  const style = styles[playerID];
   const ranked = rankedOptions(game, state, playerID, style, rootSamples, true);
   const lines = distinctLines(ranked, rootWidth, expanded);
   const defense = ranked.find(line => line.defensive);
@@ -239,12 +265,12 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision, st
   if (lines.length === 1 || lines[0]?.value.winners?.length === 1 && lines[0].value.winners[0] === playerID) {
     return lines[0].option;
   }
-  let best: { option: EngineMoveOption; value: PositionValue } | undefined;
+  let best: { option: EngineMoveOption; rating: ReturnType<typeof rateContinuation> } | undefined;
   for (const line of lines) {
     const later = follow(line, ACTION_HORIZON - 1, true);
-    // A useful effect can expire before the search horizon, even if it matters this round.
-    const value = expanded ? valueWithImmediateEffects(later, line.value) : later;
-    if (!best || compare(value, best.value, playerID, style) > 0) best = { option: line.option, value };
+    const rating = rateContinuation(later, line.value, playerID, style);
+    if (!best || (rating.outcome - best.rating.outcome || rating.survival - best.rating.survival
+      || rating.position - best.rating.position) > 0) best = { option: line.option, rating };
   }
   if (best) return best.option;
   // Fall back to the first accepted move if the sampled candidates were all rejected.

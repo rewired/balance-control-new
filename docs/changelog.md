@@ -641,3 +641,7 @@
 ## 2026-11-10 – Sitzprofile für die Local AI
 
 - Match-Seed und Sitznummer bestimmen ein stabiles Suchprofil. Die Plätze gewichten einsetzbare Vorratsmarker und wirtschaftliche Position unterschiedlich. Der Worker verwendet weiterhin separat gemischte hypothetische Stapel.
+
+## 2026-11-10 – Impulsivität und Waghalsigkeit der Local AI
+
+- Jedes Sitzprofil erhält zwei getrennt aus dem Match-Seed abgeleitete Werte. Impulsivität gewichtet die unmittelbare Stellung stärker oder schwächer. Waghalsigkeit bestimmt, wie viel das erwartete Ergebnis gegenüber der ungünstigsten simulierten Antwort zählt.

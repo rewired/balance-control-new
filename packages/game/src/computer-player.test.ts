@@ -6,13 +6,14 @@ import { createComputerPosition } from './computer-position.js';
 import { createBCGame } from './factory.js';
 import { engineMoveOptions, hashEngineState, previewEngineOptions } from './legal-options.js';
 import hotseatReplay from './fixtures/hotseat-c2082d6d.json';
+import sixSeatReplay from './fixtures/hotseat-dd5f7d6d.json';
 
-function recordedHotseat() {
-  const { numPlayers, ...setupData } = hotseatReplay.setup.game;
-  const game = { ...createBCGame(setupData, 'recorded'), seed: hotseatReplay.setup.engineSeed };
+function recordedHotseat(replay: typeof hotseatReplay | typeof sixSeatReplay = hotseatReplay) {
+  const { numPlayers, ...setupData } = replay.setup.game;
+  const game = { ...createBCGame(setupData, 'recorded'), seed: replay.setup.engineSeed };
   const reduce = CreateGameReducer({ game });
   const initial = InitializeGame({ game, numPlayers, setupData });
-  const play = (state: typeof initial, { move, playerID, args }: typeof hotseatReplay.actions[number]) =>
+  const play = (state: typeof initial, { move, playerID, args }: typeof replay.actions[number]) =>
     reduce(state, { type: 'MAKE_MOVE', payload: { type: move, playerID, args } });
   return { game, initial, play };
 }
@@ -124,6 +125,8 @@ it('assigns distinct, stable search styles by match seed and seat without changi
   const first = createComputerPosition(state);
   expect(Object.keys(first.styles)).toEqual(state.ctx.playOrder);
   expect(new Set(Object.values(first.styles).map(style => JSON.stringify(style))).size).toBe(6);
+  expect(new Set(Object.values(first.styles).map(style => style.impulsivity)).size).toBe(6);
+  expect(new Set(Object.values(first.styles).map(style => style.riskTolerance)).size).toBe(6);
   expect(createComputerPosition({ ...state, _stateID: state._stateID + 1, ctx: { ...state.ctx, turn: 2 } }).styles)
     .toEqual(first.styles);
 
@@ -138,14 +141,45 @@ it('can choose different legal moves when the seed changes the search styles for
   const state = hotseatReplay.actions.slice(0, 19).reduce(play, initial);
   const playerID = state.ctx.currentPlayer;
   const original = createComputerPosition(state);
-  const reseeded = createComputerPosition({ ...state, G: { ...state.G, matchSeed: 'seat-styles' } });
+  const reseeded = createComputerPosition({ ...state, G: { ...state.G, matchSeed: 'other-seat-styles' } });
   expect(reseeded.G).toEqual(original.G);
 
-  const damage = chooseComputerMove(game, original, playerID)!;
-  const relocate = chooseComputerMove(game, reseeded, playerID)!;
+  const damage = chooseComputerMove(game, reseeded, playerID)!;
+  const relocate = chooseComputerMove(game, original, playerID)!;
   expect(damage.parameters[0]).toMatchObject({ type: 'damageResort' });
   expect(relocate.parameters[0]).toMatchObject({ type: 'placeOrMoveInfluence' });
   expect(Array.from(previewEngineOptions(game, state, [damage, relocate]))).toHaveLength(2);
+}, 20_000);
+
+it('can favor the immediate position when only impulsivity increases', () => {
+  const { game, initial, play } = recordedHotseat();
+  const state = hotseatReplay.actions.slice(0, 19).reduce(play, initial);
+  const playerID = state.ctx.currentPlayer;
+  const position = createComputerPosition(state);
+  const choose = (impulsivity: number) => chooseComputerMove(game, {
+    ...position,
+    styles: { ...position.styles, [playerID]: { ...position.styles[playerID], impulsivity } },
+  }, playerID);
+
+  expect(choose(0.05)).toMatchObject({ parameters: [{ type: 'damageResort' }] });
+  expect(choose(0.25)).toMatchObject({ parameters: [{ type: 'placeOrMoveInfluence' }] });
+}, 20_000);
+
+it('can favor the stronger expected continuation when only risk tolerance increases', () => {
+  const { game, initial, play } = recordedHotseat(sixSeatReplay);
+  const state = sixSeatReplay.actions.slice(0, 15).reduce(play, initial);
+  const playerID = state.ctx.currentPlayer;
+  const position = createComputerPosition(state);
+  const choose = (riskTolerance: number) => chooseComputerMove(game, {
+    ...position,
+    styles: { ...position.styles, [playerID]: { ...position.styles[playerID], riskTolerance } },
+  }, playerID);
+
+  const cautious = choose(0.2)!;
+  const daring = choose(0.8)!;
+  expect(cautious).toMatchObject({ moveType: 'doPoliticalAction', contextTile: 'INF-W4-2' });
+  expect(daring).toMatchObject({ moveType: 'doPoliticalAction', contextTile: 'FOR-W2-1' });
+  expect(Array.from(previewEngineOptions(game, state, [cautious, daring]))).toHaveLength(2);
 }, 20_000);
 
 it('takes a Security Measure, trades for SEC and blocks rival production under the recorded pre-cap rules', () => {

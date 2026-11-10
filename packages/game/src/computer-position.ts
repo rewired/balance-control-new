@@ -2,12 +2,17 @@ import { createExpansionRegistry, type CoreState } from '@bc/rules';
 import { shuffleSeeded } from '@bc/shared';
 import type { EngineSnapshot } from './legal-options.js';
 
-export interface ComputerStyle {
+interface PositionWeights {
   economyWeight: number;
   reserveWeight: number;
 }
 
-const SEAT_STYLES: readonly ComputerStyle[] = [
+export interface ComputerStyle extends PositionWeights {
+  impulsivity: number;
+  riskTolerance: number;
+}
+
+const SEAT_STYLES: readonly PositionWeights[] = [
   { economyWeight: 0.85, reserveWeight: 0.9 },
   { economyWeight: 0.85, reserveWeight: 1 },
   { economyWeight: 0.85, reserveWeight: 1.1 },
@@ -15,6 +20,9 @@ const SEAT_STYLES: readonly ComputerStyle[] = [
   { economyWeight: 1.15, reserveWeight: 1 },
   { economyWeight: 1.15, reserveWeight: 1.1 },
 ];
+
+const IMPULSIVITY_LEVELS = [0.05, 0.08, 0.125, 0.16, 0.2, 0.25];
+const RISK_LEVELS = [0.2, 0.32, 0.44, 0.56, 0.68, 0.8];
 
 export interface ComputerPosition {
   G: CoreState;
@@ -28,8 +36,13 @@ export function createComputerPosition({ G, ctx, _stateID }: EngineSnapshot): Co
   const matchSeed = `computer-search|${ctx.turn}|${_stateID}`;
   const core = G.exp.core;
   // Assign by seat ID from a match-specific permutation so each seat gets a distinct style.
-  const seatStyles = shuffleSeeded(SEAT_STYLES, `computer-style|${G.matchSeed}`);
-  const styles = Object.fromEntries(Object.keys(core.players).map((id, seat) => [id, seatStyles[seat]]));
+  const styleSeed = `computer-style|${G.matchSeed}`;
+  const seatStyles = shuffleSeeded(SEAT_STYLES, styleSeed);
+  const impulses = shuffleSeeded(IMPULSIVITY_LEVELS, `${styleSeed}|impulsivity`);
+  const risks = shuffleSeeded(RISK_LEVELS, `${styleSeed}|risk`);
+  const styles = Object.fromEntries(Object.keys(core.players).map((id, seat) => [id, {
+    ...seatStyles[seat], impulsivity: impulses[seat], riskTolerance: risks[seat],
+  }]));
   const tiles = core.tiles;
   const knownTiles = new Set([...tiles.discardFaceUp, ...tiles.board.map(tile => tile.tileId), tiles.drawResolution?.tileId]);
   // CORE-01-00-05/-05A and CORE-01-03-02: infer the remaining tile set from the public material and zones.
