@@ -1,6 +1,7 @@
 import { Client } from 'boardgame.io/client';
+import { exp01Economy } from '@bc/exp-01-economy';
 import {
-  __resetRegisteredExpansionsForTest, politicalMoveOptions, registerExpansion,
+  __resetRegisteredExpansionsForTest, createResolver, politicalMoveOptions, registerExpansion,
   type CoreState, type ExpansionId,
 } from '@bc/rules';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -112,5 +113,61 @@ describe('Shared Measure lifecycle through boardgame.io', () => {
     place(client);
     act(client, 'exp02', 'playMeasure', 'SEC-1');
     expect(client.getState()!.G.exp!.exp02!.measures!.playCounts['SEC-1']).toBe(1);
+  });
+
+  it('retains both kinds of political slot and unlocks a free pickup on the next own turn', () => {
+    registerDeck('exp01', ['ECO-1']);
+    registerDeck('exp02', ['SEC-1']);
+    const client = Client({ game: createBCGame({
+      expansions: { exp01: true, exp02: true }, variants: { freeMeasurePickup: true },
+    }), numPlayers: 2 });
+    const firstTile = place(client);
+    act(client, 'exp01', 'takeMeasure', 'ECO-1');
+    const picked = client.getState()!;
+    expect(picked.ctx).toMatchObject({ turn: 1, activePlayers: { '0': 'ExactlyOnePoliticalAction' } });
+    expect(picked.G.exp.core.freeMeasurePickup).toEqual({ playerID: '0', expansion: 'exp01', measureId: 'ECO-1' });
+    expect([...politicalMoveOptions(picked.G, '0')].some(move => move.type === 'exp01_playMeasure')).toBe(false);
+    act(client, 'exp01', 'playMeasure', 'ECO-1');
+    expect(client.getState()!._stateID).toBe(picked._stateID);
+    mark(client, firstTile);
+    expect(client.getState()!.G.exp.core.freeMeasurePickup).toBeUndefined();
+    mark(client, place(client));
+
+    const nextTile = place(client);
+    act(client, 'exp01', 'playMeasure', 'ECO-1');
+    act(client, 'exp02', 'takeMeasure', 'SEC-1');
+    const additional = client.getState()!;
+    expect(additional.ctx).toMatchObject({ turn: 3, activePlayers: { '0': 'AdditionalPoliticalAction' } });
+    expect(additional.G.exp.core.playedMeasureThisRound?.['0']).toBe(true);
+    expect(additional.G.exp.core.freeMeasurePickup?.measureId).toBe('SEC-1');
+    mark(client, nextTile);
+    expect(client.getState()!.ctx.turn).toBe(4);
+  });
+
+  it('keeps Budget Deficit for the political action and ends the slot on a second pickup', () => {
+    registerExpansion(exp01Economy());
+    registerDeck('exp02', ['SEC-1']);
+    const game = createBCGame({ expansions: { exp01: true, exp02: true }, variants: { freeMeasurePickup: true } });
+    const setup = game.setup!;
+    game.setup = (context, data) => {
+      const G = setup(context, data);
+      G.exp.core.players['0'].personal.resources.DOM = 1;
+      expect(createResolver()(G, { kind: 'registerMeasureEffect', instance: {
+        sourceCardId: 'ECO_M06', owner: '1', playNumber: 1, targetPlayerID: '0', duration: 'untilConsumed',
+      } }).ok).toBe(true);
+      return G;
+    };
+    const client = Client({ game, numPlayers: 2 });
+    place(client);
+    act(client, 'exp02', 'takeMeasure', 'SEC-1');
+    const free = client.getState()!;
+    expect(free.G.exp.core.players['0'].personal.resources.DOM).toBe(1);
+    expect(free.G.exp.core.activeMeasureEffects?.map(instance => instance.id)).toEqual(['ECO_M06:1']);
+    act(client, 'exp01', 'takeMeasure', free.G.exp.exp01!.measures!.open[0]!);
+    const paid = client.getState()!;
+    expect(paid.ctx.turn).toBe(2);
+    expect(paid.G.exp.core.players['0'].personal.resources.DOM).toBe(0);
+    expect(paid.G.exp.core.activeMeasureEffects).toBeUndefined();
+    expect(paid.G.exp.core.freeMeasurePickup).toBeUndefined();
   });
 });

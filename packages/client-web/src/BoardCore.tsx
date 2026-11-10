@@ -192,16 +192,17 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
               <section className="tile-rules" aria-label="Tile rules">
                 <h4>Tile rules</h4>
                 <p>{tileRuleSummary(inspectedTile)}</p>
+                {core.usedEfficientGrassroots?.includes(inspectedTile.id) && <p>Printed exchange used this round.</p>}
               </section>
               <p className="inspected-control"><strong>{occupation.control}</strong></p>
               {occupation.influence.length ? (
                 <table className="inspected-influence">
                   <caption>Influence on tile</caption>
                   <thead><tr><th scope="col">Player</th><th scope="col">Markers</th><th scope="col">Virtual</th></tr></thead>
-                  <tbody>{occupation.influence.map(({ id, count, virtual }) => (
+                  <tbody>{occupation.influence.map(({ id, count, challenged, virtual }) => (
                     <tr key={id} data-controls={id === occupation.controller}>
                       <th scope="row"><PlayerMarker id={id} />{playerLabel(id)}</th>
-                      <td>{count}</td><td className={virtual ? 'virtual-influence' : undefined}>{virtual ? `+${virtual}` : '—'}</td>
+                      <td>{count}{challenged > 0 && ` (${challenged} challenged)`}</td><td className={virtual ? 'virtual-influence' : undefined}>{virtual ? `+${virtual}` : '—'}</td>
                     </tr>
                   ))}</tbody>
                 </table>

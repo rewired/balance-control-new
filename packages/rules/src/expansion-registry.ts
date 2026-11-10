@@ -1,6 +1,6 @@
 import type { AxialCoord, BoardPlacement, CoreState, ExpansionId, MeasureDuration, PendingHotspot, PendingRegulationChoice, ResourceId, ResortTile, Tile } from './types.js';
 import type { ResourceRegistry, ResourceAmounts } from './resources.js';
-import type { AddResourcesEffect, EffectDescriptor, EffectResolver, PlayMeasureEffect, RegisterMeasureEffect, ResolveHotspotAtEffect, ResolveRegulationEffect } from './effects.js';
+import type { AddResourcesEffect, ChallengeInfluenceEffect, EffectDescriptor, EffectResolver, PlayMeasureEffect, RegisteredActionEffect, RegisterMeasureEffect, ResolveHotspotAtEffect, ResolveRegulationEffect } from './effects.js';
 import type { ExpansionFlags, FixedPaymentSelection, HotspotChoice, MatchConfig, MeasureExtensionTarget, PaymentSelection, SubstitutionSelection } from './schemas.js';
 import type { MajorityResult } from './rule-services.js';
 
@@ -43,10 +43,10 @@ export type MeasureTargetPlan = {
   operation?: StagedOperation;
 } | { ok: false; reason: string };
 
-export interface ExtensionAction {
+export interface ExtensionAction<Effect extends RegisteredActionEffect = ResolveRegulationEffect> {
   political?: true;
-  context(G: CoreState, effect: ResolveRegulationEffect): { placement: BoardPlacement } | { reason: string };
-  plan(G: CoreState, effect: ResolveRegulationEffect, placement: BoardPlacement): StagedOperation | undefined;
+  context(G: CoreState, effect: Effect): { placement: BoardPlacement } | { reason: string };
+  plan(G: CoreState, effect: Effect, placement: BoardPlacement): StagedOperation | undefined;
 }
 
 export interface EffectDecision {
@@ -150,7 +150,10 @@ export interface ExpansionModule extends ModuleContributions {
   measureRules?: Readonly<Record<string, MeasureRule | undefined>>;
   measurePrefix?: string;
   canRegisterMeasure?: (G: CoreState, instance: RegisterMeasureEffect['instance']) => boolean;
-  actions?: Partial<Record<ResolveRegulationEffect['kind'], ExtensionAction>>;
+  actions?: {
+    [Kind in RegisteredActionEffect['kind']]?: ExtensionAction<
+      Kind extends 'challengeInfluence' ? ChallengeInfluenceEffect : ResolveRegulationEffect>;
+  };
 }
 
 export type RulesModule = CoreModule | ExpansionModule;

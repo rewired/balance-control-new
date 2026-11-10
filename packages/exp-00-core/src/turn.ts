@@ -161,6 +161,11 @@ const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown)
     beginPoliticalSlot({ G, ctx, events }, additional);
     return;
   }
+  // VAR-01-03-02: refill can change the legal options in the same slot.
+  if (result.retainPoliticalSlot) {
+    beginPoliticalSlot({ G, ctx, events }, additional);
+    return;
+  }
 
   if (endAtInfluenceLimit({ G, ctx, events })) return;
   // EXP-01-06-05(b) and CORE-01-07-08: complete the whole action sequence in this turn.

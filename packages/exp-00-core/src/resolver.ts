@@ -1,14 +1,14 @@
 import { shuffleSeeded, stableHash } from '@bc/shared';
 import {
   buildMoveCatalog, createExpansionRegistry, createMatchResourceRegistry, ensureExpansionSlice,
-  getTopology, isRegisteredAction, MeasureExtensionTargetSchema, paymentPlans,
+  getTopology, grassrootsExchange, isRegisteredAction, MeasureExtensionTargetSchema, paymentPlans,
   type ActiveMeasureEffect, type AxialCoord, type ConversionSelection, type CoreState,
   type DecisionQuote, type DrawTileEffect, type EffectDecision, type EffectDescriptor, type EffectResolver,
-  type ExpansionHooks, type ExpansionId, type ExpansionModule, type ExpireMeasureEffects, type Influence,
+  type ExpansionHooks, type ExpansionId, type ExpansionModule, type ExpireMeasureEffects, type ExtensionAction, type Influence,
   type MeasureDeckState, type MoveQuote, type PaymentQuote, type PendingHotspot, type PendingRegulationChoice, type PlaceTileEffect,
   type PlannedPayment,
   type PlayMeasureEffect, type PoliticalActionEffect, type RegisterMeasureEffect,
-  type ResolveHotspotAtEffect, type ResolveRegulationEffect, type ResolveResult,
+  type RegisteredActionEffect, type ResolveHotspotAtEffect, type ResolveResult,
   type ResourceAmounts, type ResourceId, type ResourceRegistry, type RulesModule, type Surcharge, type TakeMeasureEffect,
 } from '@bc/rules';
 import { isFullySurrounded } from './hotspot.js';
@@ -31,7 +31,7 @@ function isStartCommitteeContext(G: CoreState, coord?: AxialCoord): boolean {
 }
 
 type BankTransfer = { resource: ResourceId; amount: number } & (
-  | { from: 'PersonalSupply'; to: 'Bank'; playerID: string }
+  | { from: 'PersonalSupply'; to: 'Bank' | 'Noise'; playerID: string }
   | { from: 'Bank'; to: 'PersonalSupply'; playerID: string }
   | { from: 'Bank'; to: 'Noise' }
 );
@@ -56,7 +56,7 @@ function createBankTransaction(G: CoreState, registry: ResourceRegistry) {
     if (!isResourceCount(amount)) return { ok: false, reason: 'invalid-resource-amount' };
 
     let account = noise;
-    if (route.to !== 'Noise') {
+    if ('playerID' in route) {
       const { playerID } = route;
       if (!Object.hasOwn(G.exp.core.players, playerID)) return { ok: false, reason: 'no-player' };
       account = supplies.get(playerID) ?? copyBalances(G.exp.core.players[playerID].personal.resources);
@@ -64,7 +64,8 @@ function createBankTransaction(G: CoreState, registry: ResourceRegistry) {
     }
     if (amount === 0) return { ok: true };
 
-    const available = bank[resource] ?? 0;
+    const counterparty = route.from === 'PersonalSupply' && route.to === 'Noise' ? noise : bank;
+    const available = counterparty[resource] ?? 0;
     const balance = account[resource] ?? 0;
     if (!isResourceCount(available) || !isResourceCount(balance)) {
       return { ok: false, reason: 'invalid-resource-balance' };
@@ -74,12 +75,12 @@ function createBankTransaction(G: CoreState, registry: ResourceRegistry) {
     }
 
     // CORE-01-00-04B: missing bank stock is created and immediately transferred.
-    const bankAfter = route.from === 'Bank' ? Math.max(0, available - amount) : available + amount;
+    const counterpartyAfter = route.from === 'Bank' ? Math.max(0, available - amount) : available + amount;
     const accountAfter = route.from === 'Bank' ? balance + amount : balance - amount;
-    if (!isResourceCount(bankAfter) || !isResourceCount(accountAfter)) {
+    if (!isResourceCount(counterpartyAfter) || !isResourceCount(accountAfter)) {
       return { ok: false, reason: 'invalid-resource-balance' };
     }
-    bank[resource] = bankAfter;
+    counterparty[resource] = counterpartyAfter;
     account[resource] = accountAfter;
     changed = true;
     return { ok: true };
@@ -191,14 +192,15 @@ function executePoliticalPlan(
   return plan;
 }
 
-function extensionAction(active: readonly RulesModule[], kind: ResolveRegulationEffect['kind']) {
+function extensionAction(active: readonly RulesModule[], kind: RegisteredActionEffect['kind']) {
   for (const module of active) {
-    if (module.id !== 'core' && module.actions?.[kind]) return module.actions[kind];
+    // The lookup key is the effect's own kind.
+    if (module.id !== 'core' && module.actions?.[kind]) return module.actions[kind] as ExtensionAction<RegisteredActionEffect>;
   }
 }
 
 // CORE-01-06-00-05/-07/-11: bind the registered action's context, then pay and commit its plan.
-function planExtensionAction(G: CoreState, requested: ResolveRegulationEffect, active: readonly RulesModule[], preview?: PaymentPreview) {
+function planExtensionAction(G: CoreState, requested: RegisteredActionEffect, active: readonly RulesModule[], preview?: PaymentPreview) {
   if (!Object.hasOwn(G.exp.core.players, requested.playerID)) return { ok: false, reason: 'no-player' } as const;
   const action = extensionAction(active, requested.kind);
   if (!action) return { ok: false, reason: 'inactive-expansion' } as const;
@@ -285,7 +287,10 @@ function planPoliticalAction(
     return { ok: true, payment: payment.payment, commit: () => {
       payment.transaction.commit();
       if (effect.sourceTileId === undefined) placeSupplyMarker(G, supply, index, tileId);
-      else board[index].tileId = tileId;
+      else {
+        board[index].tileId = tileId;
+        delete board[index].challengedAt; // VAR-01-05-02: moving away ends the Challenge.
+      }
     } };
   }
 
@@ -342,14 +347,24 @@ function planPoliticalAction(
   if (effect.alternative !== undefined && (controller !== player.id || !alternative)) {
     return { ok: false, reason: 'conversion-alternative-unavailable' };
   }
-  const payment = planPayment(G, registry, effect, localHooks, { [effect.input]: alternative?.cost ?? 3 }, preview);
+  // VAR-01-07-02..04: the Efficient opportunity belongs to the printed exchange only.
+  const rate = G.cfg.variants.variableGrassroots && !alternative ? tile.grassrootsRate : undefined;
+  const efficient = rate === 'efficient';
+  if (efficient && G.exp.core.usedEfficientGrassroots?.includes(tileId)) {
+    return { ok: false, reason: 'grassroots-exchange-used' };
+  }
+  const printed = grassrootsExchange(rate);
+  const payment = planPayment(G, registry, effect, localHooks, { [effect.input]: alternative?.cost ?? printed.cost }, preview);
   if (!payment.ok) return payment;
-  const amount = modifyOutput(G, effect, localHooks, 1);
+  const amount = modifyOutput(G, effect, localHooks, printed.output);
   const payout = payment.transaction.transfer({
     from: 'Bank', to: 'PersonalSupply', playerID: player.id, resource: effect.output, amount,
   });
   if (!payout.ok) return { ok: false, reason: payout.reason };
-  return { ok: true, payment: payment.payment, output: amount, commit: payment.transaction.commit };
+  return { ok: true, payment: payment.payment, output: amount, commit: () => {
+    payment.transaction.commit();
+    if (efficient) G.exp.core.usedEfficientGrassroots = [...(G.exp.core.usedEfficientGrassroots ?? []), tileId];
+  } };
 }
 
 // CORE-01-04-19B..19D: project the exchange and its payment-effect usage in isolated zones.
@@ -419,6 +434,7 @@ function planConversionAssistedFormalization(
     player.usedStartCommittee = updated.usedStartCommittee;
     if (after.activeMeasureEffects) before.activeMeasureEffects = after.activeMeasureEffects;
     else delete before.activeMeasureEffects;
+    if (after.usedEfficientGrassroots) before.usedEfficientGrassroots = after.usedEfficientGrassroots;
   } } as const;
 }
 
@@ -596,6 +612,16 @@ function refillMeasureMarket(G: CoreState, expansion: ExpansionId, deck: Measure
   }
 }
 
+function measureHandSize(G: CoreState, playerID: string): number {
+  return (Object.keys(G.cfg.expansions) as ExpansionId[]).reduce((sum, id) =>
+    sum + (G.cfg.expansions[id] ? G.exp[id]?.measures?.hands[playerID]?.length ?? 0 : 0), 0);
+}
+
+// VAR-01-03-02: a pickup can keep the slot open once per turn, with an empty shared hand.
+function isFreeMeasurePickup(G: CoreState, handSize: number): boolean {
+  return G.cfg.variants.freeMeasurePickup === true && handSize === 0 && !G.exp.core.freeMeasurePickup;
+}
+
 function planMeasureAction(
   G: CoreState,
   requested: MeasureAction,
@@ -612,9 +638,13 @@ function planMeasureAction(
   // EXP-01-06-02..03: both limits are shared across decks.
   const flags = G.exp.core.playedMeasureThisRound ?? legacyMeasureUsageDeck(G)?.usedThisRound;
   if (!take && flags?.[playerID]) return { ok: false, reason: 'limit-per-round' };
-  const enabled = (Object.keys(G.cfg.expansions) as ExpansionId[]).filter(id => G.cfg.expansions[id]);
-  if (take && enabled.reduce((sum, id) => sum + (G.exp?.[id]?.measures?.hands[playerID]?.length ?? 0), 0) >= 2) {
-    return { ok: false, reason: 'hand-full' };
+  const handSize = take ? measureHandSize(G, playerID) : 0;
+  if (take && handSize >= 2) return { ok: false, reason: 'hand-full' };
+  const freePickup = take && isFreeMeasurePickup(G, handSize);
+  const fresh = G.exp.core.freeMeasurePickup;
+  // VAR-01-03-04: the newly acquired card has no PlayMeasure window this turn.
+  if (!take && fresh?.playerID === playerID && fresh.expansion === expansion && fresh.measureId === measureId) {
+    return { ok: false, reason: 'picked-up-this-turn' };
   }
   const rules = active.find((module): module is ExpansionModule => module.id === expansion)?.measureRules;
   const rule = requested.kind === 'playMeasure' ? rules?.[measureId] : undefined;
@@ -662,7 +692,8 @@ function planMeasureAction(
   for (const [resource, amount] of Object.entries(operation?.cost ?? {})) {
     if (amount !== undefined) cost[resource] = (cost[resource] ?? 0) + amount;
   }
-  const payment = planPayment(G, registry, effect, hooks, cost, preview);
+  // VAR-01-03-03: check prohibitions as usual and exempt the bonus pickup from Political Action charges.
+  const payment = planPayment(G, registry, effect, freePickup ? [] : hooks, cost, preview);
   if (!payment.ok) return payment;
   for (const output of resourceOutputs) {
     // CORE-01-06-00-11: stage immediate outputs with the same payment.
@@ -678,6 +709,7 @@ function planMeasureAction(
     if (take) {
       deck.open[index] = null;
       (deck.hands[playerID] ??= []).push(measureId);
+      if (freePickup) G.exp.core.freeMeasurePickup = { playerID, expansion, measureId };
     } else {
       // EXP-01-07-01..04: preserve counters through all zone transfers.
       hand.splice(index, 1);
@@ -694,7 +726,7 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
     return createExpansionRegistry(G.cfg.expansions, modules);
   }
 
-  function actionQuotes(G: CoreState, requested: PoliticalActionEffect | MeasureAction | ResolveRegulationEffect | PlaceTileEffect): PaymentQuote[] {
+  function actionQuotes(G: CoreState, requested: PoliticalActionEffect | MeasureAction | RegisteredActionEffect | PlaceTileEffect): PaymentQuote[] {
     const active = activeModules(G);
     if (requested.kind === 'formalizeInfluence' && requested.conversion) {
       const projected = projectConversion(G, requested.playerID, requested.conversion, active);
@@ -871,6 +903,17 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
     }
 
     if (effect.kind === 'expireMeasureEffects') {
+      // VAR-01-05-02 and VAR-01-07-02: clear only the effects whose boundary has arrived.
+      if (effect.boundary === 'turnEnd' && G.cfg.variants.committeeChallenge) {
+        for (const marker of G.exp.core.influencesOnBoard ?? []) {
+          if (marker.owner === effect.playerID && marker.challengedAt) delete marker.challengedAt;
+        }
+      }
+      if (effect.boundary === 'settlementEnd' && G.cfg.variants.variableGrassroots) delete G.exp.core.usedEfficientGrassroots;
+      // VAR-01-03-04: release the card when its owner's turn ends.
+      if (effect.boundary === 'turnEnd' && G.exp.core.freeMeasurePickup?.playerID === effect.playerID) {
+        delete G.exp.core.freeMeasurePickup;
+      }
       // CORE-01-07-10/-11/-14/-17, EXP-01-08-M03-03, EXP-01-08-M09-04/-07 and EXP-03-08-M11-04.
       const previous = G.exp.core.activeMeasureEffects;
       if (!previous) return { ok: true };
@@ -936,7 +979,33 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
       return { ok: true };
     }
 
+    if (effect.kind === 'applyResourceCap') {
+      // VAR-01-04-01: stage every PersonalSupply-to-Noise transfer before committing any.
+      if (!G.cfg.variants.resourceCap) return { ok: false, reason: 'resource-cap-inactive' };
+      const registry = createMatchResourceRegistry(active);
+      const transaction = createBankTransaction(G, registry);
+      for (const player of Object.values(G.exp.core.players)) {
+        for (const resource of registry.list()) {
+          const excess = player.personal.resources[resource] - 12;
+          if (!(excess > 0)) continue;
+          const moved = transaction.transfer({
+            from: 'PersonalSupply', to: 'Noise', playerID: player.id, resource, amount: excess,
+          });
+          if (!moved.ok) return moved;
+        }
+      }
+      transaction.commit();
+      return { ok: true };
+    }
+
     if (effect.kind === 'takeMeasure' || effect.kind === 'playMeasure') {
+      // VAR-01-03-02/-03: a free pickup does not use a Political Action attempt.
+      if (effect.kind === 'takeMeasure' && isFreeMeasurePickup(G, measureHandSize(G, effect.playerID))) {
+        const plan = planMeasureAction(G, effect, active);
+        if (!plan.ok) return plan;
+        plan.commit();
+        return { ok: true, retainPoliticalSlot: true };
+      }
       return executePoliticalPlan(G, effect.playerID, hooks, preview => planMeasureAction(G, effect, active, preview));
     }
 

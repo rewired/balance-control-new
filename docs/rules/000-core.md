@@ -434,6 +434,23 @@ VAR-01-02-06 FirstPlayerHandicap modifies CORE-01-03-06.
 VAR-01-02-07 If the 5–6 Player Add-On is active, FirstPlayerHandicap also modifies ADD56-01-02-01.
 VAR-01-02-08 If the 5–6 Player Add-On is active, FirstPlayerHandicap also modifies ADD56-01-02-02.
 
+VAR-01-03-01 FreeMeasurePickup is an optional playtest variant for matches with a Measure deck. EXP-01-06-04 through -04D govern the transfer and refill, with the exceptions below.
+VAR-01-03-02 If the active player has no Measures across all hands and has made no free pickup this turn, their next legal TakeMeasure costs no Resources and leaves the current Political Action slot open. This applies in the ordinary slot and in the additional slot after PlayMeasure. Recheck available actions in that slot after refilling the market.
+VAR-01-03-03 Applicable prohibitions on taking a Measure still apply. The free pickup does not trigger costs or attempts tied to a Political Action. Other TakeMeasure actions use their normal costs and complete their slot.
+VAR-01-03-04 Track the free pickup and its card until the end of the turn. The player cannot play that card during the turn they took it. The next own turn uses the ordinary PlayMeasure rules.
+
+VAR-01-04-01 ResortCap is an optional playtest variant. After all production and receipt limits in each regular or final Round Settlement, cap each active resort at 12 in each player's PersonalSupply. Transfer each excess directly to Noise in one resolution. Bank is unaffected.
+
+VAR-01-05-01 CommitteeChallenge is an optional playtest variant with EXP-02. ChallengeInfluence is a Political Action with a base cost of 2 SEC. Select one unchallenged real Influence marker belonging to another player on a Standard Committee. That Committee is the ContextTile. Apply the usual prohibitions and costs.
+VAR-01-05-02 A challenged marker remains on Board and counts toward Influence limits and victory. It contributes zero to canonical majority on the selected Committee. The effect ends at the end of the marker owner's next turn, or immediately if the marker leaves that Committee. A marker can have at most one active Challenge.
+
+VAR-01-06-01 SecurityProduction is an optional playtest variant with EXP-02. Add one ResortTile with resort SEC, printed value 1, and Tile ID SEC-W1-1 to the normal setup and production rules.
+
+VAR-01-07-01 VariableGrassroots is an optional playtest variant. Shuffle the Grassroots IDs separately using the match seed and the suffix "|grassroots-rates". In that order repeat the printed exchange profiles Standard, Efficient, Bulk. This includes Grassroots from the 5–6 player add-on. These profiles replace the ordinary printed base cost and output in CORE-01-04-22A/-22C/-22E. Apply the transfer zones and modifiers in those rules to the selected profile. The profiles are visible when their Tiles are drawn or on Board.
+VAR-01-07-02 Standard pays 3 Resources of one active resort and receives 1 of a different active resort. Efficient pays 2 and receives 1. Each Efficient Tile provides its printed exchange at most once per round across all players. A successful paid exchange uses this opportunity even if its output is reduced to zero. Reset its availability after each Round Settlement.
+VAR-01-07-03 Bulk pays 4 Resources of one active resort and receives 2 of one different active resort. Apply normal output modifiers to the printed output. Conversion-assisted FormalizeInfluence still requires a final output of exactly 1 under CORE-01-04-19B.
+VAR-01-07-04 The Investment Program alternative follows EXP-01-05 and neither uses nor requires the Efficient Tile's printed exchange opportunity.
+
 ---
 
 # ADD56-01 5–6 PLAYER ADD-ON (Simulation Specification)

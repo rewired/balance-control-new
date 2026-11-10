@@ -1,6 +1,7 @@
 import {
-  createResolver, isFullySurrounded, PaymentSelectionSchema, RegulationOperationSchema, z,
-  type AxialCoord, type BoardRegulation, type CoreState, type EffectDescriptor, type ExpansionModule, type Surcharge,
+  createResolver, createResortTiles, isFullySurrounded, PaymentSelectionSchema, RegulationOperationSchema, z,
+  type AxialCoord, type BoardRegulation, type ChallengeInfluenceEffect, type CoreState, type EffectDescriptor,
+  type ExpansionModule, type ExtensionAction, type Surcharge,
 } from '@bc/rules';
 import {
   attachedRegulationTarget, initializeRegulations, innerOrderDecision, operationTarget, regulationActions, regulationFollowUp, regulationOperations,
@@ -27,18 +28,39 @@ function reducible(effect: EffectDescriptor): boolean {
 }
 
 const AuthorityPayload = z.object({ regulation: RegulationOperationSchema, payment: PaymentSelectionSchema.optional() }).strict();
+const ChallengePayload = z.object({ markerId: z.string().min(1), payment: PaymentSelectionSchema.optional() }).strict();
+
+const challengeAction: ExtensionAction<ChallengeInfluenceEffect> = {
+  political: true,
+  // VAR-01-05-01: select an opponent's real marker on a Standard Committee.
+  context(G, { playerID, markerId }) {
+    if (!G.cfg.variants.committeeChallenge) return { reason: 'challenge-inactive' };
+    const marker = G.exp.core.influencesOnBoard?.find(candidate => candidate.id === markerId);
+    if (!marker || marker.owner === playerID || marker.challengedAt ||
+        G.exp.core.allTiles[marker.tileId]?.kind !== 'Committee') return { reason: 'invalid-challenge-target' };
+    const placement = G.exp.core.tiles.board.find(tile => tile.tileId === marker.tileId);
+    return placement ? { placement } : { reason: 'invalid-challenge-target' };
+  },
+  plan(G, effect, placement) {
+    const marker = G.exp.core.influencesOnBoard?.find(candidate => candidate.id === effect.markerId);
+    if (!marker) return;
+    return { cost: { SEC: 2 }, commit: () => { marker.challengedAt = placement.tileId; } };
+  },
+};
 
 export function exp02Security(): ExpansionModule {
   return {
     id: 'exp02',
     measurePrefix: 'SEC_',
-    actions: regulationActions,
+    actions: { ...regulationActions, challengeInfluence: challengeAction },
     // EXP-02-01-01 and EXP-02-03-01..04.
     registerResources: registry => registry.register('SEC'),
     setupExpansionState: initializeRegulations,
-    tiles: () => [
+    tiles: ({ variants }) => [
       { id: 'InnerOrder', kind: 'Hotspot', hotspotOutcome: 'regulation' },
       { id: 'AuthorityApparatus', kind: 'AuthorityApparatus' },
+      // VAR-01-06-01: SEC enters the ordinary Resort production pipeline.
+      ...(variants.securityProduction ? createResortTiles('SEC', { 1: 1 }) : []),
     ],
     measureDeck: () => Array.from({ length: 15 }, (_, index) => `SEC_M${String(index + 1).padStart(2, '0')}`),
     measureRules: {
@@ -135,6 +157,20 @@ export function exp02Security(): ExpansionModule {
         quotes: (G, playerID) => [...regulationOperations(G, 'move'), ...regulationOperations(G, 'remove')]
           .flatMap(regulation => resolve.actionQuotes(G, { kind: 'activateAuthorityApparatus', playerID, regulation })
             .map(({ payment, ...quote }) => ({ ...quote, payload: { regulation, ...(payment ? { payment } : {}) } }))),
+      });
+      add<z.infer<typeof ChallengePayload>>({
+        type: 'challengeInfluence',
+        payloadSchema: ChallengePayload,
+        execute: (G, playerID, payload) => resolve(G, { kind: 'challengeInfluence', playerID, ...payload }),
+        *quotes(G, playerID) {
+          if (!G.cfg.variants.committeeChallenge) return;
+          for (const marker of G.exp.core.influencesOnBoard ?? []) {
+            if (marker.owner === playerID || marker.challengedAt || G.exp.core.allTiles[marker.tileId]?.kind !== 'Committee') continue;
+            for (const { payment, ...quote } of resolve.actionQuotes(G, { kind: 'challengeInfluence', playerID, markerId: marker.id })) {
+              yield { ...quote, payload: { markerId: marker.id, ...(payment ? { payment } : {}) } };
+            }
+          }
+        },
       });
     },
   };

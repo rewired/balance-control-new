@@ -1,5 +1,5 @@
 import {
-  computeMajority, type AxialCoord, type BoardPlacement, type BoardRegulation, type ConversionSelection, type CoreExpansionState,
+  computeMajority, grassrootsExchange, type AxialCoord, type BoardPlacement, type BoardRegulation, type ConversionSelection, type CoreExpansionState,
   type CoreState, type HotspotChoice, type PaymentSelection, type RegulationOperation, type Tile,
 } from '@bc/rules';
 import type { EngineMoveOption } from '@bc/game';
@@ -17,6 +17,10 @@ export function words(value: string): string {
 export function tileLabel(tile: Tile): string {
   if (tile.id === 'Transformationsdruck') return 'Transformation Pressure'; // EXP-03-02-B-01
   if (tile.kind === 'Hotspot' && !tile.id.startsWith('Hotspot')) return words(tile.id);
+  if (tile.kind === 'Grassroots' && tile.grassrootsRate) {
+    const { cost, output } = grassrootsExchange(tile.grassrootsRate);
+    return `Grassroots · ${cost}:${output}`;
+  }
   return tile.kind === 'ResortTile' ? `${tile.resort} · ${tile.w}` : words(tile.kind);
 }
 
@@ -32,8 +36,14 @@ export function tileRuleSummary(tile: Tile): string {
       // CORE-01-04-14A/-15/-17/-19A, CORE-01-08-02/-03
       return 'If you control this tile, you can pay 2 resources from different resorts to add 1 influence marker to your supply. You may include one Grassroots trade to help pay. Everyone must first place all their starting markers.';
     case 'Grassroots':
-      // CORE-01-04-19A/-19B/-21A/-22A..22D
-      return 'If you control this tile or it has no controller, you can trade 3 resources of one active resort for 1 of another. Trade as your political action or spend the resource immediately as part of formalizing influence.';
+      // CORE-01-04-19A/-19B/-21A/-22A..22D and VAR-01-07-02/-03
+      if (tile.grassrootsRate === 'efficient') {
+        return 'If you control this tile or it has no controller, trade 2 resources of one active resort for 1 of another. This printed exchange is available once per round across all players.';
+      }
+      if (tile.grassrootsRate === 'bulk') {
+        return 'If you control this tile or it has no controller, trade 4 resources of one active resort for 2 of another. Formalization can use an exchange that yields exactly 1 resource after modifiers.';
+      }
+      return 'If you control this tile or it has no controller, trade 3 resources of one active resort for 1 of another. You can use that resource immediately to formalize influence.';
     case 'Lobbyist':
       // CORE-01-05-04, CORE-01-05-05, CORE-01-05-06
       return 'The controller adds 1 virtual influence to each adjacent tile except other Lobbyists and the Start Committee. This bonus counts only toward majority.';
@@ -67,8 +77,9 @@ export function tileOccupation(G: CoreState, { tileId, coord }: BoardPlacement) 
   const core = G.exp.core;
   const { controller, leaders, scores } = computeMajority(G, coord, 'details');
   const influence = Object.keys(core.players).map(id => {
-    const count = (core.influencesOnBoard ?? []).filter(marker => marker.tileId === tileId && marker.owner === id).length;
-    return { id, count, virtual: Math.max(0, scores[id] - count) };
+    const markers = (core.influencesOnBoard ?? []).filter(marker => marker.tileId === tileId && marker.owner === id);
+    const challenged = markers.filter(marker => marker.challengedAt === tileId).length;
+    return { id, count: markers.length, challenged, virtual: Math.max(0, scores[id] - markers.length + challenged) };
   }).filter(({ count, virtual }) => count > 0 || virtual > 0);
   const control = controller !== null ? `Controlled by ${playerLabel(controller)}`
     : leaders.length > 1 ? `Tied majority (${leaders.map(playerShortLabel).join(', ')})`
@@ -76,8 +87,8 @@ export function tileOccupation(G: CoreState, { tileId, coord }: BoardPlacement) 
   return { controller, leaders, influence, control };
 }
 
-export function influenceLabel({ id, count, virtual }: ReturnType<typeof tileOccupation>['influence'][number]): string {
-  return `${playerLabel(id)} has ${count} ${count === 1 ? 'marker' : 'markers'}${virtual ? ` and ${virtual} virtual influence` : ''}`;
+export function influenceLabel({ id, count, challenged, virtual }: ReturnType<typeof tileOccupation>['influence'][number]): string {
+  return `${playerLabel(id)} has ${count} ${count === 1 ? 'marker' : 'markers'}${challenged ? ` (${challenged} challenged)` : ''}${virtual ? ` and ${virtual} virtual influence` : ''}`;
 }
 
 type PoliticalOption = {
@@ -194,6 +205,11 @@ export function describeOption(G: CoreState, option: EngineMoveOption): string {
     }
     if (type === 'activateAuthorityApparatus' && payload.regulation) {
       return `Activate Authority Apparatus · ${describeRegulation(G, payload.regulation)}${payment}`;
+    }
+    if (type === 'challengeInfluence' && option.contextTile) {
+      const marker = core.influencesOnBoard?.find(candidate => candidate.id === payload.markerId);
+      const owner = marker ? `${playerLabel(marker.owner)}'s influence` : 'influence';
+      return `Challenge ${owner} at ${boardTileLabel(core, option.contextTile)}${payment}`;
     }
     if (type === 'placeOrMoveInfluence' && payload.targetTileId) {
       const target = boardTileLabel(core, payload.targetTileId);

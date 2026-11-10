@@ -606,3 +606,13 @@
 - Das Regelwerk erlaubt den Standardtausch zu 3:1 auch auf neutralen Grassroots. Neutrale Grassroots haben nach der Mehrheitsberechnung keinen kontrollierenden Spieler.
 - Ein Spieler kann einen Tausch und eine Formalisierung zu einer politischen Aktion verbinden, wenn er die ertauschte Ressource direkt dafür bezahlt. Beide Effekte werden gemeinsam ausgeführt und verwenden ihre jeweiligen Kontextkacheln.
 - ERRATA-0033 ist in der Engine umgesetzt. Der Webclient zeigt beide Kacheln und die Zahlungen zur kombinierten Aktion an. Bots erhalten dieselben legalen Optionen.
+
+## 2026-11-09 – Playtest zur Maßnahmenaufnahme
+
+- Die optionale Variante FreeMeasurePickup erlaubt die kostenlose Aufnahme einer Maßnahme bei leerer Hand. Sie lässt den aktuellen politischen Aktionsplatz offen und sperrt die neue Karte bis zum nächsten eigenen Zug.
+- Die Variante lässt sich beim Match-Setup auswählen. Gespeicherte Partien ohne das Flag verwenden die bisherigen Aufnahmeregeln.
+
+## 2026-11-09 – Weitere Balancing-Playtests
+
+- Vier zuschaltbare Varianten ergänzen einen Vorratsdeckel von 12 je Ressort, eine SEC-Kachel mit Produktionswert 1, eine zeitlich begrenzte Challenge am Standardkomitee und unterschiedliche Grassroots-Kurse.
+- Das Match-Setup speichert die Auswahl. Die Spielansicht zeigt Sonderkurse und den Einfluss, der durch eine Challenge vorübergehend nicht zur Mehrheit beiträgt.

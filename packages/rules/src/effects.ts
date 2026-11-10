@@ -17,7 +17,8 @@ export type EffectKind =
   | 'expireMeasureEffects'
   | 'completeEmptyPoliticalSlot'
   | 'beforeSettlementProduction'
-  | ResolveRegulationEffect['kind']
+  | 'applyResourceCap'
+  | RegisteredActionEffect['kind']
   | 'addNoise'
   | PoliticalActionEffect['kind']
   | 'initMeasures'
@@ -93,17 +94,23 @@ interface CompleteEmptyPoliticalSlot extends BaseEffect {
 
 interface BeforeSettlementProductionEffect extends BaseEffect { kind: 'beforeSettlementProduction' }
 
-const registeredActionKinds = ['regulationOperation', 'activateAuthorityApparatus'] as const;
-
 export interface ResolveRegulationEffect extends BaseEffect {
-  kind: typeof registeredActionKinds[number];
+  kind: 'regulationOperation' | 'activateAuthorityApparatus';
   playerID: string;
   regulation: RegulationOperation;
   contextTileId?: string;
 }
 
-export function isRegisteredAction(effect: EffectDescriptor): effect is ResolveRegulationEffect {
-  return registeredActionKinds.some(kind => kind === effect.kind);
+export interface ChallengeInfluenceEffect extends BaseEffect {
+  kind: 'challengeInfluence';
+  playerID: string;
+  markerId: string;
+}
+
+export type RegisteredActionEffect = ResolveRegulationEffect | ChallengeInfluenceEffect;
+
+export function isRegisteredAction(effect: EffectDescriptor): effect is RegisteredActionEffect {
+  return effect.kind === 'regulationOperation' || effect.kind === 'activateAuthorityApparatus' || effect.kind === 'challengeInfluence';
 }
 
 export interface AddNoiseEffect extends BaseEffect {
@@ -172,7 +179,8 @@ export type EffectDescriptor =
   | ExpireMeasureEffects
   | CompleteEmptyPoliticalSlot
   | BeforeSettlementProductionEffect
-  | ResolveRegulationEffect
+  | (BaseEffect & { kind: 'applyResourceCap' })
+  | RegisteredActionEffect
   | AddNoiseEffect
   | PoliticalActionEffect
   | InitMeasuresEffect
@@ -181,7 +189,7 @@ export type EffectDescriptor =
   | ResetMeasuresRoundEffect
   | RecordTurnHashEffect;
 
-export interface ResolveResult { ok: boolean; reason?: string; attemptEffectsConsumed?: true }
+export interface ResolveResult { ok: boolean; reason?: string; attemptEffectsConsumed?: true; retainPoliticalSlot?: true }
 
 // EXP-01-06-00A/-00B and EXP-02-02-A-03: create each expansion zone at its setup effect.
 export function ensureExpansionSlice<T extends object>(G: CoreState, id: ExpansionId, initial: T): T {
@@ -199,7 +207,7 @@ export type DecisionQuote = Omit<PaymentQuote, 'payment'> & { choice: HotspotCho
 
 export interface EffectResolver {
   (G: CoreState, effect: EffectDescriptor): ResolveResult;
-  actionQuotes(G: CoreState, requested: PoliticalActionEffect | TakeMeasureEffect | PlayMeasureEffect | ResolveRegulationEffect | PlaceTileEffect): PaymentQuote[];
+  actionQuotes(G: CoreState, requested: PoliticalActionEffect | TakeMeasureEffect | PlayMeasureEffect | RegisteredActionEffect | PlaceTileEffect): PaymentQuote[];
   hotspotQuotes(G: CoreState, pending?: PendingHotspot): DecisionQuote[];
   regulationFollowUpQuotes(G: CoreState): DecisionQuote[];
 }

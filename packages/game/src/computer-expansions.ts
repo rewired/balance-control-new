@@ -1,7 +1,7 @@
 import { isProhibited, modifyOutput, planProductionForTile, productionReceipt } from '@bc/exp-00-core';
 import { regulationPlacementPrice } from '@bc/exp-02-security';
 import {
-  computeMajority, createExpansionRegistry, getTopology, type ActiveMeasureEffect, type BoardPlacement,
+  computeMajority, createExpansionRegistry, getTopology, grassrootsExchange, type ActiveMeasureEffect, type BoardPlacement,
   type CoreState, type ExpansionModule, type RegulationKind, type RegulationOperation, type ResourceAmounts, type Tile,
 } from '@bc/rules';
 import type { EngineMoveOption } from './legal-options.js';
@@ -89,7 +89,7 @@ export function inspectExpansions(G: CoreState) {
   const openRivals = (playerID: string) => board.filter(site => site.controller !== null && site.controller !== playerID
     && !hasBlockade(site.tileId));
 
-  function cardPlan({ id, module }: Card, playerID: string, rivals: Site[], income: ResourceAmounts, hasGrassroots: boolean): CardPlan {
+  function cardPlan({ id, module }: Card, playerID: string, rivals: Site[], income: ResourceAmounts, exchangeCost: number): CardPlan {
     const rule = module.measureRules?.[id];
     if (!rule) return { value: 0, budget: {}, missing: {} };
     const stock = players[playerID].personal.resources;
@@ -124,7 +124,7 @@ export function inspectExpansions(G: CoreState) {
       const need = Math.max(0, (amount ?? 0) - (stock[resource] ?? 0));
       if (!need) continue;
       missing[resource] = need;
-      const canTrade = hasGrassroots && Object.entries(stock).some(([input, count]) => input !== resource && count >= 3);
+      const canTrade = Object.entries(stock).some(([input, count]) => input !== resource && count >= exchangeCost);
       const uncovered = Math.max(0, need - (income[resource] ?? 0));
       preparation += 5 * need + (canTrade ? 0 : 9) * uncovered;
     }
@@ -142,12 +142,18 @@ export function inspectExpansions(G: CoreState) {
   function tactics(playerID: string, income: ResourceAmounts) {
     const rivals = openRivals(playerID);
     const cards = hand(playerID);
-    const hasGrassroots = board.some(site => site.controller === playerID && site.tile.kind === 'Grassroots'
-      && !regulationsAt.get(site.tileId)?.some(regulation => regulation.kind === 'Blockade' || regulation.kind === 'SecurityLevel'));
-    const handPlans = cards.map(card => cardPlan(card, playerID, rivals, income, hasGrassroots));
+    const costs = board.flatMap(({ tile, controller, tileId }) => {
+      if (tile.kind !== 'Grassroots' || (controller !== playerID && !(G.cfg.variants.variableGrassroots && controller === null))) return [];
+      if (regulationsAt.get(tileId)?.some(regulation => regulation.kind === 'Blockade' || regulation.kind === 'SecurityLevel')) return [];
+      if (tile.grassrootsRate === 'efficient' && G.exp.core.usedEfficientGrassroots?.includes(tileId)) return [];
+      return [grassrootsExchange(tile.grassrootsRate).cost];
+    });
+    const exchangeCost = Math.min(...costs);
+    const hasGrassroots = costs.length > 0;
+    const handPlans = cards.map(card => cardPlan(card, playerID, rivals, income, exchangeCost));
     // EXP-01-06-03/-04B: all expansions share the hand limit.
     const marketPlans = new Map(cards.length < 2
-      ? market.map(card => [card.id, cardPlan(card, playerID, rivals, income, hasGrassroots)]) : []);
+      ? market.map(card => [card.id, cardPlan(card, playerID, rivals, income, exchangeCost)]) : []);
     const bestHeld = handPlans.reduce<CardPlan>((best, plan) => plan.value > best.value ? plan : best,
       { value: 0, budget: {}, missing: {} });
     const bestMarket = Math.max(0, ...Array.from(marketPlans.values(), plan => plan.value));
@@ -244,20 +250,24 @@ export function inspectExpansions(G: CoreState) {
     }
     const card = hand(playerID).find(({ id }) => id === payload.measureId);
     // An already legal play can use the printed effect now, without spending a turn on acquiring or funding the card.
-    return card ? Math.min(8, cardPlan(card, playerID, openRivals(playerID), {}, false).value / 2) : 0;
+    return card ? Math.min(8, cardPlan(card, playerID, openRivals(playerID), {}, Infinity).value / 2) : 0;
   }
 
   function fundingValue(option: EngineMoveOption, playerID: string): number {
     if (option.moveType !== 'doPoliticalAction') return 0;
-    const { type, payload } = option.parameters[0] as { type: string; payload: { tileId: string; input: string; output: string } };
+    const { type, payload } = option.parameters[0] as {
+      type: string; payload: { tileId: string; input: string; output: string; alternative?: string };
+    };
     if (type !== 'convertResources') return 0;
     const { bestHeld, secGoal, stock } = playerPlan(playerID);
     const budget = { ...bestHeld.budget };
     if (secGoal) budget.SEC = Math.max(secGoal, budget.SEC ?? 0);
     if ((budget[payload.output] ?? 0) <= (stock[payload.output] ?? 0)) return 0;
-    const contextCoord = sites.get(payload.tileId)?.coord;
+    const site = sites.get(payload.tileId);
+    const contextCoord = site?.coord;
     // CORE-01-04-22D and EXP-02-04-B-05: credit the exchange output after modifiers, excluding later Settlement.
-    const output = modifyOutput(G, { ...payload, kind: 'convertResources', playerID, contextCoord }, hooks, 1);
+    const rate = !payload.alternative && site?.tile.kind === 'Grassroots' ? site.tile.grassrootsRate : undefined;
+    const output = modifyOutput(G, { ...payload, kind: 'convertResources', playerID, contextCoord }, hooks, grassrootsExchange(rate).output);
     const nextStock = { ...stock, [payload.output]: (stock[payload.output] ?? 0) + output };
     for (const cost of option.costBreakdown) {
       if (cost.playerID === playerID) nextStock[cost.resource] -= cost.amount;

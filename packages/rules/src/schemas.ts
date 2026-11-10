@@ -26,6 +26,11 @@ export type ExpansionFlags = z.infer<typeof ExpansionFlagsSchema>;
 const VariantFlagsSchema = z.object({
   tileRecycling: z.boolean().default(false), // VAR-01-01-01
   firstPlayerHandicap: z.boolean().default(false), // VAR-01-02-01
+  freeMeasurePickup: z.literal(true).optional(), // VAR-01-03-01
+  resourceCap: z.literal(true).optional(), // VAR-01-04-01
+  committeeChallenge: z.literal(true).optional(), // VAR-01-05-01
+  securityProduction: z.literal(true).optional(), // VAR-01-06-01
+  variableGrassroots: z.literal(true).optional(), // VAR-01-07-01
 }).strict().default({});
 
 export const MatchConfigSchema = z

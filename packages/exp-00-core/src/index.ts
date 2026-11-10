@@ -55,6 +55,12 @@ const initializeMatch: CoreModule['initializeMatch'] = ({ numPlayers, matchSeed,
   const start = tiles.find(tile => tile.kind === 'StartCommittee');
   if (!start) throw new Error('CORE setup requires the Start Committee tile');
   const drawPool = tiles.filter(tile => tile !== start).map(tile => tile.id);
+  // VAR-01-07-01: use a separate seeded order for rates, preserving the draw shuffle.
+  const grassroots = cfg.variants.variableGrassroots
+    ? shuffleSeeded(tiles.filter(tile => tile.kind === 'Grassroots').map(tile => tile.id), `${matchSeed}|grassroots-rates`)
+    : [];
+  const profiles = ['standard', 'efficient', 'bulk'] as const;
+  const rates = new Map(grassroots.map((id, index) => [id, profiles[index % profiles.length]]));
 
   // CORE-01-03-04..06 and ADD56-01-02-01..02: five and six players also start with two markers.
   const startingByPlayers: Record<number, number> = { 2: 4, 3: 3, 4: 2, 5: 2, 6: 2 };
@@ -85,7 +91,10 @@ const initializeMatch: CoreModule['initializeMatch'] = ({ numPlayers, matchSeed,
           discardFaceUp: [],
           board: [{ tileId: start.id, coord: { q: 0, r: 0 } }], // CORE-01-03-01
         },
-        allTiles: Object.fromEntries(tiles.map(tile => [tile.id, tile])),
+        allTiles: Object.fromEntries(tiles.map(tile => {
+          const grassrootsRate = rates.get(tile.id);
+          return [tile.id, grassrootsRate ? { ...tile, grassrootsRate } : tile];
+        })),
         players,
         resources: {
           bank: makeEmptyResourceBank(registry), // CORE-01-03-08

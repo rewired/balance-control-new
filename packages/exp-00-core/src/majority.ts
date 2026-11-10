@@ -9,7 +9,10 @@ function scoreTile(state: CoreState, coord: AxialCoord): MajorityBreakdown {
 
   // CORE-01-05-03A: count the real markers of each player on the tile.
   for (const marker of state.exp.core.influencesOnBoard ?? []) {
-    if (marker.tileId === tile.id && Object.hasOwn(scores, marker.owner)) scores[marker.owner] += 1;
+    // VAR-01-05-02: a challenged marker remains on Board but contributes zero here.
+    if (marker.tileId === tile.id && marker.challengedAt !== tile.id && Object.hasOwn(scores, marker.owner)) {
+      scores[marker.owner] += 1;
+    }
   }
 
   // CORE-01-05-07: Lobbyists use real markers only, so looking up a controller cannot recurse further.

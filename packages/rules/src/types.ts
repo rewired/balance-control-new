@@ -1,3 +1,5 @@
+import type { ExpansionId } from './schemas.js';
+
 // Zones are first-class (CORE-01-00-01..06)
 export type Zone =
   | 'Board'
@@ -47,6 +49,7 @@ export type NonResortTileKind = Exclude<TileKind, 'ResortTile' | 'StartCommittee
 export interface NonResortTile extends BaseTile {
   kind: NonResortTileKind;
   hotspotOutcome?: 'regulation';
+  grassrootsRate?: 'standard' | 'efficient' | 'bulk'; // VAR-01-07-01
 }
 
 export type Tile = ResortTile | NonResortTile | StartCommitteeTile;
@@ -81,7 +84,10 @@ export interface ResourceZonesState {
   noise: Record<ResourceId, number>;
 }
 
-export interface InfluenceOnBoard extends Influence { tileId: string }
+export interface InfluenceOnBoard extends Influence {
+  tileId: string;
+  challengedAt?: string; // VAR-01-05-02
+}
 
 export interface ExpansionsState {
   core: CoreExpansionState;
@@ -165,6 +171,8 @@ export interface CoreExpansionState {
   pendingRegulationChoices?: PendingRegulationChoice[];
   decisionContinuation?: DecisionContinuation;
   playedMeasureThisRound?: Record<string, boolean>;
+  freeMeasurePickup?: { playerID: string; expansion: ExpansionId; measureId: string }; // VAR-01-03-04
+  usedEfficientGrassroots?: string[]; // VAR-01-07-02
 }
 
 export interface CoreState {

@@ -131,6 +131,19 @@ export default function CoreMatchSetup({ title, buttonLabel, onStart, initial, b
             onChange={event => setVariants({ ...variants, firstPlayerHandicap: event.target.checked })} />{' '}
           First-player handicap
         </label>
+        {([
+          ['freeMeasurePickup', 'Free Measure pickup with an empty hand'],
+          ['resourceCap', 'Cap each resort at 12 per player'],
+          ['securityProduction', 'Add one SEC production tile (Security & Order)'],
+          ['committeeChallenge', 'Challenge Committee influence (Security & Order)'],
+          ['variableGrassroots', 'Variable Grassroots exchange rates'],
+        ] as const).map(([name, label]) => (
+          <label key={name}>
+            <input name={name} type="checkbox" checked={variants[name] === true}
+              onChange={event => setVariants({ ...variants, [name]: event.target.checked ? true : undefined })} />{' '}
+            {label} (playtest)
+          </label>
+        ))}
       </fieldset>
       <label className="core-seed-field">
         Seed (optional)
