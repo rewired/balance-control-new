@@ -3,6 +3,7 @@ import { Client } from 'boardgame.io/client';
 import { createBCGame, createComputerPosition, createMatchLogRecorder, type EngineMoveOption } from '@bc/game';
 import { CoreView, submitCoreOption } from './BoardCore.js';
 import CoreMatchSetup, { type CoreMatchSettings } from './CoreMatchSetup.js';
+import StartScreen from './StartScreen.js';
 import type { ComputerMoveRequest, ComputerMoveResponse } from './computer.worker.js';
 
 function HotseatMatch({ settings, onNewMatch, server }: { settings: CoreMatchSettings; onNewMatch: () => void; server: string }) {
@@ -123,8 +124,10 @@ export default function HotseatCore({ server }: { server: string }) {
   const [playing, setPlaying] = useState(false);
   return playing && settings
     ? <HotseatMatch settings={settings} server={server} onNewMatch={() => setPlaying(false)} />
-    : <CoreMatchSetup title="New hotseat match" buttonLabel="Start match" initial={settings} botServer={server} onStart={configuration => {
-      setSettings(configuration);
-      setPlaying(true);
-    }} />;
+    : <StartScreen>
+      <CoreMatchSetup title="New hotseat match" buttonLabel="Start match" initial={settings} botServer={server} onStart={configuration => {
+        setSettings(configuration);
+        setPlaying(true);
+      }} />
+    </StartScreen>;
 }

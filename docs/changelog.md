@@ -645,3 +645,10 @@
 ## 2026-11-10 – Impulsivität und Waghalsigkeit der Local AI
 
 - Jedes Sitzprofil erhält zwei getrennt aus dem Match-Seed abgeleitete Werte. Impulsivität gewichtet die unmittelbare Stellung stärker oder schwächer. Waghalsigkeit bestimmt, wie viel das erwartete Ergebnis gegenüber der ungünstigsten simulierten Antwort zählt.
+
+## 2026-11-10 – Inhaltsverzeichnis für die Spielanleitung
+
+- Hotseat und Netzwerk-Lobby zeigen einen aufklappbaren Kapitelbaum neben der gewählten HTML-Seite. Auf schmalen Bildschirmen steht der Baum über der Seite.
+- Jedes Paket liefert seine eigenen Seiten in `assets/guide/en/`. Der Baum übernimmt den Paketnamen aus dem `<title>` der `index.html` und die Kapitelnamen aus den `<h1>`-Überschriften. Die Übersicht steht zuerst, danach folgen die Kapitel nach Dateinamen mit zweistelligem Nummernpräfix. Gleich benannte Dateien können später in weiteren Sprachordnern liegen.
+- Die englische CORE-Anleitung erklärt den Aufbau, den Zugablauf mit allen politischen Aktionen, Kontrolle, Produktion und beide Wege zum Sieg anhand von Beispielen aus CORE-01.
+- Auf breiten Bildschirmen nutzen Hotseat-Setup, Netzwerk-Lobby und Spielanleitung die volle Fensterhöhe unter der Kopfzeile. Längere Inhalte lassen sich im jeweiligen Bereich scrollen.

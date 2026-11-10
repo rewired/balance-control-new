@@ -1,0 +1,14 @@
+:root {
+  color-scheme: dark;
+  color: #eff3f6;
+  background: #0d141c;
+  font: 16px/1.55 system-ui, sans-serif;
+}
+body { margin: 0; padding: 1rem clamp(1rem, 4vw, 2rem); overflow-wrap: anywhere; }
+main { max-width: 65ch; }
+h1 { margin: 0; font-size: clamp(1.25rem, 3.5vw, 1.8rem); line-height: 1.2; }
+table { border-collapse: collapse; }
+caption { text-align: start; font-weight: 650; }
+th, td { padding: .35rem .6rem; border-block-end: 1px solid #34414f; text-align: start; }
+a { color: #ffe19a; }
+img, svg { max-width: 100%; height: auto; }

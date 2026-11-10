@@ -5,6 +5,7 @@ import { CoreGame } from '@bc/game';
 import { MatchSetupDataSchema } from '@bc/rules';
 import CoreBoard from './BoardCore.js';
 import CoreMatchSetup from './CoreMatchSetup.js';
+import StartScreen from './StartScreen.js';
 import { expansions } from './expansion-data.js';
 
 const gameComponents = [{ game: CoreGame, board: CoreBoard }];
@@ -26,18 +27,16 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
     </div>;
   }
 
-  if (phase === 'enter') return <>
-    <h2>Network lobby</h2>
+  const content = phase === 'enter' ? (
     <form className="core-setup" onSubmit={event => {
       event.preventDefault();
       if (name.trim()) handleEnterLobby(name.trim());
     }}>
+      <h2>Network lobby</h2>
       <label>Player name <input value={name} onChange={event => setName(event.target.value)} required /></label>
       <button type="submit" disabled={!name.trim()}>Enter lobby</button>
     </form>
-  </>;
-
-  return (
+  ) : (
     <div className="network-lobby">
       <h2>Network lobby</h2>
       <p>Signed in as {playerName} <button type="button" onClick={() => void handleExitLobby()}>Leave lobby</button></p>
@@ -80,6 +79,8 @@ function LobbyView({ server, lobby }: { server: string; lobby: LobbyViewProps })
       </section>
     </div>
   );
+
+  return <StartScreen>{content}</StartScreen>;
 }
 
 export default function NetworkLobby({ server }: { server: string }) {
