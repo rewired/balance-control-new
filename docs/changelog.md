@@ -633,3 +633,7 @@
 ## 2026-11-10 – Endspielbewertung der Such-KI
 
 - Die Such-KI bewertet Vorratsmarker nach der Zahl der verbleibenden eigenen Züge. Jeder weitere einsetzbare Vorratsmarker zählt weniger. Bei simulierten Siegen bevorzugt die KI die kleinere Gewinnergruppe.
+
+## 2026-11-10 – Plättchenregeln dauerhaft sichtbar
+
+- Die Regeln für ausgewählte und frisch gezogene Plättchen stehen direkt im Inspektor und lassen sich nicht einklappen.

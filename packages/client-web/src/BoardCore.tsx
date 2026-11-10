@@ -212,10 +212,10 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
             tabIndex={0} role="region" aria-label="Inspection details">
             {occupation && inspected && inspectedTile ? <>
               <TileSummary tile={inspectedTile} controller={occupation.controller} label={`Selected tile · ${coordLabel(inspected.coord)}`} />
-              <details className="tile-rules">
-                <summary>Tile rules</summary>
+              <section className="tile-rules">
+                <h4>Tile rules</h4>
                 <p>{tileRuleSummary(inspectedTile)}</p>
-              </details>
+              </section>
               {counterLobby && <p>Counter-lobby suspends the bonus from {counterLobby.lobbyistTileId} for {playerLabel(counterLobby.controller)}.</p>}
               {damaged && <p>Permanent damage · −1 production</p>}
               <p className="inspected-control"><strong>{occupation.control}</strong></p>
@@ -251,10 +251,10 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
               <>
                 {drawn && <div className="core-offer">
                   <TileSummary tile={core.allTiles[drawn.tileId]} label="Drawn tile" />
-                  <details className="tile-rules">
-                    <summary>Drawn tile rules</summary>
+                  <section className="tile-rules">
+                    <h4>Drawn tile rules</h4>
                     <p>{tileRuleSummary(core.allTiles[drawn.tileId])}</p>
-                  </details>
+                  </section>
                   <p>{core.tiles.discardFaceUp.length} discarded</p>
                 </div>}
                 {options.length === 0 ? <p>Waiting for {playerLabel(activePlayer)}{isComputerTurn && ' (computer)'}.</p>
