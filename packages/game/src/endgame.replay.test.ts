@@ -118,7 +118,7 @@ function replayFullCoreMatch() {
   expect(final.G.exp.core.tiles.board).toHaveLength(72);
   expect(markerCounts(final.G)).toEqual([4, 4]);
   expect(new Set(hashes).size).toBe(71);
-  expect(final.G.lastTurnHash).toBe('7ff38ea01ed32fa19a067c32a6754245614c6a71d14d64f01ad2b052a5f9a5cc');
+  expect(final.G.lastTurnHash).toBe('8b60107598782f31d1c0c48e4537fe8cffbae80aaa7509e204756c50b54e4cab');
   return { ...final, hashes };
 }
 
@@ -180,7 +180,7 @@ function replayLastPlacementWithMeasure() {
   expect(measures.hands['1']).toEqual([]);
   expect(measures.recycle).toContain(measureId);
   expect(final.G.exp.core.playedMeasureThisRound!['1']).toBe(true);
-  expect(final.G.lastTurnHash).toBe('da5c272f67b4ff5b4d64ca816e1dd9239345e6a4d7145fd0b2d5cc091361492d');
+  expect(final.G.lastTurnHash).toBe('7e8da766e20b877aba4292c8d399e29d289c7e3bf4b1a427ee74041789725997');
   return final;
 }
 
@@ -207,7 +207,7 @@ function replayUnsuccessfulFinalDraw() {
   expect(final.G.exp.core.players['0'].personal.resources.DOM).toBe(2);
   expect(final.G.exp.core.players['1'].personal.resources.DOM).toBe(0);
   expect(markerCounts(final.G)).toEqual([2, 0]);
-  expect(final.G.lastTurnHash).toBe('61e28367357a0b5f400f5d0565ee379689bebd982ff8218e530b1ff7c7cec14c');
+  expect(final.G.lastTurnHash).toBe('dfe5f239de5f6aa4fcf01c59c735511918d4835417aa8e9795783a7a81655f05');
   return final;
 }
 

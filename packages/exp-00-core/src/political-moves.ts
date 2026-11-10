@@ -5,7 +5,7 @@ import { createResolver, type PoliticalActionEffect } from '@bc/rules';
 import type { MoveDefinition, MoveExtensionBuilder } from '@bc/rules';
 import { matchResourceIds } from '@bc/rules';
 import { PaymentSelectionSchema } from '@bc/rules';
-import { formalizationPayments } from './resolver.js';
+import { formalizationPayments, recallPayments } from './resolver.js';
 
 function corePoliticalMove<P extends object>(
   type: PoliticalActionEffect['kind'],
@@ -52,6 +52,21 @@ export function registerCorePoliticalMoves({ add }: MoveExtensionBuilder): void 
               yield { markerId: marker.id, sourceTileId: marker.tileId, targetTileId };
             }
           }
+        }
+      },
+    ),
+    corePoliticalMove(
+      'recallInfluence',
+      z.object({ markerId: id, resources: z.array(id).length(3), payment: PaymentSelectionSchema.optional() }).strict(),
+      (playerID, payload) => ({ kind: 'recallInfluence', playerID, ...payload }),
+      function* (G, playerID) {
+        // CORE-01-04-23..25: each legal target and distinct payment goes through the resolver.
+        const { allTiles, influencesOnBoard, recalledThisRound } = G.exp.core;
+        if (!G.cfg.variants.influenceRecall || recalledThisRound?.includes(playerID)) return;
+        const payments = [...recallPayments(matchResourceIds(G))];
+        for (const marker of influencesOnBoard ?? []) {
+          if (marker.owner === playerID || allTiles[marker.tileId]?.kind === 'StartCommittee') continue;
+          for (const resources of payments) yield { markerId: marker.id, resources };
         }
       },
     ),

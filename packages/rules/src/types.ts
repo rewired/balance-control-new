@@ -16,7 +16,11 @@ export interface Influence {
   id: string;
   owner: string; // playerID
   starting?: true;
+  recalled?: true; // CORE-01-04-26
 }
+
+// CORE-01-08-02 and CORE-01-04-26: evaluate this predicate on PersonalSupply.
+export const awaitsFirstPlacement = (marker: Influence): boolean => marker.starting === true && !marker.recalled;
 
 export type TileKind =
   | 'ResortTile'
@@ -165,6 +169,7 @@ export interface CoreExpansionState {
   pendingRegulationChoices?: PendingRegulationChoice[];
   decisionContinuation?: DecisionContinuation;
   playedMeasureThisRound?: Record<string, boolean>;
+  recalledThisRound?: string[]; // CORE-01-04-23
 }
 
 export interface CoreState {

@@ -8,7 +8,7 @@ type Transfer = NonNullable<PaymentSelection['transfers']>[number];
 type SurchargePayment = Surcharge & { payer: string; resource?: ResourceId };
 
 export function isPoliticalEffect(effect: EffectDescriptor): boolean {
-  return effect.political === true || ['placeOrMoveInfluence', 'formalizeInfluence', 'convertResources', 'takeMeasure', 'playMeasure'].includes(effect.kind);
+  return effect.political === true || ['placeOrMoveInfluence', 'recallInfluence', 'formalizeInfluence', 'convertResources', 'takeMeasure', 'playMeasure'].includes(effect.kind);
 }
 
 function* transferChoices(

@@ -599,3 +599,8 @@
 
 - Neue Partien begrenzen nach jeder regulären oder abschließenden Rundenabrechnung den Vorrat jedes Spielers auf 12 Einheiten je aktivem Ressort. Überschuss fließt direkt in Noise.
 - ERRATA-0034 setzt die Freigabe aus DD-0038 um. Ältere Partien und Replays verwenden ihre gespeicherten Regeln.
+
+## 2026-11-10 – Abberufung als politische Aktion
+
+- Die Abberufung schickt einen gegnerischen Einflussmarker für je eine Ressource aus drei verschiedenen aktiven Ressorts vom Brett in den Vorrat seines Besitzers. Jeder Spieler kann die Aktion einmal pro Runde ausführen.
+- ERRATA-0035 führt die Aktion für alle neuen Partien ein. Gespeicherte Partien und Replays verwenden ihre aufgezeichneten Regeln. Ein zurückgerufener Startmarker behält seine Identität und seine bereits erfüllte Erstplatzierung.

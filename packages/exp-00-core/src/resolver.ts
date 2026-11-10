@@ -1,6 +1,6 @@
 import { shuffleSeeded, stableHash } from '@bc/shared';
 import {
-  createExpansionRegistry, createMatchResourceRegistry, ensureExpansionSlice,
+  awaitsFirstPlacement, createExpansionRegistry, createMatchResourceRegistry, ensureExpansionSlice,
   getTopology, isRegisteredAction, MeasureExtensionTargetSchema, paymentPlans,
   type ActiveMeasureEffect, type AxialCoord, type CoreState,
   type DecisionQuote, type DrawTileEffect, type EffectDecision, type EffectDescriptor, type EffectResolver,
@@ -244,6 +244,13 @@ export function* formalizationPayments(resources: ResourceId[], start: boolean):
   }
 }
 
+// CORE-01-04-25: three different active resorts fund a recall.
+export function* recallPayments(resources: ResourceId[]): Generator<ResourceId[]> {
+  for (const payment of paymentCombinations(resources, 3)) {
+    if (new Set(payment).size === 3) yield payment;
+  }
+}
+
 function planPoliticalAction(
   G: CoreState,
   requested: PoliticalActionEffect,
@@ -256,7 +263,10 @@ function planPoliticalAction(
   const player = G.exp.core.players[requested.playerID];
   const supply = player.personal.influence;
   const board = G.exp.core.influencesOnBoard ?? [];
-  const tileId = requested.kind === 'placeOrMoveInfluence' ? requested.targetTileId : requested.tileId;
+  const recalledIndex = requested.kind === 'recallInfluence' ? board.findIndex(marker => marker.id === requested.markerId) : -1;
+  const tileId = requested.kind === 'placeOrMoveInfluence' ? requested.targetTileId
+    : requested.kind === 'recallInfluence' ? board[recalledIndex]?.tileId : requested.tileId;
+  if (tileId === undefined) return { ok: false, reason: 'invalid-recall-target' };
   const placement = G.exp.core.tiles.board.find(tile => tile.tileId === tileId);
   if (!placement) return { ok: false, reason: 'tile-not-on-board' };
   const tile = G.exp.core.allTiles[tileId];
@@ -266,6 +276,30 @@ function planPoliticalAction(
   const effect = { ...requested, contextCoord: placement.coord };
   const localHooks = start ? [] : hooks;
   if (isProhibited(G, effect, localHooks)) return { ok: false, reason: 'prohibited' };
+
+  if (effect.kind === 'recallInfluence') {
+    // CORE-01-04-23..26: move the real rival marker, preserving ownership and first placement.
+    if (!G.cfg.variants.influenceRecall || G.exp.core.recalledThisRound?.includes(player.id)) {
+      return { ok: false, reason: 'recall-unavailable' };
+    }
+    const target = board[recalledIndex];
+    if (start || !target || target.owner === player.id || !Object.hasOwn(G.exp.core.players, target.owner)) {
+      return { ok: false, reason: 'invalid-recall-target' };
+    }
+    if (effect.resources.length !== 3 || new Set(effect.resources).size !== 3 || effect.resources.some(r => !registry.has(r))) {
+      return { ok: false, reason: 'invalid-recall-cost' };
+    }
+    const cost = Object.fromEntries(effect.resources.map(resource => [resource, 1]));
+    const payment = planPayment(G, registry, effect, localHooks, cost, preview);
+    if (!payment.ok) return payment;
+    return { ok: true, commit: () => {
+      payment.transaction.commit();
+      board.splice(recalledIndex, 1);
+      const { id, owner, starting } = target;
+      G.exp.core.players[owner].personal.influence.push({ id, owner, ...(starting ? { starting } : {}), recalled: true });
+      (G.exp.core.recalledThisRound ??= []).push(player.id);
+    } };
+  }
 
   if (effect.kind === 'placeOrMoveInfluence') {
     // CORE-01-04-10/-11/-12 and CORE-01-08-04/-06B: one owned marker, never onto Start Committee.
@@ -291,7 +325,7 @@ function planPoliticalAction(
       return { ok: false, reason: 'committee-unavailable' };
     }
     // CORE-01-08-02/-03: all players must have placed their starting supply.
-    if (Object.values(G.exp.core.players).some(p => p.personal.influence.some(marker => marker.starting))) {
+    if (Object.values(G.exp.core.players).some(p => p.personal.influence.some(awaitsFirstPlacement))) {
       return { ok: false, reason: 'starting-influence-unplaced' };
     }
     // CORE-01-04-15/-16 and CORE-01-08-08/-09: pay the specified combination of active resorts.
@@ -749,6 +783,8 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
     }
 
     if (effect.kind === 'expireMeasureEffects') {
+      // CORE-01-04-23: the first turn of a new round reopens recall for all players.
+      if (effect.boundary === 'turnStart' && effect.nextRound) delete G.exp.core.recalledThisRound;
       // CORE-01-07-10/-11/-14/-17, EXP-01-08-M03-03, EXP-01-08-M09-04/-07 and EXP-03-08-M11-04.
       const previous = G.exp.core.activeMeasureEffects;
       if (!previous) return { ok: true };
@@ -958,7 +994,8 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
       return { ok: true };
     }
 
-    if (effect.kind === 'placeOrMoveInfluence' || effect.kind === 'formalizeInfluence' || effect.kind === 'convertResources') {
+    if (effect.kind === 'placeOrMoveInfluence' || effect.kind === 'formalizeInfluence' || effect.kind === 'convertResources'
+      || effect.kind === 'recallInfluence') {
       return executePoliticalPlan(G, effect.playerID, hooks, preview => planPoliticalAction(G, effect, active, preview));
     }
 

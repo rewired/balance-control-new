@@ -148,10 +148,7 @@ The structural definitions in EXP-01-02-E-01/-01B, counter initialization in EXP
 EXP-01-06-00A Each active expansion has its own Measure zones and cards. Applying shared definitions does not activate another expansion's Resource resorts, components, cards, or zones. Shared player-wide usage state belongs to the shared framework, not to a disabled expansion.
 EXP-01-06-00B If no expansion providing a Measure deck is active, TakeMeasure, PlayMeasure, Measure hand zones, and shared Measure usage flags do not exist in the match.
 
-EXP-01-06-01 Political Actions are:
-• PlaceOrMoveInfluence
-• FormalizeInfluence
-• ConvertResources
+EXP-01-06-01 The shared Measure framework adds the following Political Actions to those available under CORE-01-04-09:
 • TakeMeasure
 • PlayMeasure
 

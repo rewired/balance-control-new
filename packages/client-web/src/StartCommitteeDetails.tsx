@@ -1,13 +1,13 @@
 import type { Ctx } from 'boardgame.io';
 import { checkStartCommitteeFormalization, CoreStages, startCommitteeCost } from '@bc/game';
-import type { CoreState } from '@bc/rules';
+import { awaitsFirstPlacement, type CoreState } from '@bc/rules';
 import { playerLabel } from './core-board-labels.js';
 
 function blockerLabel(G: CoreState, reason: string | undefined): string {
   switch (reason) {
     case 'starting-influence-unplaced': {
       const remaining = Object.values(G.exp.core.players).flatMap(({ id, personal }) => {
-        const count = personal.influence.filter(marker => marker.starting).length;
+        const count = personal.influence.filter(awaitsFirstPlacement).length;
         return count ? [`${playerLabel(id)} (${count})`] : [];
       });
       return `Starting markers still in supply · ${remaining.join(', ')}.`;

@@ -18,6 +18,7 @@ Applied errata: ERRATA-0015 (2026-11-07, Round Settlement sequence).
 Applied errata: ERRATA-0031 (2026-11-09, hexagonal topology).
 Applied errata: ERRATA-0032 (2026-11-09, victory at the Influence limit).
 Applied errata: ERRATA-0034 (2026-11-10, resort supply cap).
+Applied errata: ERRATA-0035 (2026-11-10, influence recall).
 
 ---
 
@@ -146,7 +147,7 @@ CORE-01-04-07 After such a discard, immediately make another draw attempt within
 CORE-01-04-08 A tile may be placed only on free table space.
 CORE-01-04-08A If at least one payable legal placement exists, the player must choose such a placement; the player may not voluntarily discard or recycle the Tile instead.
 
-CORE-01-04-09 ExactlyOnePoliticalAction requires exactly one legal Political Action from PlaceOrMoveInfluence, FormalizeInfluence, ConvertResources, and any action types enabled by active expansions, except for mandatory slot completion under CORE-01-04-09A through -09C.
+CORE-01-04-09 ExactlyOnePoliticalAction requires exactly one legal Political Action from PlaceOrMoveInfluence, FormalizeInfluence, ConvertResources, RecallInfluence, and any action types enabled by active expansions, except for mandatory slot completion under CORE-01-04-09A through -09C.
 CORE-01-04-09A After all resolutions required before a mandatory Political Action slot have completed, determine whether any legal option permitted in that slot exists. Include all permitted targets, payment alternatives, cost substitutions, cost transfers, and Start Committee immunity. For an additional action after PlayMeasure, exclude PlayMeasure. If any legal option exists, one must be chosen; voluntary passing is not permitted.
 CORE-01-04-09B If no such legal option exists, automatically complete that slot without performing an action or making any payment. This applies both to ExactlyOnePoliticalAction and to the mandatory additional non-PlayMeasure action. It is not an action attempt and triggers or consumes no pending effect unless a rule explicitly provides otherwise; EXP-01-08-M06-07A is such an exception. Complete the slot without reopening it after that exception is processed.
 CORE-01-04-09C Mandatory completion without an action preserves all previously completed Tile placement, Hotspot resolutions, successful Measure play, paid costs, and shared PlayMeasure usage. It creates no additional PlayMeasure usage, card transfer, or payment; in particular, Intergenerational Pact is not consumed without its actual cost transfer. Continue with the normal turn, round, and final-Settlement procedures.
@@ -173,6 +174,11 @@ CORE-01-04-22B Both the input resort and the output resort must be active in the
 CORE-01-04-22C The three paid Resources move from the active player's PersonalSupply to Bank. The gained Resource moves from Bank to that player's PersonalSupply.
 CORE-01-04-22D Unless explicitly overridden, ConvertResources performs exactly one exchange per Political Action. The exchange may not be repeated or chained within that action.
 CORE-01-04-22E Applicable additional costs are added to the three-Resource base cost; they do not replace any of the three same-resort Resources required by the printed text. Payment and output resolve atomically under CORE-01-06-00-02 and -03.
+
+CORE-01-04-23 RecallInfluence may be chosen as the Political Action, including in an additional Political Action slot. Each player may resolve it successfully at most once per round across all slots. Reset the usage at the beginning of the next round.
+CORE-01-04-24 Choose exactly one real Influence marker owned by another player on a Board Tile other than the Start Committee. The marker's Tile is the ContextTile. The active player may choose the marker regardless of who controls the Tile and whether the active player has Influence there. Apply applicable prohibitions and payment modifiers.
+CORE-01-04-25 The base cost is one Resource from each of three different active resorts. Pay the complete cost from the active player's PersonalSupply to Bank, subject to CORE-01-06-00-07 through -12, and transfer the selected marker from Board to its owner's PersonalSupply in the same resolution. Mark the action used only on success.
+CORE-01-04-26 The recalled marker retains its identity and owner. It contributes no Board Influence while in PersonalSupply, and its owner may later place it under CORE-01-04-11. A recalled Starting Influence marker retains its origin and its completed first placement for CORE-01-08-02/-03.
 
 ---
 
@@ -358,7 +364,7 @@ A final Settlement is an actual Settlement for these definitions. Do not invent 
 
 CORE-01-08-01 A player may not exceed 7 Influence objects in total.
 
-CORE-01-08-02 FormalizeInfluence may not be performed until all players have placed all of their Starting Influence onto the Board.
+CORE-01-08-02 FormalizeInfluence may not be performed until all players have placed each of their Starting Influence markers onto the Board at least once. A later recall preserves the completed first placement under CORE-01-04-26.
 CORE-01-08-03 This restriction applies to all Committees, including the Start Committee.
 
 CORE-01-08-04 No Influence may be placed on the Start Committee.

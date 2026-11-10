@@ -194,6 +194,11 @@ export function describeOption(G: CoreState, option: EngineMoveOption): string {
     if (type === 'activateAuthorityApparatus' && payload.regulation) {
       return `Activate Authority Apparatus · ${describeRegulation(G, payload.regulation)}${payment}`;
     }
+    if (type === 'recallInfluence' && option.contextTile) {
+      const marker = core.influencesOnBoard?.find(item => item.id === payload.markerId);
+      const target = marker ? `${playerLabel(marker.owner)}'s marker (${marker.id})` : 'opposing marker';
+      return `Recall ${target} from ${boardTileLabel(core, option.contextTile)} to its owner's supply${payment}`;
+    }
     if (type === 'placeOrMoveInfluence' && payload.targetTileId) {
       const target = boardTileLabel(core, payload.targetTileId);
       const markers = payload.sourceTileId
