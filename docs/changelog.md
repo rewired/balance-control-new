@@ -660,3 +660,8 @@
 - Eine Aufnahme aus dem Markt bei leerer Hand lässt die reguläre politische Aktion offen. Die neue Karte kann sofort ausgespielt werden. Nach der freien Aufnahme ist im selben Zug keine zweite Aufnahme möglich.
 - Measures kosten je eine Einheit ihres eigenen Ressorts weniger. Der gewöhnliche Grassroots-Tausch in SEC liefert zwei Einheiten. Die Regulationsplatzierung kostet ein SEC, mit Situation Assessment kann der Basispreis auf null fallen.
 - Das kontrollierte Authority Apparatus kann Security Level, Control und Administration platzieren. Neue Partien mit Measures speichern diese Regeln nach ERRATA-0037. Vorhandene Partien und Replays verwenden ihre gespeicherte Fassung.
+
+## 2026-11-10 – SEC-Resorts in Security & Order
+
+- EXP-02 fügt für zwei bis vier Spieler drei SEC-Resorts mit den Werten 1, 1 und 2 hinzu. Im Add-on für fünf oder sechs Spieler kommt ein weiteres W2 hinzu. SEC-Resorts produzieren bei der normalen Rundenabrechnung.
+- Der Standardtausch in SEC gibt wieder eine Einheit aus. ERRATA-0038 speichert diese Regeln pro Partie, sodass ältere Replays auch mit der bisherigen 2-SEC-Auszahlung reproduzierbar bleiben.

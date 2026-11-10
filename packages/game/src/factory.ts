@@ -21,6 +21,8 @@ export function setupCoreMatch(numPlayers: number, setupData: unknown = {}, rule
     cfg.variants.disruption = true;
     // ERRATA-0037: only matches with a Measure deck use the new access rules.
     if (Object.values(cfg.expansions).some(Boolean)) cfg.variants.measureRegulationAccess = true;
+    // EXP-02-03-07: record the expanded Security tile pool for future replays.
+    if (cfg.expansions.exp02) cfg.variants.securityResorts = true;
   }
   const G = buildInitialCoreState(numPlayers, matchSeed, cfg);
   const modules = createExpansionRegistry(cfg.expansions);

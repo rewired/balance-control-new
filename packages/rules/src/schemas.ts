@@ -31,6 +31,7 @@ const VariantFlagsSchema = z.object({
   resourceCap: z.literal(true).optional(), // CORE-01-07-04A; omitted in matches saved before ERRATA-0034.
   influenceRecall: z.literal(true).optional(), // CORE-01-04-23; omitted in matches saved before ERRATA-0035.
   measureRegulationAccess: z.literal(true).optional(), // EXP-01-06-04E/-05E and ERRATA-0037.
+  securityResorts: z.literal(true).optional(), // EXP-02-03-07 and ERRATA-0038.
 }).strict().default({});
 
 export const MatchConfigSchema = z

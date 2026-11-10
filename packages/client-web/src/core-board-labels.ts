@@ -34,7 +34,8 @@ export function tileRuleSummary(tile: Tile, { expansions, variants }: CoreState[
     case 'Grassroots':
       // CORE-01-04-21A, CORE-01-04-22A, CORE-01-04-22B, CORE-01-04-22D
       return 'If you control this tile, you can trade 3 resources of one active resort for 1 of another active resort as a political action. Each action allows one exchange.'
-        + (expansions.exp02 && variants.measureRegulationAccess ? ' An ordinary exchange into SEC yields 2 SEC before modifiers.' : '');
+        + (expansions.exp02 && variants.measureRegulationAccess && !variants.securityResorts
+          ? ' An ordinary exchange into SEC yields 2 SEC before modifiers.' : '');
     case 'Lobbyist':
       // CORE-01-05-04, CORE-01-05-05, CORE-01-05-06
       return 'The controller adds 1 virtual influence to each adjacent tile except other Lobbyists and the Start Committee. This bonus counts only toward majority.';

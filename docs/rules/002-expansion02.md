@@ -13,6 +13,7 @@ Applied errata: ERRATA-0014 (2026-11-07, effect costs and payers).
 Applied errata: ERRATA-0015 (2026-11-07, Round Settlement sequence).
 Applied errata: ERRATA-0036 (2026-11-10, influence distance and disruption actions).
 Applied errata: ERRATA-0037 (2026-11-10, Measure and Regulation access).
+Applied errata: ERRATA-0038 (2026-11-10, Security ResortTiles).
 
 ---
 
@@ -41,7 +42,7 @@ EXP-02-00-04 EXP-02 introduces the persistent object type Regulation.
 EXP-02-00-05 EXP-02 introduces one System Tile and one Hotspot Tile.
 EXP-02-00-06 EXP-02 introduces a Measure deck.
 EXP-02-00-07 Victory conditions remain unchanged.
-EXP-02-00-08 Security produces no Resources.
+EXP-02-00-08 Security adds SEC ResortTiles under EXP-02-03-07.
 
 ---
 
@@ -53,7 +54,7 @@ EXP-02-01-03 SEC behaves identically to DOM, FOR, INF unless explicitly modified
 EXP-02-01-04 SEC counts as a distinct resort for all “different resorts” requirements.
 EXP-02-01-05 SEC may be used wherever “a Resource” is required.
 EXP-02-01-06 SEC exists only while EXP-02 is active.
-EXP-02-01-07 An ordinary Grassroots exchange under CORE-01-04-22A that selects SEC as its output yields a base 2 SEC instead of 1. Apply output modifiers to that amount. Alternative exchanges retain their specified output.
+EXP-02-01-07 An ordinary Grassroots exchange under CORE-01-04-22A that selects SEC as its output yields a base 1 SEC. Alternative exchanges retain their specified output.
 
 ---
 
@@ -156,6 +157,7 @@ EXP-02-03-03 Add Hotspot “Inner Order” ×1 to DrawPile.
 EXP-02-03-04 Add System Tile “Authority Apparatus” ×1 to DrawPile.
 EXP-02-03-05 No modification to Starting Influence.
 EXP-02-03-06 No modification to Round structure.
+EXP-02-03-07 Add two SEC ResortTiles of printed value 1 and one of printed value 2 to DrawPile. With the 5–6 Player Add-On, add one additional SEC ResortTile of printed value 2.
 
 ---
 
@@ -375,7 +377,7 @@ EXP-02-08-M15-03 Effect: Reduce cost of next Regulation placement this round by 
 
 # EXP-02-09 RESTRICTIONS
 
-EXP-02-09-01 Security produces no Resources.
+EXP-02-09-01 SEC ResortTiles follow the CORE-01-06-16 production rules.
 EXP-02-09-02 Regulations do not modify Influence cap.
 EXP-02-09-03 Regulations do not alter control ownership.
 EXP-02-09-04 No Regulation creates Upkeep.

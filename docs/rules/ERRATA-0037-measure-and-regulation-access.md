@@ -10,4 +10,6 @@ Reduce the printed cost of a Measure by one unit of its deck's resource (ECO, SE
 
 An ordinary Grassroots exchange into SEC yields 2 SEC. Regulation placement costs 1 SEC before modifiers. Situation Assessment can reduce that base to 0. A controlled Authority Apparatus can also place SecurityLevel, Control or Administration as its Political Action, with the normal placement price.
 
+ERRATA-0038 supersedes the 2-SEC payout for matches with SEC ResortTiles.
+
 New matches with a Measure deck record these rules at setup. Saved matches and replays without the rule marker retain their recorded prices, outputs and action timing.

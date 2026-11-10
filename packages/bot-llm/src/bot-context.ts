@@ -89,7 +89,10 @@ function describeBotPosition({ G, ctx }: ComputerPosition, playerID: string,
     ...(G.cfg.variants.measureRegulationAccess ? [
       'Measure access (EXP-01-06-04E/-05E): If your hand is empty, taking one card in the regular window keeps that window open. You can play that card this turn and cannot take a second card. The listed option prices already deduct one resource of the card’s own deck from the printed price.',
       ...(G.cfg.expansions.exp02 ? [
-        'Security access (EXP-02-01-07/-04-A-01/-05-02B): A standard exchange into SEC yields two. Regulation placement costs one SEC before modifiers. The player controlling Authority Apparatus can also place a SecurityLevel, Control or Administration.',
+        G.cfg.variants.securityResorts
+          ? 'Security supply (EXP-02-01-07/-03-07): SEC Resorts produce at settlement. A standard Grassroots exchange into SEC yields one, as with other resources.'
+          : 'Security supply (ERRATA-0037): A standard exchange into SEC yields two.',
+        'Regulations (EXP-02-04-A-01/-05-02B): Regulation placement costs one SEC before modifiers. The player controlling Authority Apparatus can also place a SecurityLevel, Control or Administration.',
       ] : []),
     ] : []),
     ...expansions.flatMap(({ label, file, prefix }) => [label, ...visibleCardRules(file, prefix, visible)]),

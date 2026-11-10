@@ -1,5 +1,5 @@
 import { Client } from 'boardgame.io/client';
-import { createResolver, type BoardPlacement, type CoreState } from '@bc/rules';
+import { createResolver, type BoardPlacement, type CoreState, type MatchConfigInput } from '@bc/rules';
 import { describe, expect, it } from 'vitest';
 import { createBCGame } from './factory.js';
 import { engineMoveOptions } from './legal-options.js';
@@ -7,10 +7,11 @@ import { engineMoveOptions } from './legal-options.js';
 const apparatus = { tileId: 'AuthorityApparatus', coord: { q: 1, r: 0 } };
 const grassroots = { tileId: 'Grassroots-1', coord: { q: 1, r: -1 } };
 
-function setupSecurity(board: BoardPlacement[], prepare: (G: CoreState) => void, rules: 'current' | 'recorded' = 'recorded') {
+function setupSecurity(board: BoardPlacement[], prepare: (G: CoreState) => void, rules: 'current' | 'recorded' = 'recorded',
+  variants: MatchConfigInput['variants'] = {}) {
   const game = createBCGame({
     expansions: { exp02: true },
-    variants: { resourceCap: true, influenceRecall: true, influenceDistance: true, disruption: true },
+    variants: { resourceCap: true, influenceRecall: true, influenceDistance: true, disruption: true, ...variants },
   }, rules);
   const setup = game.setup!;
   game.setup = (context, data) => {
@@ -66,17 +67,22 @@ describe('Regulation operations through boardgame.io', () => {
     expect(after.G.exp.core.players['0'].personal.resources).toMatchObject({ DOM: 0, FOR: 0, SEC: 0, INF: 0 });
   });
 
-  it.each([0, 1])('converts into two SEC before applying %i Security Levels', levels => {
+  it.each([
+    { rules: 'current', levels: 0, expected: 1 },
+    { rules: 'current', levels: 1, expected: 0 },
+    { rules: 'recorded', levels: 0, expected: 2 },
+    { rules: 'recorded', levels: 1, expected: 1 },
+  ] as const)('converts into $expected SEC under $rules rules with $levels Security Levels', ({ rules, levels, expected }) => {
     const client = setupSecurity([grassroots], G => {
       mark(G, '0', grassroots.tileId);
       G.exp.core.players['0'].personal.resources.DOM = 3;
       if (levels) G.exp.exp02!.regulations!.attached.push({ id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId });
-    }, 'current');
+    }, rules, { measureRegulationAccess: true });
     client.moves.placeTile({ q: -1, r: 0 });
     client.moves.doPoliticalAction({
       type: 'convertResources', payload: { tileId: grassroots.tileId, input: 'DOM', output: 'SEC' },
     });
-    expect(client.getState()!.G.exp.core.players['0'].personal.resources).toMatchObject({ DOM: 0, SEC: 2 - levels });
+    expect(client.getState()!.G.exp.core.players['0'].personal.resources).toMatchObject({ DOM: 0, SEC: expected });
   });
 
   it.each([false, true])('quotes a new Apparatus placement with the recorded discount active: %s', discounted => {

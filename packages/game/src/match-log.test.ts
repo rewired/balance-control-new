@@ -4,10 +4,14 @@ import { createBCGame } from './factory.js';
 import { engineMoveOptions, hashEngineState } from './legal-options.js';
 import { createMatchLog, createMatchLogRecorder, verifyMatchLog } from './match-log.js';
 
-it('replays an empty-hand pickup, a zero-cost Security Measure and its additional action in one turn', () => {
-  const game = createBCGame({ matchSeed: 'measure-access-1', expansions: { exp02: true, exp03: true } });
+it('replays the original access rules for an empty-hand pickup and same-turn play', () => {
+  const game = createBCGame({
+    matchSeed: 'measure-access-1', expansions: { exp02: true, exp03: true },
+    variants: { resourceCap: true, influenceRecall: true, influenceDistance: true, disruption: true, measureRegulationAccess: true },
+  }, 'recorded');
   const client = Client({ game, numPlayers: 2 });
   const initial = structuredClone(client.getInitialState());
+  expect(Object.keys(initial.G.exp.core.allTiles)).not.toContain('SEC-W1-1');
   const offer = initial.G.exp.core.tiles.drawResolution!;
   client.moves.placeTile(offer.legalCoords[0]);
   client.moves.doPoliticalAction({ type: 'exp02_takeMeasure', payload: { measureId: 'SEC_M15' } });
@@ -32,6 +36,30 @@ it('replays an empty-hand pickup, a zero-cost Security Measure and its additiona
   expect(final.G.exp.core).not.toHaveProperty('emptyHandPickupUsed');
   expect(final.G.lastTurnHash).toBe('c347ce143dd37aed8cf696d314da769038cc2792255e1f4d051c2083ec41b7bd');
   const log = createMatchLog(initial, final, client.log!, { mode: 'hotseat' });
+  expect(verifyMatchLog(JSON.parse(JSON.stringify(log)))).toEqual(log);
+});
+
+it('settles production from a drawn SEC Resort and reproduces it in a replay', () => {
+  const game = createBCGame({ matchSeed: 'security-resorts-92', expansions: { exp02: true } });
+  const client = Client({ game, numPlayers: 2 });
+  const initial = structuredClone(client.getInitialState());
+  expect(initial.G.exp.core.tiles.drawResolution?.tileId).toBe('SEC-W2-1');
+
+  for (const playerID of ['0', '1']) {
+    const offer = client.store.getState().G.exp.core.tiles.drawResolution!;
+    client.moves.placeTile(offer.legalCoords[0]);
+    client.moves.doPoliticalAction({
+      type: 'placeOrMoveInfluence', payload: { markerId: `INF-${playerID}-1`, targetTileId: offer.tileId },
+    });
+  }
+
+  const final = client.store.getState();
+  expect(final.ctx.turn).toBe(3);
+  expect(final.G.exp.core.players['0'].personal.resources.SEC).toBe(2);
+  expect(final.G.exp.core.players['1'].personal.resources.SEC).toBe(0);
+  expect(final.G.lastTurnHash).toBe('cd72f4c6e496e005858b8688cb84adbc0aae4c4574c74f098a25f6ff2fc89d74');
+  const log = createMatchLog(initial, final, client.log!, { mode: 'hotseat' });
+  expect(log.setup.game.variants.securityResorts).toBe(true);
   expect(verifyMatchLog(JSON.parse(JSON.stringify(log)))).toEqual(log);
 });
 

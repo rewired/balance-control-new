@@ -157,7 +157,7 @@ export function inspectExpansions(G: CoreState) {
     const stock = players[playerID].personal.resources;
     const hasGrassroots = board.some(site => site.controller === playerID && site.tile.kind === 'Grassroots'
       && !hasBlockade(site.tileId) && (regulationsAt.get(site.tileId)?.filter(regulation => regulation.kind === 'SecurityLevel').length ?? 0)
-        < (G.cfg.variants.measureRegulationAccess ? 2 : 1));
+        < (G.cfg.variants.measureRegulationAccess && !G.cfg.variants.securityResorts ? 2 : 1));
     return { cards, marketPlans, secGoal, stock, hasGrassroots, grassNeeded: (stock.SEC ?? 0) < Math.max(secGoal, marketGoal) };
   }
 

@@ -1,5 +1,5 @@
 import {
-  createResolver, isFullySurrounded, PaymentSelectionSchema, RegulationOperationSchema, z,
+  createResolver, createResortTiles, isFullySurrounded, PaymentSelectionSchema, RegulationOperationSchema, z,
   type AxialCoord, type BoardRegulation, type CoreState, type EffectDescriptor, type ExpansionModule, type Surcharge,
 } from '@bc/rules';
 import {
@@ -33,15 +33,18 @@ export function exp02Security(): ExpansionModule {
     id: 'exp02',
     measurePrefix: 'SEC_',
     measureDiscountResource: 'SEC', // EXP-01-06-05E
-    // EXP-02-01-07: this is the base payout, before output modifiers.
-    conversionBaseOutput: (G, resource) => G.cfg.variants.measureRegulationAccess && resource === 'SEC' ? 2 : undefined,
+    // EXP-02-01-07 and ERRATA-0037: only the earlier access rules doubled the base payout.
+    conversionBaseOutput: ({ cfg: { variants } }, resource) =>
+      variants.measureRegulationAccess && !variants.securityResorts && resource === 'SEC' ? 2 : undefined,
     actions: regulationActions,
     // EXP-02-01-01 and EXP-02-03-01..04.
     registerResources: registry => registry.register('SEC'),
     setupExpansionState: initializeRegulations,
-    tiles: () => [
+    tiles: ({ addOn56, variants }) => [
       { id: 'InnerOrder', kind: 'Hotspot', hotspotOutcome: 'regulation' },
       { id: 'AuthorityApparatus', kind: 'AuthorityApparatus' },
+      // EXP-02-03-07: add SEC material only in the recorded production ruleset.
+      ...(variants.securityResorts ? createResortTiles('SEC', { 1: 2, 2: addOn56 ? 2 : 1 }) : []),
     ],
     measureDeck: () => Array.from({ length: 15 }, (_, index) => `SEC_M${String(index + 1).padStart(2, '0')}`),
     measureRules: {
