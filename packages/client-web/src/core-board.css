@@ -401,12 +401,7 @@ button:disabled { cursor: default; }
 .tile-corner[data-player="3"] { left: 50%; top: 86%; }
 .tile-corner[data-player="4"] { left: 15%; top: 70%; }
 .tile-corner[data-player="5"] { left: 15%; top: 30%; }
-.tile-corner .player-marker-numbered {
-  width: 26px;
-  height: 26px;
-  font-size: 15px;
-}
-.influence-chip {
+.influence-chip, .formalization-chip {
   display: flex;
   flex: none;
   flex-direction: column;
@@ -421,7 +416,9 @@ button:disabled { cursor: default; }
   box-shadow: 0 1px 2px #0008;
   font: 750 19px/18px var(--bc-mono);
 }
-.core-map-key .influence-chip { width: 1.4rem; height: 1.4rem; font-size: .85rem; }
+.formalization-chip svg { width: 65%; height: 65%; }
+.formalization-chip[data-status="available"] { border-color: #e2f3ff; }
+.core-map-key :is(.influence-chip, .formalization-chip) { width: 1.4rem; height: 1.4rem; font-size: .85rem; }
 .majority-key { width: .8em; height: .8em; border: 1px solid; border-radius: 50%; background: #2c4155; }
 :is(.influence-chip, .majority-key)[data-majority="control"] { border-color: #e2f3ff; }
 :is(.influence-chip, .majority-key)[data-majority="tie"] {
@@ -445,8 +442,6 @@ button:disabled { cursor: default; }
   color: #e5edf5;
   font: 750 10px/1 system-ui, sans-serif;
 }
-.tile-formalization { top: 110px; max-width: 72px; font-size: 12px; }
-.tile-formalization[data-available="true"] { border-color: #9ee5b7; background: #b7f6cc; color: #102019; }
 .hex-cell:is(:hover, :focus-visible, [aria-pressed="true"]) .tile-action { background: #edf4fa; color: #111923; }
 .hex-cell .tile-move-endpoint { background: var(--move-preview-color); color: #111923; }
 

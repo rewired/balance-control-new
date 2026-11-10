@@ -30,6 +30,21 @@ export function InfluenceChip({ id, count, virtual = 0, majority }: {
   </span>;
 }
 
+export function FormalizationChip({ id, status }: { id: string; status: 'locked' | 'available' | 'used' }) {
+  const palette = playerPalette(id);
+  return <span className="formalization-chip" data-status={status} aria-hidden="true" style={{
+    '--player-color': palette?.fill,
+    '--player-text': palette?.text,
+  } as CSSProperties}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      {status === 'used' ? <path d="m5 12 4 4L19 6" /> : <>
+        <rect x="5" y="10" width="14" height="10" rx="2" />
+        <path d={status === 'available' ? 'M8 10V6a4 4 0 0 1 8 0' : 'M8 10V6a4 4 0 0 1 8 0v4'} />
+      </>}
+    </svg>
+  </span>;
+}
+
 export function ResourceBadge({ resource }: { resource: string }) {
   const visual = resortVisuals[resource];
   return (

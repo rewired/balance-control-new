@@ -7,7 +7,7 @@ import grassrootsIcon from '@bc/exp-00-core/assets/tile-icons/grassroots.svg';
 import hotspotIcon from '@bc/exp-00-core/assets/tile-icons/hotspot.svg';
 import startCommitteeIcon from '@bc/exp-00-core/assets/tile-icons/start-committee.svg';
 import { playerColor, resortVisuals } from './core-board-visuals.js';
-import { InfluenceChip, PlayerMarker, RegulationBadge } from './CoreSymbols.js';
+import { FormalizationChip, InfluenceChip, RegulationBadge } from './CoreSymbols.js';
 import HexBoardViewport from './HexBoardViewport.js';
 import {
   committeeProgress, coordLabel, influenceLabel, playerLabel, regulationLabel,
@@ -162,20 +162,20 @@ export default function CoreHexBoard({
                 title={label} aria-label={label} onClick={() => onInspect(tileId)}>
                 <TileFace tile={tile} controller={controller} regulation={regulation} showOutput />
                 <span className="tile-corners" aria-hidden="true">
-                  {influence.map(({ id, count, virtual }) => (
+                  {startProgress ? Object.values(core.players).map(({ id, usedStartCommittee }) => (
+                    <span key={id} className="tile-corner" data-player={id}>
+                      <FormalizationChip id={id} status={usedStartCommittee ? 'used'
+                        : canFormalize && id === formalizationPlayer ? 'available' : 'locked'} />
+                    </span>
+                  )) : influence.map(({ id, count, virtual }) => (
                     <span key={id} className="tile-corner" data-player={id}>
                       <InfluenceChip id={id} count={count} virtual={virtual}
                         majority={controller === id ? 'control' : leaders.includes(id) ? 'tie' : undefined} />
                     </span>
                   ))}
-                  {startProgress?.used.map(({ id }) => <span key={id} className="tile-corner" data-player={id}>
-                    <PlayerMarker id={id} numbered />
-                  </span>)}
                 </span>
-                {formalization ? <span className="tile-action tile-formalization" data-available={canFormalize}>
-                  {canFormalize ? 'Formalize' : formalization}
-                </span> : endpoint ? <span className="tile-action tile-move-endpoint">{endpoint === 'source' ? 'From →' : '→ To'}</span>
-                  : action && <span className="tile-action">{action}</span>}
+                {endpoint ? <span className="tile-action tile-move-endpoint">{endpoint === 'source' ? 'From →' : '→ To'}</span>
+                  : !formalization && action && <span className="tile-action">{action}</span>}
               </button>
             );
           })}
@@ -197,7 +197,9 @@ export default function CoreHexBoard({
             <span><InfluenceChip id="0" count={1} /> Influence <span className="virtual-influence">+ virtual</span></span>
             <span><i className="majority-key" data-majority="control" aria-hidden="true" /> Controls tile</span>
             <span><i className="majority-key" data-majority="tie" aria-hidden="true" /> Tied lead</span>
-            <span><PlayerMarker id="0" numbered /> Already used Start Committee</span>
+            <span><FormalizationChip id="0" status="locked" /> Start Committee unavailable</span>
+            <span><FormalizationChip id="0" status="available" /> Can use Start Committee now</span>
+            <span><FormalizationChip id="0" status="used" /> Already used Start Committee</span>
             {G.exp.exp02?.regulations && <span><RegulationBadge kind="Administration" /> Regulation</span>}
             {legalCoords.length > 0 && <span><b>+</b> Legal tile placement</span>}
             {tileActions.size > 0 && <span><b>Place / Move</b> Marker action</span>}

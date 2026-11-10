@@ -126,7 +126,9 @@ it('marks only players who still owe a first placement when inspecting either ki
 
 it('shows the legal Start Committee action and the player who has already used it', () => {
   const { state, options, submit, render } = hotseat();
-  expect(render()).toContain('Formalization: Locked. Used Start Committee: none');
+  const initial = render();
+  expect(initial).toContain('Formalization: Locked. Used Start Committee: none');
+  expect(initial).toContain('data-player="0"><span class="formalization-chip" data-status="locked"');
   submit(options()[0]);
   const { G, ctx, _stateID } = structuredClone(state());
   const core = G.exp.core;
@@ -140,8 +142,9 @@ it('shows the legal Start Committee action and the player who has already used i
     computerPlayers={new Set(['0'])} submit={() => undefined} />);
   const startTile = board.match(/<button [^>]*aria-label="Start Committee \(0, 0\)[^"]*"[^>]*>.*?<\/button>/s)?.[0];
   expect(startTile).toContain('Formalization: Available for Player 1. Used Start Committee: Player 2');
-  expect(startTile).toMatch(/class="tile-corner" data-player="1">.*?>P2<\/span>/);
-  expect(startTile).toContain('data-available="true">Formalize</span>');
+  expect(startTile).toContain('data-player="0"><span class="formalization-chip" data-status="available"');
+  expect(startTile).toContain('data-player="1"><span class="formalization-chip" data-status="used"');
+  expect(startTile).not.toContain('class="tile-action');
   const details = renderToStaticMarkup(<CommitteeFormalization G={G} ctx={ctx} kind="StartCommittee"
     tileId="StartCommittee" playerID="0" available />);
   expect(details).toMatch(/Already used the Start Committee.*?>P2<\/span>/);
