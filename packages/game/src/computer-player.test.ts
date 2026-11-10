@@ -7,6 +7,16 @@ import { createBCGame } from './factory.js';
 import { engineMoveOptions, hashEngineState, previewEngineOptions } from './legal-options.js';
 import hotseatReplay from './fixtures/hotseat-c2082d6d.json';
 
+function recordedHotseat() {
+  const { numPlayers, ...setupData } = hotseatReplay.setup.game;
+  const game = { ...createBCGame(setupData, 'recorded'), seed: hotseatReplay.setup.engineSeed };
+  const reduce = CreateGameReducer({ game });
+  const initial = InitializeGame({ game, numPlayers, setupData });
+  const play = (state: typeof initial, { move, playerID, args }: typeof hotseatReplay.actions[number]) =>
+    reduce(state, { type: 'MAKE_MOVE', payload: { type: move, playerID, args } });
+  return { game, initial, play };
+}
+
 it('ties the game by blocking the opponent’s last-turn Hotspot payout', () => {
   const game = createBCGame({ matchSeed: 'hotspot-trap' });
   const setup = game.setup!;
@@ -59,13 +69,7 @@ it('ties the game by blocking the opponent’s last-turn Hotspot payout', () => 
 });
 
 it('recalls a marker from the next player in the recorded Hotseat turn 63', () => {
-  const { numPlayers, ...setupData } = hotseatReplay.setup.game;
-  const game = { ...createBCGame(setupData, 'recorded'), seed: hotseatReplay.setup.engineSeed };
-  const reduce = CreateGameReducer({ game });
-  const initial = InitializeGame({ game, numPlayers, setupData });
-  const play = (state: typeof initial, { move, playerID, args }: typeof hotseatReplay.actions[number]) =>
-    reduce(state, { type: 'MAKE_MOVE', payload: { type: move, playerID, args } });
-
+  const { game, initial, play } = recordedHotseat();
   const state = hotseatReplay.actions.slice(0, 125).reduce(play, initial);
   expect(state.ctx).toMatchObject({ turn: 63, currentPlayer: '2' });
   const positionHash = 'fbc608530b8ea807d9c5f929828810a727cc9f45cd3832a5e35db196448a30ca';
@@ -95,7 +99,6 @@ it('builds the same worker position and chooses the same action when the hidden 
   const reordered = structuredClone(state);
   reordered.G.exp.core.tiles.drawPile.reverse();
   for (const id of ['exp01', 'exp02', 'exp03'] as const) reordered.G.exp[id]!.measures!.drawPile.reverse();
-  reordered.G.matchSeed = 'another-hidden-seed';
   reordered.G.lastTurnHash = 'another-hidden-hash';
   const visible = createComputerPosition(state);
   const other = createComputerPosition(reordered);
@@ -114,6 +117,36 @@ it('builds the same worker position and chooses the same action when the hidden 
   expect(choice).toBeDefined();
   expect(chooseComputerMove(game, other, '0')).toEqual(choice);
 });
+
+it('assigns distinct, stable search styles by match seed and seat without changing the simulated state', () => {
+  const game = createBCGame({ matchSeed: 'seat-styles', addOn56: true });
+  const state = InitializeGame({ game, numPlayers: 6 });
+  const first = createComputerPosition(state);
+  expect(Object.keys(first.styles)).toEqual(state.ctx.playOrder);
+  expect(new Set(Object.values(first.styles).map(style => JSON.stringify(style))).size).toBe(6);
+  expect(createComputerPosition({ ...state, _stateID: state._stateID + 1, ctx: { ...state.ctx, turn: 2 } }).styles)
+    .toEqual(first.styles);
+
+  const { styles, ...position } = createComputerPosition({ ...state, G: { ...state.G, matchSeed: 'other-seat-styles' } });
+  const { styles: firstStyles, ...firstPosition } = first;
+  expect(styles).not.toEqual(firstStyles);
+  expect(position).toEqual(firstPosition);
+});
+
+it('can choose different legal moves when the seed changes the search styles for the same position', () => {
+  const { game, initial, play } = recordedHotseat();
+  const state = hotseatReplay.actions.slice(0, 19).reduce(play, initial);
+  const playerID = state.ctx.currentPlayer;
+  const original = createComputerPosition(state);
+  const reseeded = createComputerPosition({ ...state, G: { ...state.G, matchSeed: 'seat-styles' } });
+  expect(reseeded.G).toEqual(original.G);
+
+  const damage = chooseComputerMove(game, original, playerID)!;
+  const relocate = chooseComputerMove(game, reseeded, playerID)!;
+  expect(damage.parameters[0]).toMatchObject({ type: 'damageResort' });
+  expect(relocate.parameters[0]).toMatchObject({ type: 'placeOrMoveInfluence' });
+  expect(Array.from(previewEngineOptions(game, state, [damage, relocate]))).toHaveLength(2);
+}, 20_000);
 
 it('takes a Security Measure, trades for SEC and blocks rival production under the recorded pre-cap rules', () => {
   const game = createBCGame({ matchSeed: 'security-planning', expansions: { exp02: true } }, 'recorded');

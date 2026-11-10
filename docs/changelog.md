@@ -637,3 +637,7 @@
 ## 2026-11-10 – Plättchenregeln dauerhaft sichtbar
 
 - Die Regeln für ausgewählte und frisch gezogene Plättchen stehen direkt im Inspektor und lassen sich nicht einklappen.
+
+## 2026-11-10 – Sitzprofile für die Local AI
+
+- Match-Seed und Sitznummer bestimmen ein stabiles Suchprofil. Die Plätze gewichten einsetzbare Vorratsmarker und wirtschaftliche Position unterschiedlich. Der Worker verwendet weiterhin separat gemischte hypothetische Stapel.

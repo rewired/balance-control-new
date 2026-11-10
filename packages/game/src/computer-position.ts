@@ -2,16 +2,34 @@ import { createExpansionRegistry, type CoreState } from '@bc/rules';
 import { shuffleSeeded } from '@bc/shared';
 import type { EngineSnapshot } from './legal-options.js';
 
+export interface ComputerStyle {
+  economyWeight: number;
+  reserveWeight: number;
+}
+
+const SEAT_STYLES: readonly ComputerStyle[] = [
+  { economyWeight: 0.85, reserveWeight: 0.9 },
+  { economyWeight: 0.85, reserveWeight: 1 },
+  { economyWeight: 0.85, reserveWeight: 1.1 },
+  { economyWeight: 1.15, reserveWeight: 0.9 },
+  { economyWeight: 1.15, reserveWeight: 1 },
+  { economyWeight: 1.15, reserveWeight: 1.1 },
+];
+
 export interface ComputerPosition {
   G: CoreState;
   ctx: EngineSnapshot['ctx'];
   revision: number;
+  styles: Record<string, ComputerStyle>;
 }
 
 /** Build a hypothetical position using material and zones visible to a hotseat player. */
 export function createComputerPosition({ G, ctx, _stateID }: EngineSnapshot): ComputerPosition {
   const matchSeed = `computer-search|${ctx.turn}|${_stateID}`;
   const core = G.exp.core;
+  // Assign by seat ID from a match-specific permutation so each seat gets a distinct style.
+  const seatStyles = shuffleSeeded(SEAT_STYLES, `computer-style|${G.matchSeed}`);
+  const styles = Object.fromEntries(Object.keys(core.players).map((id, seat) => [id, seatStyles[seat]]));
   const tiles = core.tiles;
   const knownTiles = new Set([...tiles.discardFaceUp, ...tiles.board.map(tile => tile.tileId), tiles.drawResolution?.tileId]);
   // CORE-01-00-05/-05A and CORE-01-03-02: infer the remaining tile set from the public material and zones.
@@ -46,5 +64,5 @@ export function createComputerPosition({ G, ctx, _stateID }: EngineSnapshot): Co
     };
   }
   // Use a separate seed for simulated recycling. Do not forward the live hash or engine PRNG state.
-  return { G: { cfg: G.cfg, exp, matchSeed }, ctx, revision: _stateID };
+  return { G: { cfg: G.cfg, exp, matchSeed }, ctx, revision: _stateID, styles };
 }

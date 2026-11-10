@@ -2,7 +2,7 @@ import type { Ctx, Game } from 'boardgame.io';
 import { CoreStages, influenceLimit } from '@bc/exp-00-core';
 import { computeMajority, getTopology, type AxialCoord, type CoreState, type PaymentSelection, type RegulationOperation } from '@bc/rules';
 import { inspectExpansions } from './computer-expansions.js';
-import type { ComputerPosition } from './computer-position.js';
+import type { ComputerPosition, ComputerStyle } from './computer-position.js';
 import { engineMoveOptions, previewEngineOptions, type EngineMoveOption, type EngineSnapshot } from './legal-options.js';
 
 const TURN_HORIZON = 3;
@@ -12,7 +12,9 @@ const REPLY_WIDTH = 2;
 interface PositionValue {
   winners?: string[];
   turn: number;
-  scores: Record<string, number>;
+  influence: Record<string, number>;
+  reserves: Record<string, number>;
+  economy: Record<string, number>;
 }
 
 function reserveScores(G: CoreState, ctx: Ctx): Record<string, number> {
@@ -39,44 +41,45 @@ function reserveScores(G: CoreState, ctx: Ctx): Record<string, number> {
 function evaluate({ G, ctx }: EngineSnapshot): PositionValue {
   const { allTiles, influencesOnBoard, players, tiles } = G.exp.core;
   // Heuristic only: value real markers first, then future influence and economic position.
-  const reserves = reserveScores(G, ctx);
-  const scores = Object.fromEntries(Object.values(players).map(({ id, personal }) => [id,
-    reserves[id] + Object.values(personal.resources).reduce((sum, amount) => sum + amount, 0),
+  const influence = Object.fromEntries(Object.keys(players).map(id => [id, 0]));
+  const economy = Object.fromEntries(Object.values(players).map(({ id, personal }) => [id,
+    Object.values(personal.resources).reduce((sum, amount) => sum + amount, 0),
   ]));
-  for (const { owner } of influencesOnBoard ?? []) scores[owner] += 100;
+  for (const { owner } of influencesOnBoard ?? []) influence[owner] += 100;
   const expansions = inspectExpansions(G);
-  if (expansions) expansions.score(scores);
+  if (expansions) expansions.score(economy);
   else {
     for (const { tileId, coord } of tiles.board) {
       const tile = allTiles[tileId];
       if (tile.kind !== 'ResortTile') continue;
       const controller = computeMajority(G, coord);
-      if (controller !== null) scores[controller] += 3 * tile.w;
+      if (controller !== null) economy[controller] += 3 * tile.w;
     }
   }
   // CORE-01-09-00 and CORE-01-09-03/-04: use the engine result for a finished game.
   const result = ctx.gameover as { winners: string[] } | undefined;
-  return { winners: result?.winners, turn: ctx.turn, scores };
+  return { winners: result?.winners, turn: ctx.turn, influence, reserves: reserveScores(G, ctx), economy };
 }
 
-function compare(left: PositionValue, right: PositionValue, playerID: string): number {
+function compare(left: PositionValue, right: PositionValue, playerID: string, style: ComputerStyle): number {
   const rank = ({ winners }: PositionValue) => {
     if (!winners) return 0;
     if (!winners.includes(playerID)) return -1;
     return 1 / winners.length;
   };
-  const margin = ({ scores }: PositionValue) => scores[playerID] - Math.max(
-    ...Object.entries(scores).filter(([id]) => id !== playerID).map(([, score]) => score),
-  );
+  const margin = ({ influence, reserves, economy }: PositionValue) => {
+    const score = (id: string) => influence[id] + style.reserveWeight * reserves[id] + style.economyWeight * economy[id];
+    return score(playerID) - Math.max(...Object.keys(influence).filter(id => id !== playerID).map(score));
+  };
   const outcome = rank(left);
   // Between losing lines, prefer the one that keeps the game alive longer.
   return outcome - rank(right) || (outcome === -1 ? left.turn - right.turn : 0) || margin(left) - margin(right);
 }
 
 function valueWithImmediateEffects(later: PositionValue, immediate: PositionValue): PositionValue {
-  const scores = Object.fromEntries(Object.entries(later.scores).map(([id, score]) =>
-    [id, score + (immediate.scores[id] - score) / 8]));
-  return { ...later, scores };
+  const blend = (key: 'influence' | 'reserves' | 'economy') => Object.fromEntries(Object.entries(later[key])
+    .map(([id, score]) => [id, score + (immediate[key][id] - score) / 8]));
+  return { ...later, influence: blend('influence'), reserves: blend('reserves'), economy: blend('economy') };
 }
 
 function actionType(option: EngineMoveOption): string {
@@ -150,7 +153,8 @@ function nextPlayerRecalls({ G, ctx }: EngineSnapshot, options: EngineMoveOption
     && targets.delete((option.parameters[0] as { payload: { markerId: string } }).payload.markerId));
 }
 
-function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: string, budget: number, defendNextTurn = false) {
+function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: string, style: ComputerStyle, budget: number,
+  defendNextTurn = false) {
   const legal = engineMoveOptions(state.G, state.ctx, playerID);
   if (!legal.length) return [];
   const options = uniqueMarkerOptions(state.G, playerID, legal);
@@ -165,7 +169,7 @@ function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: s
     const neighbors = option.moveType === 'placeTile' ? countNeighbors(option) : 0;
     return { option, next, value: evaluate(next), neighbors, defensive: defensive.has(option) };
   });
-  return ranked.sort((a, b) => compare(b.value, a.value, playerID) || b.neighbors - a.neighbors);
+  return ranked.sort((a, b) => compare(b.value, a.value, playerID, style) || b.neighbors - a.neighbors);
 }
 
 type Variation = ReturnType<typeof rankedOptions>[number];
@@ -199,7 +203,7 @@ function distinctLines(ranked: Variation[], width: number, expanded: boolean): V
 }
 
 /** Search a bounded set of continuations, with opponents choosing according to their own position. */
-export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision }: ComputerPosition, playerID: string): EngineMoveOption | undefined {
+export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision, styles }: ComputerPosition, playerID: string): EngineMoveOption | undefined {
   if (ctx.gameover !== undefined || actingPlayer(ctx) !== playerID) return undefined;
   const state: EngineSnapshot = { G, ctx, _stateID: revision, plugins: { random: { data: { seed: G.matchSeed } } } };
   const expanded = Object.values(G.cfg.expansions).some(Boolean);
@@ -215,18 +219,20 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision }: 
     if (!remaining || next.ctx.turn >= lastTurn || value.winners) return value;
 
     const actor = actingPlayer(next.ctx);
-    const ranked = rankedOptions(game, next, actor, followUpSamples);
+    const style = styles[actor];
+    const ranked = rankedOptions(game, next, actor, style, followUpSamples);
     const branch = canBranch && actor !== playerID;
     const replies = distinctLines(ranked, branch ? REPLY_WIDTH : 1, expanded);
     let best: PositionValue | undefined;
     for (const reply of replies) {
       const result = follow(reply, remaining - 1, canBranch && replies.length === 1);
-      if (!best || compare(result, best, actor) > 0) best = result;
+      if (!best || compare(result, best, actor, style) > 0) best = result;
     }
     return best ?? value;
   }
 
-  const ranked = rankedOptions(game, state, playerID, rootSamples, true);
+  const style = styles[playerID];
+  const ranked = rankedOptions(game, state, playerID, style, rootSamples, true);
   const lines = distinctLines(ranked, rootWidth, expanded);
   const defense = ranked.find(line => line.defensive);
   if (defense && !lines.includes(defense)) lines.push(defense);
@@ -238,7 +244,7 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision }: 
     const later = follow(line, ACTION_HORIZON - 1, true);
     // A useful effect can expire before the search horizon, even if it matters this round.
     const value = expanded ? valueWithImmediateEffects(later, line.value) : later;
-    if (!best || compare(value, best.value, playerID) > 0) best = { option: line.option, value };
+    if (!best || compare(value, best.value, playerID, style) > 0) best = { option: line.option, value };
   }
   if (best) return best.option;
   // Fall back to the first accepted move if the sampled candidates were all rejected.
