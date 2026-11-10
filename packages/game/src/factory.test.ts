@@ -14,11 +14,13 @@ describe('boardgame.io match setup', () => {
     const defaults = InitializeGame({ game, numPlayers: 2 }).G;
     expect(defaults.matchSeed).toBe('factory-seed');
     expect(defaults.exp?.exp01?.measures).toBeDefined();
+    expect(defaults.cfg.variants).toMatchObject({ influenceDistance: true, disruption: true });
 
     const setupData = { matchSeed: 'lobby-seed', expansions: { exp01: false } };
     const override = InitializeGame({ game, numPlayers: 2, setupData }).G;
     expect(override.matchSeed).toBe('lobby-seed');
     expect(override.cfg.expansions.exp01).toBe(false);
+    expect(override.cfg.variants).toMatchObject({ influenceDistance: true, disruption: true });
     expect(Object.keys(override.exp)).toEqual(['core']);
   });
 

@@ -20,7 +20,10 @@ function makeStubExp01(): ExpansionModule {
   };
 }
 
-const coreTypes = ['convertResources', 'formalizeInfluence', 'placeOrMoveInfluence', 'recallInfluence'];
+const coreTypes = [
+  'convertResources', 'counterLobby', 'damageResort', 'displaceInfluence',
+  'formalizeInfluence', 'placeOrMoveInfluence', 'recallInfluence',
+];
 
 describe('Move catalog — Task 0016', () => {
   beforeEach(() => {

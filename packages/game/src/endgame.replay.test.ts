@@ -13,8 +13,8 @@ import { createBCGame } from './factory.js';
 type CoreClient = ReturnType<typeof Client<CoreState>>;
 const unpayableTiles = ['Committee-8', 'Committee-9'];
 
-function moveMarker(client: CoreClient, markerId: string, targetTileId: string, sourceTileId?: string): void {
-  client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId, sourceTileId } });
+function moveMarker(client: CoreClient, markerId: string, targetTileId: string, sourceTileId?: string, resources?: string[]): void {
+  client.moves.doPoliticalAction({ type: 'placeOrMoveInfluence', payload: { markerId, targetTileId, sourceTileId, resources } });
 }
 
 function markerCounts(G: CoreState): number[] {
@@ -77,7 +77,10 @@ function terminalState(client: CoreClient, turn: number, playerID: string, winne
 }
 
 function replayFullCoreMatch() {
-  const client = Client({ game: createBCGame({ matchSeed: 'task-0030-full-core' }), numPlayers: 2 });
+  const game = createBCGame({
+    matchSeed: 'task-0030-full-core', variants: { resourceCap: true, influenceRecall: true },
+  }, 'recorded');
+  const client = Client({ game, numPlayers: 2 });
   const hashes: string[] = [];
   expect(client.getState()!.G.exp.core.tiles.drawPile).toHaveLength(70);
 
@@ -144,7 +147,7 @@ function replayLastPlacementWithMeasure() {
   expect(settled.ctx.turn).toBe(3);
   expect(settled.G.exp.core.players['0'].personal.resources.DOM).toBe(1);
   client.moves.placeTile({ q: -3, r: 0 });
-  moveMarker(client, 'INF-0-2', 'Committee-9', 'Committee-7');
+  moveMarker(client, 'INF-0-2', 'Committee-9', 'Committee-7', ['DOM']);
 
   const drawn = client.getState()!;
   expect(drawn.ctx.turn).toBe(4);
@@ -168,19 +171,19 @@ function replayLastPlacementWithMeasure() {
   expect(extra.ctx.activePlayers).toEqual({ '1': 'AdditionalPoliticalAction' });
   expect(extra.ctx.playOrderPos).toBe(1);
   expect(extra.G.lastTurnHash).toBe(drawn.G.lastTurnHash);
-  expect(extra.G.exp.core.players['0'].personal.resources.DOM).toBe(1);
+  expect(extra.G.exp.core.players['0'].personal.resources.DOM).toBe(0);
   expect(extra.G.exp.core.players['1'].personal.resources.DOM).toBe(0);
   moveMarker(client, 'INF-1-2', 'DOM-W3-1');
 
   const final = terminalState(client, 4, '1', ['1']);
   expect(markerCounts(final.G)).toEqual([2, 3]);
-  expect(final.G.exp.core.players['0'].personal.resources.DOM).toBe(2);
+  expect(final.G.exp.core.players['0'].personal.resources.DOM).toBe(1);
   expect(final.G.exp.core.players['1'].personal.resources.DOM).toBe(3);
   const measures = final.G.exp!.exp01!.measures!;
   expect(measures.hands['1']).toEqual([]);
   expect(measures.recycle).toContain(measureId);
   expect(final.G.exp.core.playedMeasureThisRound!['1']).toBe(true);
-  expect(final.G.lastTurnHash).toBe('7e8da766e20b877aba4292c8d399e29d289c7e3bf4b1a427ee74041789725997');
+  expect(final.G.lastTurnHash).toBe('c6ca214a71125993c2d8f81d7a9ae746ae001093e331d342e717d5a8d48c77f5');
   return final;
 }
 
@@ -207,7 +210,7 @@ function replayUnsuccessfulFinalDraw() {
   expect(final.G.exp.core.players['0'].personal.resources.DOM).toBe(2);
   expect(final.G.exp.core.players['1'].personal.resources.DOM).toBe(0);
   expect(markerCounts(final.G)).toEqual([2, 0]);
-  expect(final.G.lastTurnHash).toBe('dfe5f239de5f6aa4fcf01c59c735511918d4835417aa8e9795783a7a81655f05');
+  expect(final.G.lastTurnHash).toBe('0c9a871c0539e1362d6ec37730862eda53916083d71af70b03852e351e32eef5');
   return final;
 }
 
@@ -220,7 +223,7 @@ describe('S09: endgame replays through boardgame.io', () => {
     });
   });
 
-  it('replays the entire seeded CORE deck, settles the shortened final round once and shares victory', () => {
+  it('replays the entire recorded pre-distance CORE deck and settles the shortened final round once', () => {
     expect(replayFullCoreMatch()).toEqual(replayFullCoreMatch());
   }, 20_000);
 

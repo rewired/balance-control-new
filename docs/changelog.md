@@ -605,6 +605,7 @@
 - Die Abberufung schickt einen gegnerischen Einflussmarker für je eine Ressource aus drei verschiedenen aktiven Ressorts vom Brett in den Vorrat seines Besitzers. Jeder Spieler kann die Aktion einmal pro Runde ausführen.
 - ERRATA-0035 führt die Aktion für alle neuen Partien ein. Gespeicherte Partien und Replays verwenden ihre aufgezeichneten Regeln. Ein zurückgerufener Startmarker behält seine Identität und seine bereits erfüllte Erstplatzierung.
 
-## 2026-11-10 – Testvariante für Einflussreichweite
+## 2026-11-10 – Einflussreichweite und Störaktionen als CORE-Regeln
 
-- Die optionale Variante Influence Distance verlangt beim Verschieben für ein, zwei oder drei Hex-Schritte 0, 1 oder 3 Ressourcen aus beliebigen aktiven Ressorts. Ab vier Schritten ist das Ziel außer Reichweite. Die Platzierung aus dem Vorrat folgt CORE-01-04-11.
+- Neue Partien verlangen beim Verschieben für ein, zwei oder drei Hex-Schritte 0, 1 oder 3 Ressourcen aus beliebigen aktiven Ressorts. Ab vier Schritten ist das Ziel außer Reichweite. Die Platzierung aus dem Vorrat folgt CORE-01-04-11.
+- Gegenlobby am Standardkomitee, lokales Abdrängen mit Zielwahl durch den Markerbesitzer und dauerhafter Ressortschaden sind reguläre politische Aktionen. ERRATA-0036 übernimmt beide Playtests in CORE. Gespeicherte Partien und Replays verwenden ihre aufgezeichnete Regelfassung.

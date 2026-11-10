@@ -19,7 +19,7 @@ export function adjacent(a: AxialCoord, b: AxialCoord): boolean {
   return hexNeighbors(a).some((n) => eq(n, b));
 }
 
-// VAR-01-03-02: count the shortest sequence of hex steps, including empty positions.
+// CORE-01-00-T06: count the shortest sequence of hex steps, including empty positions.
 export function hexDistance(a: AxialCoord, b: AxialCoord): number {
   const q = a.q - b.q;
   const r = a.r - b.r;

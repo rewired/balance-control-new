@@ -3,7 +3,7 @@ import {
   awaitsFirstPlacement, createExpansionRegistry, createMatchResourceRegistry, ensureExpansionSlice,
   getTopology, isRegisteredAction, MeasureExtensionTargetSchema, paymentPlans,
   type ActiveMeasureEffect, type AxialCoord, type CoreState,
-  type DecisionQuote, type DrawTileEffect, type EffectDecision, type EffectDescriptor, type EffectResolver,
+  type DecisionQuote, type DisruptionEffect, type DrawTileEffect, type EffectDecision, type EffectDescriptor, type EffectResolver,
   type ExpansionHooks, type ExpansionId, type ExpansionModule, type ExpireMeasureEffects, type Influence,
   type MeasureDeckState, type PaymentQuote, type PendingHotspot, type PendingRegulationChoice, type PlaceTileEffect,
   type PlayMeasureEffect, type PoliticalActionEffect, type RegisterMeasureEffect,
@@ -16,6 +16,7 @@ import { planProductionForTile, productionReceipt } from './production.plan.js';
 import { computeMajority, getControl } from './majority.js';
 import { isLegalPlacement, legalPlacementCoords } from './placement.js';
 import { coreStateForHash } from './state-migration.js';
+import { disruptionCost, disruptionTarget } from './disruption.js';
 
 function findTileAt(G: CoreState, coord?: AxialCoord) {
   if (!coord) return undefined;
@@ -251,6 +252,51 @@ export function* recallPayments(resources: ResourceId[]): Generator<ResourceId[]
   }
 }
 
+function isDisruptionEffect(effect: EffectDescriptor): effect is DisruptionEffect {
+  return Object.hasOwn(disruptionCost, effect.kind);
+}
+
+function planDisruption(
+  G: CoreState, effect: DisruptionEffect, registry: ResourceRegistry, hooks: readonly ExpansionHooks[], preview?: PaymentPreview,
+) {
+  const core = G.exp.core;
+  const target = disruptionTarget(G, effect.playerID, effect);
+  if (!target) return { ok: false, reason: 'invalid-disruption-target' } as const;
+  // CORE-01-04-28: assemble the selected base payment before the shared cost pipeline.
+  if (effect.resources.length !== disruptionCost[effect.kind] || effect.resources.some(resource => !registry.has(resource))) {
+    return { ok: false, reason: 'invalid-disruption-cost' } as const;
+  }
+  const cost: ResourceAmounts = Object.create(null);
+  for (const resource of effect.resources) cost[resource] = (cost[resource] ?? 0) + 1;
+
+  let commit: () => void;
+  if (target.kind === 'displaceInfluence') {
+    // CORE-01-04-31/-32: lock in legal choices before charging the actor.
+    const { owner, id: markerId, tileId: sourceTileId } = target.marker;
+    const destinationTileIds = target.destinations.filter(({ tileId, coord }) => !isProhibited(G, {
+      kind: 'chooseDisplacement', playerID: owner, targetTileId: tileId, contextCoord: coord,
+    }, hooks)).map(({ tileId }) => tileId);
+    if (!destinationTileIds.length) return { ok: false, reason: 'no-displacement-destination' } as const;
+    commit = () => {
+      core.pendingDisplacement = { markerId, owner, sourceTileId, destinationTileIds };
+      (core.displacedThisRound ??= []).push(effect.playerID);
+    };
+  } else if (target.kind === 'counterLobby') {
+    // CORE-01-04-29/-30: store the specific affected Lobbyist connection.
+    commit = () => { (core.counterLobbies ??= []).push(target.counterLobby); };
+  } else {
+    // CORE-01-04-33/-34: persist both the damage and the actor's one use.
+    commit = () => { (core.damagedResorts ??= []).push(target.damage); };
+  }
+
+  const payment = planPayment(G, registry, effect, hooks, cost, preview);
+  if (!payment.ok) return payment;
+  return { ok: true, commit: () => {
+    payment.transaction.commit();
+    commit();
+  } } as const;
+}
+
 function planPoliticalAction(
   G: CoreState,
   requested: PoliticalActionEffect,
@@ -273,9 +319,13 @@ function planPoliticalAction(
   const start = tile.kind === 'StartCommittee';
 
   // CORE-01-06-00-05/-05A/-05B and CORE-01-08-06A: bind the local context, including immunity.
-  const effect = { ...requested, contextCoord: placement.coord };
+  const effect = {
+    ...requested, contextCoord: placement.coord,
+    ...(isDisruptionEffect(requested) && { political: true as const }),
+  };
   const localHooks = start ? [] : hooks;
   if (isProhibited(G, effect, localHooks)) return { ok: false, reason: 'prohibited' };
+  if (isDisruptionEffect(effect)) return planDisruption(G, effect, registry, localHooks, preview);
 
   if (effect.kind === 'recallInfluence') {
     // CORE-01-04-23..26: move the real rival marker, preserving ownership and first placement.
@@ -309,7 +359,7 @@ function planPoliticalAction(
       : board.findIndex(marker => marker.id === effect.markerId && marker.owner === player.id && marker.tileId === effect.sourceTileId);
     if (index < 0) return { ok: false, reason: 'marker-not-in-source' };
 
-    // VAR-01-03-02 through -04: combine the chosen base cost with destination costs.
+    // CORE-01-04-12A/-12B: combine the chosen base cost with destination costs.
     const distanceCost = influenceMoveCost(G, effect.sourceTileId, placement.coord);
     if (distanceCost === undefined) return { ok: false, reason: 'influence-move-out-of-range' };
     const resources = effect.resources ?? [];
@@ -794,7 +844,17 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
 
     if (effect.kind === 'expireMeasureEffects') {
       // CORE-01-04-23: the first turn of a new round reopens recall for all players.
-      if (effect.boundary === 'turnStart' && effect.nextRound) delete G.exp.core.recalledThisRound;
+      if (effect.boundary === 'turnStart' && effect.nextRound) {
+        delete G.exp.core.recalledThisRound;
+        // CORE-01-04-31: the displacement allowance resets at the same round boundary.
+        delete G.exp.core.displacedThisRound;
+      }
+      // CORE-01-04-30: the affected player receives one actual turn under the suppression.
+      if (effect.boundary === 'turnEnd' && G.exp.core.counterLobbies) {
+        const remaining = G.exp.core.counterLobbies.filter(item => item.controller !== effect.playerID);
+        if (remaining.length === 0) delete G.exp.core.counterLobbies;
+        else G.exp.core.counterLobbies = remaining;
+      }
       // CORE-01-07-10/-11/-14/-17, EXP-01-08-M03-03, EXP-01-08-M09-04/-07 and EXP-03-08-M11-04.
       const previous = G.exp.core.activeMeasureEffects;
       if (!previous) return { ok: true };
@@ -1004,8 +1064,22 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
       return { ok: true };
     }
 
+    if (effect.kind === 'chooseDisplacement') {
+      // CORE-01-04-32: the owner selects a locked-in destination and the same marker stays on the board.
+      const core = G.exp.core;
+      const pending = core.pendingDisplacement;
+      if (!G.cfg.variants.disruption || !pending || effect.playerID !== pending.owner
+          || !pending.destinationTileIds.includes(effect.targetTileId)) return { ok: false, reason: 'invalid-displacement-choice' };
+      const marker = core.influencesOnBoard?.find(item =>
+        item.id === pending.markerId && item.owner === pending.owner && item.tileId === pending.sourceTileId);
+      if (!marker) return { ok: false, reason: 'missing-displaced-marker' };
+      marker.tileId = effect.targetTileId;
+      delete core.pendingDisplacement;
+      return { ok: true };
+    }
+
     if (effect.kind === 'placeOrMoveInfluence' || effect.kind === 'formalizeInfluence' || effect.kind === 'convertResources'
-      || effect.kind === 'recallInfluence') {
+      || effect.kind === 'recallInfluence' || isDisruptionEffect(effect)) {
       return executePoliticalPlan(G, effect.playerID, hooks, preview => planPoliticalAction(G, effect, active, preview));
     }
 

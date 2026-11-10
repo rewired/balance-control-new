@@ -20,6 +20,9 @@ function scoreTile(state: CoreState, coord: AxialCoord): MajorityBreakdown {
     if (state.exp.core.allTiles[neighbor.tileId]?.kind !== 'Lobbyist' || !adjacent(coord, neighbor.coord)) continue;
     // CORE-01-05-04/-08/-09: each controlled adjacent Lobbyist adds one to its controller.
     const controller = computeMajority(state, neighbor.coord);
+    // CORE-01-04-30: suppress only the chosen Lobbyist contribution for its recorded controller.
+    if (state.cfg.variants.disruption && state.exp.core.counterLobbies?.some(effect =>
+      effect.tileId === tile.id && effect.lobbyistTileId === neighbor.tileId && effect.controller === controller)) continue;
     if (controller !== null) scores[controller] += 1;
   }
   return scores;

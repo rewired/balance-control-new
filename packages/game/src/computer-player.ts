@@ -141,9 +141,13 @@ function distinctLines(ranked: Variation[], width: number, expanded: boolean): V
       payload?: {
         sourceTileId?: string; measureId?: string; targetPlayerID?: string; targetResort?: string;
         output?: string; regulation?: RegulationOperation; targetRegulationId?: string;
+        lobbyistTileId?: string; markerId?: string;
       };
     };
-    const political = [actionType(option), option.contextTile, action.payload?.sourceTileId, action.payload?.measureId];
+    const type = actionType(option);
+    const political = [type, option.contextTile, action.payload?.sourceTileId, action.payload?.measureId];
+    if (type === 'counterLobby') political.push(action.payload?.lobbyistTileId);
+    if (type === 'displaceInfluence') political.push(action.payload?.markerId);
     const targets = expanded ? [action.payload?.targetPlayerID, action.payload?.targetResort, action.payload?.output,
       action.regulation ?? action.payload?.regulation, action.payload?.targetRegulationId] : [];
     const key = JSON.stringify(option.moveType === 'placeTile' ? option.parameters[0] : [...political, ...targets]);

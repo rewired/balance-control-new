@@ -10,6 +10,7 @@ export type EffectKind =
   | 'resolveHotspotAt'
   | 'chooseHotspotOutcome'
   | 'chooseRegulationFollowUp'
+  | 'chooseDisplacement'
   | 'continueRegisteredDecisions'
   | 'recordDecisionContinuation'
   | 'applyProductionAt'
@@ -112,7 +113,17 @@ export interface AddNoiseEffect extends BaseEffect {
   amount: number;
 }
 
-export type PoliticalActionEffect = BaseEffect & { playerID: string } & (
+export type DisruptionTarget = { tileId: string } & (
+  | { kind: 'counterLobby'; lobbyistTileId: string }
+  | { kind: 'displaceInfluence'; markerId: string }
+  | { kind: 'damageResort' }
+);
+
+export type DisruptionEffect = BaseEffect & DisruptionTarget & { playerID: string; resources: ResourceId[] };
+
+export type ChooseDisplacementEffect = BaseEffect & { kind: 'chooseDisplacement'; playerID: string; targetTileId: string };
+
+export type PoliticalActionEffect = DisruptionEffect | BaseEffect & { playerID: string } & (
   | { kind: 'placeOrMoveInfluence'; markerId: string; targetTileId: string; sourceTileId?: string; resources?: ResourceId[] }
   | { kind: 'recallInfluence'; markerId: string; resources: ResourceId[] }
   | { kind: 'formalizeInfluence'; tileId: string; resources: ResourceId[] }
@@ -169,6 +180,7 @@ export type EffectDescriptor =
   | ResolveRegulationEffect
   | AddNoiseEffect
   | PoliticalActionEffect
+  | ChooseDisplacementEffect
   | InitMeasuresEffect
   | TakeMeasureEffect
   | PlayMeasureEffect

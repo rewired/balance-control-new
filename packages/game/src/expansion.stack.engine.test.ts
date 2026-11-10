@@ -8,14 +8,14 @@ const configurations = Array.from({ length: 8 }, (_, index) => ({
   exp01: Boolean(index & 1), exp02: Boolean(index & 2), exp03: Boolean(index & 4),
 }));
 const endHashes = [
-  '1f1ef475015e496f4dcc5609e286c301fb844ba5fc78b4c95a9c449ca6d6d25d',
-  '2b908276a7d958c0a1bde51af130c8098ef48d40aaf48b6aec4fe61f28b8711e',
-  '7cf7585b9b83ce575bc67cc20ebd4df3924a53f4ad99d364ecc90e8443700854',
-  '56696fb43d9e897de3561514963906839b8e5e317a568f689a9b95cb53a5dde6',
-  'ad8b0cfdf38dfd221258e1f069da49ffc002e5138cc4cd6028404d2fc09583fe',
-  'a1af93dd2e014bfa11dd0b3f0a7a5789dbb57e5280ae9be73e8a5562f9a5d707',
-  '2c3a710360c8b7712f1810ced8644fc27fad8a1ceb3501bc427c2c179bbd6a70',
-  '2b09501b4156401b814f163fbfb5961218956b3a9e3ad06827f284660050c212',
+  '771167f9a7be5168c8da3b37ef72773aa4684b9277223b904147eb634a9f7d72',
+  '2a2e88fe9fb14c4d40b45edbfc6a24ab99f6a45cf93c4116c3cc64c9daa06dfc',
+  '1cfaaabe523be2fff35d2a31bf23d1bccef0955f11a5d8a44b68a074ef033578',
+  'c7114099539eef7b22bc66dc9ef84ddf59004375b7d77fbc5b79eb69a332abdf',
+  '85a5c959d83c6097a4d2a1dfeb62cc13ea4510175be303998abf4bbd5ea15bba',
+  '9ebf9376b30c8891e1d90d247d5cb497b0121ec4d2fa8ec897978a3cddc18685',
+  '55ac7c25e7b5099cbda112d95ab2379d82a467c63af1fb05e30b3f09784af692',
+  '2a49bae562450d7833deb255984d22c3a79ec9d1370f8d2c18ca1473f8349e11',
 ];
 const tied = { tileId: 'DOM-W5-1', coord: { q: 1, r: 0 } };
 const blocked = { tileId: 'FOR-W5-1', coord: { q: 2, r: 0 } };

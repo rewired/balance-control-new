@@ -13,10 +13,12 @@ type SetupRules = 'current' | 'recorded';
 export function setupCoreMatch(numPlayers: number, setupData: unknown = {}, rules: SetupRules = 'current'): CoreState {
   // CORE-01-03-01..08: build match state before the engine begins the first turn.
   const { matchSeed, ...cfg } = MatchSetupDataSchema.parse(setupData);
-  // CORE-01-07-04A and CORE-01-04-23: new matches record both rules at setup.
+  // ERRATA-0034 through ERRATA-0036: record the current CORE rules at new-match setup.
   if (rules === 'current') {
     cfg.variants.resourceCap = true;
     cfg.variants.influenceRecall = true;
+    cfg.variants.influenceDistance = true;
+    cfg.variants.disruption = true;
   }
   const G = buildInitialCoreState(numPlayers, matchSeed, cfg);
   const modules = createExpansionRegistry(cfg.expansions);

@@ -11,6 +11,7 @@ Applied errata: ERRATA-0012 (2026-11-07, future Measure triggers).
 Applied errata: ERRATA-0013 (2026-11-07, Authority Apparatus activation).
 Applied errata: ERRATA-0014 (2026-11-07, effect costs and payers).
 Applied errata: ERRATA-0015 (2026-11-07, Round Settlement sequence).
+Applied errata: ERRATA-0036 (2026-11-10, influence distance and disruption actions).
 
 ---
 
@@ -82,7 +83,7 @@ EXP-02-02-B-01 Exactly four Regulation types exist:
 
 EXP-02-02-B-02 Each applicable SecurityLevel reduces the Resource or Influence output quantity defined in EXP-02-02-B-02A by 1, with a minimum output of 0. Apply Tile-local SecurityLevel only at the assigned ContextTile and preserve Start Committee immunity.
 EXP-02-02-B-02A Reducible outputs are Resort Production before distribution/Noise; Resource output from ConvertResources, including Investment Program; direct Resource gains such as Future Investment; new Influence from FormalizeInfluence; and the normal Hotspot Influence payout, including Labor Market. A Hotspot's granted Influence payout is reducible even though it transfers an existing marker from PersonalSupply rather than creating a new one. This classification modifies the prescribed output quantity, not the underlying prerequisites or payment requirements.
-EXP-02-02-B-02B SecurityLevel does not reduce ordinary PlaceOrMoveInfluence or RecallInfluence; Regulation placement, movement, or removal, including Authority Apparatus and Inner Order operations; card taking, refill, or recycling; Tile placement; majority or virtual Influence; costs or payments; prohibitions, durations, or other nonnumeric modifiers. Counting objects in an instruction does not by itself make that instruction a reducible output.
+EXP-02-02-B-02B SecurityLevel does not reduce ordinary PlaceOrMoveInfluence, RecallInfluence, CounterLobby, DisplaceInfluence, or DamageResort. The same exclusion applies to Regulation placement, movement, and removal (including Authority Apparatus and Inner Order operations), card taking, refill, and recycling, Tile placement, majority and virtual Influence, costs and payments, and prohibitions, durations, and other nonnumeric modifiers. Counting objects in an instruction does not by itself make that instruction a reducible output.
 
 EXP-02-02-B-03 Control increases effect cost by +1 Resource.
 EXP-02-02-B-04 Control may only be attached to Tiles that neither produce nor convert Resources.

@@ -25,6 +25,11 @@ export function createCoreExpansion(): CoreModule {
     registerResources: registry => CoreResorts.forEach(resort => registry.register(resort)),
     tiles: ({ addOn56 }) => buildCoreTiles(addOn56),
     extendMoves: registerCorePoliticalMoves,
+    hooks: {
+      // CORE-01-04-34: damage enters the canonical additive stage with other output modifiers.
+      productionModifiers: ({ G, tile }) => G.cfg.variants.disruption && G.exp.core.damagedResorts?.some(damage => damage.tileId === tile.id)
+        ? [{ source: 'other', kind: 'additive', delta: -1 }] : [],
+    },
     initializeMatch,
   };
 }

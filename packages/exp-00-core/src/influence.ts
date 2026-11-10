@@ -2,7 +2,7 @@ import { hexDistance, type AxialCoord, type CoreState } from '@bc/rules';
 
 const costByHexDistance = [undefined, 0, 1, 3] as const;
 
-// VAR-01-03-01 through -03: only relocation uses the distance and price table.
+// CORE-01-04-12A/-12B: only relocation uses the distance and price table.
 export function influenceMoveCost(G: CoreState, sourceTileId: string | undefined, target: AxialCoord): number | undefined {
   if (!G.cfg.variants.influenceDistance || sourceTileId === undefined) return 0;
   const source = G.exp.core.tiles.board.find(({ tileId }) => tileId === sourceTileId);

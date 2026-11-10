@@ -101,13 +101,16 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
   const inspectedTile = inspected && core.allTiles[inspected.tileId];
   const regulations = G.exp.exp02?.regulations;
   const tileRegulations = regulations?.attached.filter(item => item.tileId === selectedTile) ?? [];
+  const counterLobby = core.counterLobbies?.find(effect => effect.tileId === selectedTile);
+  const damaged = core.damagedResorts?.some(effect => effect.tileId === selectedTile);
   const enabledExpansions = expansions.filter(expansion => G.exp[expansion.id]?.measures);
   const startCommitteeSelected = inspectedTile?.kind === 'StartCommittee';
   const drawn = core.tiles.drawResolution;
   const activePlayer = Object.keys(ctx.activePlayers ?? {})[0] ?? ctx.currentPlayer;
   const isComputerTurn = computerPlayers?.has(activePlayer);
   const stage = ctx.activePlayers?.[activePlayer];
-  const resolvingDecision = stage === CoreStages.ResolveHotspot || stage === CoreStages.ResolveRegulationFollowUp;
+  const resolvingDecision = stage === CoreStages.ResolveHotspot || stage === CoreStages.ResolveRegulationFollowUp
+    || stage === CoreStages.ChooseDisplacement;
   const result = ctx.gameover as { winners: string[] } | undefined;
   const options = !isActive || playerID == null ? [] : engineMoveOptions(G, ctx, playerID);
   const placements = new Map<string, { coord: AxialCoord; options: EngineMoveOption[] }>();
@@ -139,7 +142,8 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
   const preview = movePreview(visibleActions[actionIndex]);
   const phase = drawn ? 'Place the drawn tile' : stage === CoreStages.AdditionalPoliticalAction ? 'Choose an additional political action'
     : stage === CoreStages.ExactlyOnePoliticalAction ? 'Choose a political action' : stage === CoreStages.ResolveHotspot ? 'Resolve a Hotspot'
-      : stage === CoreStages.ResolveRegulationFollowUp ? 'Resolve a Regulation' : 'Resolve a decision';
+    : stage === CoreStages.ResolveRegulationFollowUp ? 'Resolve a Regulation'
+    : stage === CoreStages.ChooseDisplacement ? 'Choose where your displaced marker goes' : 'Resolve a decision';
   const status = result ? (result.winners.length > 1 ? `Shared win · ${result.winners.map(playerLabel).join(' and ')}`
     : `${playerLabel(result.winners[0])} wins`) : isComputerTurn ? `${playerLabel(activePlayer)} (computer) is thinking…`
     : `${playerLabel(activePlayer)} to act`;
@@ -192,6 +196,8 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
               <section className="tile-rules" aria-label="Tile rules">
                 <h4>Tile rules</h4>
                 <p>{tileRuleSummary(inspectedTile)}</p>
+                {counterLobby && <p>Counter-lobby suspends the bonus from {counterLobby.lobbyistTileId} for {playerLabel(counterLobby.controller)}.</p>}
+                {damaged && <p>Permanent damage · −1 production</p>}
               </section>
               <p className="inspected-control"><strong>{occupation.control}</strong></p>
               {occupation.influence.length ? (

@@ -157,6 +157,19 @@ export type PendingRegulationChoice = { instanceId: string; playerID: string } &
 );
 export type DecisionContinuation = 'enclosures' | 'additional' | 'turnEnd' | 'finalSettlement';
 
+export interface CounterLobby {
+  tileId: string;
+  lobbyistTileId: string;
+  controller: string;
+}
+
+export interface PendingDisplacement {
+  markerId: string;
+  owner: string;
+  sourceTileId: string;
+  destinationTileIds: string[];
+}
+
 export interface CoreExpansionState {
   tiles: TileZonesState;
   allTiles: Record<string, Tile>;
@@ -170,6 +183,10 @@ export interface CoreExpansionState {
   decisionContinuation?: DecisionContinuation;
   playedMeasureThisRound?: Record<string, boolean>;
   recalledThisRound?: string[]; // CORE-01-04-23
+  counterLobbies?: CounterLobby[]; // CORE-01-04-29/-30
+  displacedThisRound?: string[]; // CORE-01-04-31
+  pendingDisplacement?: PendingDisplacement; // CORE-01-04-32
+  damagedResorts?: { tileId: string; playerID: string }[]; // CORE-01-04-33/-34
 }
 
 export interface CoreState {

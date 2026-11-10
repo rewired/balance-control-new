@@ -73,9 +73,18 @@ function describeBotPosition({ G, ctx }: ComputerPosition, playerID: string,
     regulations: G.exp.exp02?.regulations?.attached,
     pendingHotspot: G.exp.core.pendingHotspot,
     pendingRegulationChoice: G.exp.core.pendingRegulationChoices?.[0],
+    counterLobbies: G.exp.core.counterLobbies,
+    damagedResorts: G.exp.core.damagedResorts,
+    pendingDisplacement: G.exp.core.pendingDisplacement,
   };
   return [
     ...ruleBrief,
+    ...(G.cfg.variants.influenceDistance ? [
+      'Movement (CORE-01-04-12A/-12B) costs zero, one or three resources for one, two or three hex steps. This is the range for moving your own marker. Placing from reserve has no distance cost.',
+    ] : []),
+    ...(G.cfg.variants.disruption ? [
+      'Disruption (CORE-01-04-27 through -34): CounterLobby costs two resources and suppresses one opposing Lobbyist bonus at a standard Committee within two steps of your marker until the Lobbyist controller ends their next turn. DisplaceInfluence costs two resources once per round and targets a rival marker within one step of your marker. Its owner selects a legal neighboring destination in a mandatory response. DamageResort costs three resources once per match and permanently reduces a rival-controlled resort within two steps of your marker by one production. Base costs can use repeated active resorts.',
+    ] : []),
     ...(expansions.length ? ['Measures (EXP-01-06/07): TakeMeasure moves a face-up card into your hand. A paid PlayMeasure resolves its printed effect and grants one additional non-PlayMeasure Political Action. The hand limit is two total and the play limit is one per round across all decks.'] : []),
     ...expansions.flatMap(({ label, file, prefix }) => [label, ...visibleCardRules(file, prefix, visible)]),
     'Board rows are [q,r,tile id,kind,printed resort and output,enclosure status if resolved]. Marker rows are [tile id,owner,marker id].',

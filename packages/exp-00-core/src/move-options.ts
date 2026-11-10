@@ -29,6 +29,14 @@ export function engineMoveOptions(G: CoreState, ctx: Ctx, playerID: string): Eng
       return resolve.regulationFollowUpQuotes(G).map(({ choice, ...quote }) => ({
         ...quote, playerID, moveType: 'chooseRegulationFollowUp', parameters: [choice],
       }));
+    case CoreStages.ChooseDisplacement: {
+      // CORE-01-04-32: only the marker owner receives the legal response destinations.
+      const pending = G.exp.core.pendingDisplacement;
+      if (pending?.owner !== playerID) return [];
+      return pending.destinationTileIds.map(tileId => ({
+        playerID, moveType: 'chooseDisplacement', parameters: [tileId], contextTile: tileId, costBreakdown: [],
+      }));
+    }
     case CoreStages.ExactlyOnePoliticalAction:
     case CoreStages.AdditionalPoliticalAction:
       return Array.from(politicalMoveQuotes(G, playerID, ctx.activePlayers[playerID] === CoreStages.AdditionalPoliticalAction),

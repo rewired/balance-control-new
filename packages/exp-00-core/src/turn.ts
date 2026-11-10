@@ -12,11 +12,13 @@ export const CoreStages = {
   DrawAndPlaceTile: 'DrawAndPlaceTile',
   ResolveHotspot: 'ResolveHotspot',
   ResolveRegulationFollowUp: 'ResolveRegulationFollowUp',
+  ChooseDisplacement: 'ChooseDisplacement',
   ExactlyOnePoliticalAction: 'ExactlyOnePoliticalAction',
   AdditionalPoliticalAction: 'AdditionalPoliticalAction',
 } as const;
 
 const PoliticalActionSchema = z.object({ type: z.string(), payload: z.unknown() }).strict();
+const DisplacementDestinationSchema = z.string().min(1);
 
 // CORE-01-04-04/-05/-08: place the offered tile at a legal coordinate.
 const placeTile: Move<CoreState> = ({ G, ctx, events }, requested: AxialCoord, payment?: unknown) => {
@@ -127,6 +129,15 @@ function completePoliticalSequence({ G, ctx, events }: TurnContext): void {
   finishTurn({ G, ctx, events }, G.exp.core.tiles.drawPile.length === 0);
 }
 
+// CORE-01-04-32: resume the acting player's turn once the marker owner has responded.
+const chooseDisplacement: Move<CoreState> = ({ G, ctx, events, playerID }, destination: unknown) => {
+  const parsed = DisplacementDestinationSchema.safeParse(destination);
+  if (!parsed.success || playerID == null) return INVALID_MOVE;
+  const chosen = createResolver()(G, { kind: 'chooseDisplacement', playerID, targetTileId: parsed.data });
+  if (!chosen.ok) return INVALID_MOVE;
+  completePoliticalSequence({ G, ctx, events });
+};
+
 function beginPoliticalSlot(turn: TurnContext, additional: boolean): void {
   // CORE-01-04-09A..09C: skip an empty slot automatically, after placement or Measure resolution.
   if (politicalMoveOptions(turn.G, turn.ctx.currentPlayer, additional).next().done) {
@@ -163,6 +174,12 @@ const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown)
   }
 
   if (endAtInfluenceLimit({ G, ctx, events })) return;
+  // CORE-01-04-32: the defender's choice happens within the acting player's political action.
+  const displaced = G.exp.core.pendingDisplacement;
+  if (displaced) {
+    events.setActivePlayers({ value: { [displaced.owner]: CoreStages.ChooseDisplacement } });
+    return;
+  }
   // EXP-01-06-05(b) and CORE-01-07-08: complete the whole action sequence in this turn.
   if (suspendForRegulation({ G, ctx, events }, definition.isPlayMeasure ? 'additional' : 'turnEnd')) return;
   if (definition.isPlayMeasure) beginPoliticalSlot({ G, ctx, events }, true);
@@ -176,6 +193,7 @@ export const CoreTurn: NonNullable<Game<CoreState>['turn']> = {
     [CoreStages.DrawAndPlaceTile]: { moves: { placeTile } },
     [CoreStages.ResolveHotspot]: { moves: { chooseHotspotOutcome } },
     [CoreStages.ResolveRegulationFollowUp]: { moves: { chooseRegulationFollowUp } },
+    [CoreStages.ChooseDisplacement]: { moves: { chooseDisplacement } },
     [CoreStages.ExactlyOnePoliticalAction]: { moves: { doPoliticalAction } },
     [CoreStages.AdditionalPoliticalAction]: { moves: { doPoliticalAction } },
   },

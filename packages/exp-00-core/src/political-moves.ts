@@ -1,12 +1,13 @@
 import { z } from '@bc/rules';
 import type { CoreState } from '@bc/rules';
 import { createExpansionRegistry } from '@bc/rules';
-import { createResolver, type PoliticalActionEffect } from '@bc/rules';
+import { createResolver, type DisruptionTarget, type PoliticalActionEffect } from '@bc/rules';
 import type { MoveDefinition, MoveExtensionBuilder } from '@bc/rules';
 import { matchResourceIds } from '@bc/rules';
 import { PaymentSelectionSchema } from '@bc/rules';
 import { influenceMoveCost } from './influence.js';
 import { formalizationPayments, paymentCombinations, recallPayments } from './resolver.js';
+import { disruptionCost, disruptionTarget } from './disruption.js';
 
 function corePoliticalMove<P extends object>(
   type: PoliticalActionEffect['kind'],
@@ -34,6 +35,11 @@ function corePoliticalMove<P extends object>(
 }
 
 const id = z.string().min(1);
+const disruptionPayment = { tileId: id, resources: z.array(id).min(2).max(3), payment: PaymentSelectionSchema.optional() };
+
+function* disruptionPayments(G: CoreState, playerID: string, target: DisruptionTarget, resorts: string[]) {
+  if (disruptionTarget(G, playerID, target)) yield* paymentCombinations(resorts, disruptionCost[target.kind]);
+}
 
 // CORE-01-04-09/-09A: enumerate targets and payments using the same plan as execution.
 export function registerCorePoliticalMoves({ add }: MoveExtensionBuilder): void {
@@ -54,7 +60,7 @@ export function registerCorePoliticalMoves({ add }: MoveExtensionBuilder): void 
           }
           for (const marker of G.exp.core.influencesOnBoard ?? []) {
             if (marker.owner === playerID && marker.tileId !== targetTileId) {
-              // VAR-01-03-02/-03: offer each choice of base payment once.
+              // CORE-01-04-12A/-12B: offer each choice of base payment once.
               const cost = influenceMoveCost(G, marker.tileId, coord);
               if (cost === undefined) continue;
               const target = { markerId: marker.id, sourceTileId: marker.tileId, targetTileId };
@@ -119,4 +125,48 @@ export function registerCorePoliticalMoves({ add }: MoveExtensionBuilder): void 
     ),
   ];
   moves.forEach(add);
+  add(corePoliticalMove(
+    'counterLobby', z.object({ ...disruptionPayment, lobbyistTileId: id }).strict(),
+    (playerID, payload) => ({ kind: 'counterLobby', playerID, ...payload }),
+    function* (G, playerID) {
+      if (!G.cfg.variants.disruption) return;
+      const resorts = matchResourceIds(G);
+      const { tiles, allTiles } = G.exp.core;
+      const lobbyists = tiles.board.filter(({ tileId }) => allTiles[tileId].kind === 'Lobbyist');
+      for (const { tileId } of tiles.board) {
+        if (allTiles[tileId].kind !== 'Committee') continue;
+        for (const { tileId: lobbyistTileId } of lobbyists) {
+          for (const resources of disruptionPayments(G, playerID, { kind: 'counterLobby', tileId, lobbyistTileId }, resorts)) {
+            yield { tileId, lobbyistTileId, resources };
+          }
+        }
+      }
+    },
+  ));
+  add(corePoliticalMove(
+    'displaceInfluence', z.object({ ...disruptionPayment, markerId: id }).strict(),
+    (playerID, payload) => ({ kind: 'displaceInfluence', playerID, ...payload }),
+    function* (G, playerID) {
+      if (!G.cfg.variants.disruption) return;
+      const resorts = matchResourceIds(G);
+      for (const { id: markerId, tileId } of G.exp.core.influencesOnBoard ?? []) {
+        for (const resources of disruptionPayments(G, playerID, { kind: 'displaceInfluence', tileId, markerId }, resorts)) {
+          yield { tileId, markerId, resources };
+        }
+      }
+    },
+  ));
+  add(corePoliticalMove(
+    'damageResort', z.object(disruptionPayment).strict(),
+    (playerID, payload) => ({ kind: 'damageResort', playerID, ...payload }),
+    function* (G, playerID) {
+      if (!G.cfg.variants.disruption) return;
+      const resorts = matchResourceIds(G);
+      for (const { tileId } of G.exp.core.tiles.board) {
+        for (const resources of disruptionPayments(G, playerID, { kind: 'damageResort', tileId }, resorts)) {
+          yield { tileId, resources };
+        }
+      }
+    },
+  ));
 }

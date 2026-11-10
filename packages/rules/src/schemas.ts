@@ -26,7 +26,8 @@ export type ExpansionFlags = z.infer<typeof ExpansionFlagsSchema>;
 const VariantFlagsSchema = z.object({
   tileRecycling: z.boolean().default(false), // VAR-01-01-01
   firstPlayerHandicap: z.boolean().default(false), // VAR-01-02-01
-  influenceDistance: z.literal(true).optional(), // VAR-01-03-01
+  influenceDistance: z.literal(true).optional(), // CORE-01-04-12A/-12B; absent in older saves.
+  disruption: z.literal(true).optional(), // CORE-01-04-27..34; absent in older saves.
   resourceCap: z.literal(true).optional(), // CORE-01-07-04A; omitted in matches saved before ERRATA-0034.
   influenceRecall: z.literal(true).optional(), // CORE-01-04-23; omitted in matches saved before ERRATA-0035.
 }).strict().default({});

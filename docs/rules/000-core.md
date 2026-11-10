@@ -19,6 +19,7 @@ Applied errata: ERRATA-0031 (2026-11-09, hexagonal topology).
 Applied errata: ERRATA-0032 (2026-11-09, victory at the Influence limit).
 Applied errata: ERRATA-0034 (2026-11-10, resort supply cap).
 Applied errata: ERRATA-0035 (2026-11-10, influence recall).
+Applied errata: ERRATA-0036 (2026-11-10, influence distance and disruption actions).
 
 ---
 
@@ -71,6 +72,7 @@ CORE-01-00-T02 Adjacent(TileA, TileB) must be deterministic.
 CORE-01-00-T03 All adjacency-based rules reference Adjacent(TileA, TileB).
 CORE-01-00-T04 This edition uses hexagonal adjacency.
 CORE-01-00-T05 Changing topology does not alter any rule outside adjacency evaluation.
+CORE-01-00-T06 Hex distance is the minimum number of adjacent steps between two positions on the hex grid. Empty positions count as steps.
 
 ---
 
@@ -147,7 +149,7 @@ CORE-01-04-07 After such a discard, immediately make another draw attempt within
 CORE-01-04-08 A tile may be placed only on free table space.
 CORE-01-04-08A If at least one payable legal placement exists, the player must choose such a placement; the player may not voluntarily discard or recycle the Tile instead.
 
-CORE-01-04-09 ExactlyOnePoliticalAction requires exactly one legal Political Action from PlaceOrMoveInfluence, FormalizeInfluence, ConvertResources, RecallInfluence, and any action types enabled by active expansions, except for mandatory slot completion under CORE-01-04-09A through -09C.
+CORE-01-04-09 ExactlyOnePoliticalAction requires exactly one legal Political Action from PlaceOrMoveInfluence, FormalizeInfluence, ConvertResources, RecallInfluence, CounterLobby, DisplaceInfluence, DamageResort, and any action types enabled by active expansions, except for mandatory slot completion under CORE-01-04-09A through -09C.
 CORE-01-04-09A After all resolutions required before a mandatory Political Action slot have completed, determine whether any legal option permitted in that slot exists. Include all permitted targets, payment alternatives, cost substitutions, cost transfers, and Start Committee immunity. For an additional action after PlayMeasure, exclude PlayMeasure. If any legal option exists, one must be chosen; voluntary passing is not permitted.
 CORE-01-04-09B If no such legal option exists, automatically complete that slot without performing an action or making any payment. This applies both to ExactlyOnePoliticalAction and to the mandatory additional non-PlayMeasure action. It is not an action attempt and triggers or consumes no pending effect unless a rule explicitly provides otherwise; EXP-01-08-M06-07A is such an exception. Complete the slot without reopening it after that exception is processed.
 CORE-01-04-09C Mandatory completion without an action preserves all previously completed Tile placement, Hotspot resolutions, successful Measure play, paid costs, and shared PlayMeasure usage. It creates no additional PlayMeasure usage, card transfer, or payment; in particular, Intergenerational Pact is not consumed without its actual cost transfer. Continue with the normal turn, round, and final-Settlement procedures.
@@ -155,6 +157,8 @@ CORE-01-04-09C Mandatory completion without an action preserves all previously c
 CORE-01-04-10 PlaceOrMoveInfluence may be chosen as the Political Action.
 CORE-01-04-11 PlaceOrMoveInfluence (Place) moves exactly one Influence from the active player’s PersonalSupply to Board on a chosen Tile.
 CORE-01-04-12 PlaceOrMoveInfluence (Move) moves exactly one Influence belonging to the active player from one Board Tile to another Board Tile. The ordinary Move action cannot move another player's Influence.
+CORE-01-04-12A An ordinary Move may cover at most three hex steps under CORE-01-00-T06.
+CORE-01-04-12B The base cost of an ordinary Move is zero Resources at distance one, one Resource at distance two, and three Resources at distance three. The acting player chooses each unit from any active resort. Multiple units may come from the same resort. Apply destination prohibitions and payment rules under CORE-01-06-00-05A and CORE-01-06-00-07 through -11. Place under CORE-01-04-11 has no distance cost.
 
 CORE-01-04-13 FormalizeInfluence may be chosen as the Political Action.
 CORE-01-04-14 FormalizeInfluence is performed via a Committee tile.
@@ -179,6 +183,15 @@ CORE-01-04-23 RecallInfluence may be chosen as the Political Action, including i
 CORE-01-04-24 Choose exactly one real Influence marker owned by another player on a Board Tile other than the Start Committee. The marker's Tile is the ContextTile. The active player may choose the marker regardless of who controls the Tile and whether the active player has Influence there. Apply applicable prohibitions and payment modifiers.
 CORE-01-04-25 The base cost is one Resource from each of three different active resorts. Pay the complete cost from the active player's PersonalSupply to Bank, subject to CORE-01-06-00-07 through -12, and transfer the selected marker from Board to its owner's PersonalSupply in the same resolution. Mark the action used only on success.
 CORE-01-04-26 The recalled marker retains its identity and owner. It contributes no Board Influence while in PersonalSupply, and its owner may later place it under CORE-01-04-11. A recalled Starting Influence marker retains its origin and its completed first placement for CORE-01-08-02/-03.
+
+CORE-01-04-27 CounterLobby, DisplaceInfluence, and DamageResort may each be chosen as a Political Action, including in an additional Political Action slot.
+CORE-01-04-28 Each action selects its base payment from any active resorts, with repeated resorts permitted. Pay from PersonalSupply to Bank under CORE-01-06-00-07 through -11. Each action uses its target Tile as its sole ContextTile, including the marker's source Tile for DisplaceInfluence. Measure range under CORE-01-00-T06.
+CORE-01-04-29 CounterLobby costs two Resources. Choose a standard Committee within two hex steps of one of the acting player's real Board markers and an adjacent Lobbyist controlled by another player. The chosen Committee must have no active CounterLobby.
+CORE-01-04-30 For that Lobbyist and Committee pair only, suppress the Lobbyist's contribution for the player who controlled the Lobbyist when the action resolved. The suppression expires at the end of that player's next actual turn, before any ensuing Settlement. All other contributions are calculated under CORE-01-05-04 through -09.
+CORE-01-04-31 DisplaceInfluence costs two Resources and may resolve at most once per acting player per round. Reset this limit at the beginning of the next round. Choose a real opposing marker on a Board Tile within one hex step of one of the acting player's real Board markers. A marker on the same Tile is in range. The Start Committee is excluded.
+CORE-01-04-32 The action requires at least one adjacent Board destination other than the Start Committee where the displacement response is permitted. Determine eligible destinations before payment, using each destination as the ContextTile of that response. After payment, the chosen marker's owner must select one of those destinations before the acting player's turn can finish. The response has no payment, output modification, or Political Action slot. Transfer the same marker directly between Board Tiles, preserving its identity and ownership.
+CORE-01-04-33 DamageResort costs three Resources and may resolve at most once per acting player per match. Choose an undamaged ResortTile controlled by another player within two hex steps of one of the acting player's real Board markers.
+CORE-01-04-34 A damaged ResortTile has a permanent additive production modifier of -1 at CORE-01-06-16(a)(3). Apply the normal floor after all modifiers. Damage stays on the Tile through changes in control.
 
 ---
 
@@ -205,7 +218,7 @@ computeMajority(Tile):
 
 CORE-01-05-03B A Tile-control requirement is satisfied by the result of the canonical majority calculation, including applicable virtual Influence. No additional real Influence marker on that Tile is required; control entirely through an applicable Lobbyist bonus is sufficient.
 
-CORE-01-05-04 Each controlled Lobbyist contributes +1 virtual Influence for its controller to each adjacent Tile other than a Lobbyist or the Start Committee.
+CORE-01-05-04 Each controlled Lobbyist contributes +1 virtual Influence for its controller to each adjacent Tile other than a Lobbyist or the Start Committee, subject to CORE-01-04-30.
 CORE-01-05-05 Lobbyist contribution applies only to majority calculation.
 CORE-01-05-06 Lobbyist contribution does not create or move Influence objects.
 CORE-01-05-06A Virtual Influence does not count toward Influence caps or victory scoring.
@@ -433,11 +446,6 @@ VAR-01-02-05 FirstPlayerHandicap modifies CORE-01-03-05.
 VAR-01-02-06 FirstPlayerHandicap modifies CORE-01-03-06.
 VAR-01-02-07 If the 5–6 Player Add-On is active, FirstPlayerHandicap also modifies ADD56-01-02-01.
 VAR-01-02-08 If the 5–6 Player Add-On is active, FirstPlayerHandicap also modifies ADD56-01-02-02.
-
-VAR-01-03-01 InfluenceDistance is an optional playtest variant. It modifies only the ordinary Move under CORE-01-04-12.
-VAR-01-03-02 Measure distance by the minimum number of adjacent steps on the hex grid between the source and destination positions, including empty positions. A Move with a distance greater than three is illegal.
-VAR-01-03-03 The base cost is zero Resources at distance one, one Resource at distance two, and three Resources at distance three. The active player chooses each unit from any active resort. Multiple units may come from the same resort.
-VAR-01-03-04 The destination is the sole ContextTile under CORE-01-06-00-05A. Apply applicable prohibitions and payment rules to the complete action, including its base cost, under CORE-01-06-00-07 through -11. Pay from the active player's PersonalSupply to Bank.
 
 ---
 

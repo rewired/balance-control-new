@@ -87,6 +87,7 @@ type PoliticalOption = {
     sourceTileId?: string;
     targetTileId?: string;
     tileId?: string;
+    lobbyistTileId?: string;
     input?: string;
     output?: string;
     alternative?: string;
@@ -135,6 +136,9 @@ export function tileActionLabel(options: EngineMoveOption[]): string {
   const influenceActions = options.flatMap(option => {
     if (option.moveType !== 'doPoliticalAction') return [];
     const { type, payload } = option.parameters[0] as PoliticalOption;
+    if (type === 'counterLobby') return ['Counter-lobby'];
+    if (type === 'displaceInfluence') return ['Displace'];
+    if (type === 'damageResort') return ['Damage'];
     if (type !== 'placeOrMoveInfluence') return [];
     return [payload.sourceTileId ? 'Move' : 'Place'];
   });
@@ -175,6 +179,10 @@ export function describeOption(G: CoreState, option: EngineMoveOption): string {
     return describeRegulation(G, choice.regulation) + paymentLabel(choice.payment);
   }
 
+  if (option.moveType === 'chooseDisplacement' && option.contextTile) {
+    return `Move your displaced marker to ${boardTileLabel(core, option.contextTile)}`;
+  }
+
   if (option.moveType === 'doPoliticalAction') {
     const { type, payload } = option.parameters[0] as PoliticalOption;
     const payment = paymentLabel(payload.payment);
@@ -198,6 +206,17 @@ export function describeOption(G: CoreState, option: EngineMoveOption): string {
       const marker = core.influencesOnBoard?.find(item => item.id === payload.markerId);
       const target = marker ? `${playerLabel(marker.owner)}'s marker (${marker.id})` : 'opposing marker';
       return `Recall ${target} from ${boardTileLabel(core, option.contextTile)} to its owner's supply${payment}`;
+    }
+    if (type === 'counterLobby' && payload.tileId && payload.lobbyistTileId) {
+      return `Counter ${boardTileLabel(core, payload.lobbyistTileId)} at ${boardTileLabel(core, payload.tileId)}${payment}`;
+    }
+    if (type === 'displaceInfluence' && payload.tileId) {
+      const marker = core.influencesOnBoard?.find(item => item.id === payload.markerId);
+      const target = marker ? `${playerLabel(marker.owner)}'s marker (${marker.id})` : 'opposing marker';
+      return `Displace ${target} from ${boardTileLabel(core, payload.tileId)}${payment}`;
+    }
+    if (type === 'damageResort' && payload.tileId) {
+      return `Damage ${boardTileLabel(core, payload.tileId)} permanently (−1 production)${payment}`;
     }
     if (type === 'placeOrMoveInfluence' && payload.targetTileId) {
       const target = boardTileLabel(core, payload.targetTileId);

@@ -69,8 +69,11 @@ describe('CORE hotseat', () => {
     expect(withMoves).toMatch(/Move .* from .* to /);
   });
 
-  it('reaches the engine result using only offered options and shows the shared win', () => {
-    const { state, options, submit, render } = hotseat();
+  it('reaches the recorded pre-distance result using only offered options and shows the shared win', () => {
+    const game = createBCGame({
+      matchSeed: 'task-0030-full-core', variants: { resourceCap: true, influenceRecall: true },
+    }, 'recorded');
+    const { state, options, submit, render } = hotseat(game);
     for (let turn = 1; turn <= 71; turn++) {
       const playerID = state().ctx.currentPlayer;
       const tileId = state().G.exp.core.tiles.drawResolution!.tileId;
