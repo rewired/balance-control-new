@@ -629,3 +629,7 @@
 - Größere Einflusskreise stehen in festen Spielecken. P1 beginnt oben, P2 bis P6 folgen im Uhrzeigersinn. Die Plättchennamen sind im Innenkreis vertikal zentriert. Jedes Wort eines mehrteiligen Namens beginnt auf einer neuen Zeile.
 - Runde Marker in den Ecken des Startkomitees zeigen den Status je Spieler. Ein geschlossenes Schloss steht für eine derzeit nicht verfügbare Formalisierung, ein offenes für eine verfügbare und ein Haken für eine bereits genutzte. Die Statusleiste zeigt, wie viele Plättchen noch im Sack liegen.
 - Neue Partien sind mit sechs Spielern und allen drei Erweiterungen vorausgewählt. Im Hotseat sind alle sechs Plätze mit Local AI belegt.
+
+## 2026-11-10 – Endspielbewertung der Such-KI
+
+- Die Such-KI bewertet Vorratsmarker nach der Zahl der verbleibenden eigenen Züge. Jeder weitere einsetzbare Vorratsmarker zählt weniger. Bei simulierten Siegen bevorzugt die KI die kleinere Gewinnergruppe.

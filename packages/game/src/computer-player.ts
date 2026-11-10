@@ -1,5 +1,5 @@
 import type { Ctx, Game } from 'boardgame.io';
-import { influenceLimit } from '@bc/exp-00-core';
+import { CoreStages, influenceLimit } from '@bc/exp-00-core';
 import { computeMajority, getTopology, type AxialCoord, type CoreState, type PaymentSelection, type RegulationOperation } from '@bc/rules';
 import { inspectExpansions } from './computer-expansions.js';
 import type { ComputerPosition } from './computer-position.js';
@@ -15,11 +15,33 @@ interface PositionValue {
   scores: Record<string, number>;
 }
 
+function reserveScores(G: CoreState, ctx: Ctx): Record<string, number> {
+  const { tiles, players, pendingHotspot, decisionContinuation } = G.exp.core;
+  const stage = ctx.activePlayers?.[ctx.currentPlayer];
+  // CORE-01-06-03 and CORE-01-09-01A: the current turn can still have a political action on the last tile.
+  const currentSlot = stage === CoreStages.DrawAndPlaceTile || stage === CoreStages.ExactlyOnePoliticalAction
+    || stage === CoreStages.AdditionalPoliticalAction || pendingHotspot !== undefined
+    || decisionContinuation === 'enclosures' || decisionContinuation === 'additional';
+  const seats = ctx.playOrder.length;
+  return Object.fromEntries(ctx.playOrder.map((id, index) => {
+    // CORE-01-04-04/-06/-07 and CORE-01-09-01: each future turn uses at least one tile.
+    // Count one opportunity per own turn at most. The reducer handles actual draws and extra placements.
+    const distance = (index - ctx.playOrderPos + seats - 1) % seats + 1;
+    const futureTurns = Math.floor((tiles.drawPile.length + seats - distance) / seats);
+    const opportunities = futureTurns + Number(index === ctx.playOrderPos && currentSlot);
+    const usable = ctx.gameover ? 0 : Math.min(players[id].personal.influence.length, opportunities);
+    let score = 0;
+    for (let marker = 1; marker <= usable; marker++) score += 45 / marker;
+    return [id, score];
+  }));
+}
+
 function evaluate({ G, ctx }: EngineSnapshot): PositionValue {
   const { allTiles, influencesOnBoard, players, tiles } = G.exp.core;
   // Heuristic only: value real markers first, then future influence and economic position.
+  const reserves = reserveScores(G, ctx);
   const scores = Object.fromEntries(Object.values(players).map(({ id, personal }) => [id,
-    45 * personal.influence.length + Object.values(personal.resources).reduce((sum, amount) => sum + amount, 0),
+    reserves[id] + Object.values(personal.resources).reduce((sum, amount) => sum + amount, 0),
   ]));
   for (const { owner } of influencesOnBoard ?? []) scores[owner] += 100;
   const expansions = inspectExpansions(G);
@@ -41,7 +63,7 @@ function compare(left: PositionValue, right: PositionValue, playerID: string): n
   const rank = ({ winners }: PositionValue) => {
     if (!winners) return 0;
     if (!winners.includes(playerID)) return -1;
-    return winners.length === 1 ? 2 : 1;
+    return 1 / winners.length;
   };
   const margin = ({ scores }: PositionValue) => scores[playerID] - Math.max(
     ...Object.entries(scores).filter(([id]) => id !== playerID).map(([, score]) => score),
