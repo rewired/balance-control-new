@@ -1,9 +1,25 @@
 import type { CSSProperties } from 'react';
 import type { RegulationKind } from '@bc/rules';
-import { playerColor, resortVisuals } from './core-board-visuals.js';
+import { playerColor, playerPalette, resortVisuals } from './core-board-visuals.js';
 
 export function PlayerMarker({ id }: { id: string }) {
   return <span className="player-marker" style={{ '--player-color': playerColor(id) } as CSSProperties} aria-hidden="true" />;
+}
+
+export function InfluenceChip({ id, count, virtual = 0, majority }: {
+  id: string;
+  count: number;
+  virtual?: number;
+  majority?: 'control' | 'tie';
+}) {
+  const palette = playerPalette(id);
+  return <span className="influence-chip" data-majority={majority} aria-hidden="true" style={{
+    '--player-color': palette?.fill,
+    '--player-text': palette?.text,
+  } as CSSProperties}>
+    <b>{count}</b>
+    {virtual > 0 && <span className="virtual-influence">+{virtual}</span>}
+  </span>;
 }
 
 export function ResourceBadge({ resource }: { resource: string }) {

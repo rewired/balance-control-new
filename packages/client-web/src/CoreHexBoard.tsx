@@ -7,10 +7,10 @@ import grassrootsIcon from '@bc/exp-00-core/assets/tile-icons/grassroots.svg';
 import hotspotIcon from '@bc/exp-00-core/assets/tile-icons/hotspot.svg';
 import startCommitteeIcon from '@bc/exp-00-core/assets/tile-icons/start-committee.svg';
 import { playerColor, resortVisuals } from './core-board-visuals.js';
-import { PlayerMarker, RegulationBadge } from './CoreSymbols.js';
+import { InfluenceChip, RegulationBadge } from './CoreSymbols.js';
 import HexBoardViewport from './HexBoardViewport.js';
 import {
-  coordLabel, influenceLabel, playerShortLabel, regulationLabel, tileActionLabel, tileLabel, tileOccupation, type MovePreview,
+  coordLabel, influenceLabel, regulationLabel, tileActionLabel, tileLabel, tileOccupation, type MovePreview,
 } from './core-board-labels.js';
 
 const tileVisuals: Record<string, { color: string; icon: string } | undefined> = {
@@ -139,13 +139,10 @@ export default function CoreHexBoard({
                 {regulations.length > 0 && <span className="tile-regulations" aria-hidden="true">
                   {[...regulationCounts].map(([kind, count]) => <RegulationBadge key={kind} kind={kind} count={count} />)}
                 </span>}
-                <span className="tile-influence" aria-hidden="true">
+                <span className="tile-influence">
                   {influence.map(({ id, count, virtual }) => (
-                    <span key={id} className="influence-chip"
-                      data-majority={controller === id ? 'control' : leaders.includes(id) ? 'tie' : undefined}>
-                      <span className="influence-player"><PlayerMarker id={id} />{playerShortLabel(id)}</span>
-                      <span className="influence-count"><b>{count}</b>{virtual > 0 && <span className="virtual-influence">+{virtual}</span>}</span>
-                    </span>
+                    <InfluenceChip key={id} id={id} count={count} virtual={virtual}
+                      majority={controller === id ? 'control' : leaders.includes(id) ? 'tie' : undefined} />
                   ))}
                 </span>
                 {endpoint ? <span className="tile-action tile-move-endpoint">{endpoint === 'source' ? 'From →' : '→ To'}</span>
@@ -166,7 +163,7 @@ export default function CoreHexBoard({
       </HexBoardViewport>
       <footer className="core-board-footer">
         <div className="core-map-key">
-          <span><PlayerMarker id="0" /> Influence <span className="virtual-influence">+ virtual</span></span>
+          <span><InfluenceChip id="0" count={1} /> Influence <span className="virtual-influence">+ virtual</span></span>
           <span><i className="majority-key" data-majority="control" aria-hidden="true" /> Controls tile</span>
           <span><i className="majority-key" data-majority="tie" aria-hidden="true" /> Tied lead</span>
           {G.exp.exp02?.regulations && <span><RegulationBadge kind="Administration" /> Regulation</span>}

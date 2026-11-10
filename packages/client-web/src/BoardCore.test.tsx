@@ -127,9 +127,11 @@ it('shows all six players on one tile and all six active resources alongside the
   const tile = resortButton(markup);
   expect(tile).toBeDefined();
   expect(tile).toMatch(/<strong class="tile-yield">\d+<\/strong>/);
-  expect(tile?.match(/class="player-marker"/g)).toHaveLength(6);
+  expect(tile?.match(/class="influence-chip"/g)).toHaveLength(6);
+  expect(tile?.match(/<b>1<\/b>/g)).toHaveLength(6);
+  expect(tile).not.toMatch(/>P[1-6]</);
   expect(tile?.match(/class="influence-chip" data-majority="control"/g)).toHaveLength(1);
-  expect(tile).toMatch(/data-majority="control".*?P6<\/span>/);
+  expect(tile).toMatch(/data-majority="control"[^>]*--player-color:#22D3EE[^>]*><b>1<\/b><span class="virtual-influence">\+1<\/span>/);
   expect(tile).toContain('Player 6 has 1 marker and 1 virtual influence');
   expect(tile).toContain('Regulations: Administration');
   core.influencesOnBoard.pop();

@@ -609,3 +609,7 @@
 
 - Neue Partien verlangen beim Verschieben für ein, zwei oder drei Hex-Schritte 0, 1 oder 3 Ressourcen aus beliebigen aktiven Ressorts. Ab vier Schritten ist das Ziel außer Reichweite. Die Platzierung aus dem Vorrat folgt CORE-01-04-11.
 - Gegenlobby am Standardkomitee, lokales Abdrängen mit Zielwahl durch den Markerbesitzer und dauerhafter Ressortschaden sind reguläre politische Aktionen. ERRATA-0036 übernimmt beide Playtests in CORE. Gespeicherte Partien und Replays verwenden ihre aufgezeichnete Regelfassung.
+
+## 2026-11-10 – Kompakte Einflussanzeige
+
+- Spielsteine zeigen die Anzahl der Einflussmarker in Kreisen in den Spielerfarben. Virtueller Einfluss steht als `+`-Wert darunter. Durchgezogene und gestrichelte helle Ränder markieren Kontrolle und geteilte Führung.
