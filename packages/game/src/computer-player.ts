@@ -1,4 +1,5 @@
 import type { Ctx, Game } from 'boardgame.io';
+import { influenceLimit } from '@bc/exp-00-core';
 import { computeMajority, getTopology, type AxialCoord, type CoreState, type PaymentSelection, type RegulationOperation } from '@bc/rules';
 import { inspectExpansions } from './computer-expansions.js';
 import type { ComputerPosition } from './computer-position.js';
@@ -10,6 +11,7 @@ const REPLY_WIDTH = 2;
 
 interface PositionValue {
   winners?: string[];
+  turn: number;
   scores: Record<string, number>;
 }
 
@@ -30,9 +32,9 @@ function evaluate({ G, ctx }: EngineSnapshot): PositionValue {
       if (controller !== null) scores[controller] += 3 * tile.w;
     }
   }
-  // CORE-01-09-03/-04: use the actual settlement result for a finished game.
+  // CORE-01-09-00 and CORE-01-09-03/-04: use the engine result for a finished game.
   const result = ctx.gameover as { winners: string[] } | undefined;
-  return { winners: result?.winners, scores };
+  return { winners: result?.winners, turn: ctx.turn, scores };
 }
 
 function compare(left: PositionValue, right: PositionValue, playerID: string): number {
@@ -44,7 +46,9 @@ function compare(left: PositionValue, right: PositionValue, playerID: string): n
   const margin = ({ scores }: PositionValue) => scores[playerID] - Math.max(
     ...Object.entries(scores).filter(([id]) => id !== playerID).map(([, score]) => score),
   );
-  return rank(left) - rank(right) || margin(left) - margin(right);
+  const outcome = rank(left);
+  // Between losing lines, prefer the one that keeps the game alive longer.
+  return outcome - rank(right) || (outcome === -1 ? left.turn - right.turn : 0) || margin(left) - margin(right);
 }
 
 function valueWithImmediateEffects(later: PositionValue, immediate: PositionValue): PositionValue {
@@ -112,7 +116,19 @@ export function sampleComputerOptions({ G, ctx }: ComputerPosition, playerID: st
   return legal.length ? shortlist(uniqueMarkerOptions(G, playerID, legal), budget, compactness(G)) : [];
 }
 
-function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: string, budget: number) {
+function nextPlayerRecalls({ G, ctx }: EngineSnapshot, options: EngineMoveOption[]) {
+  const opponent = ctx.playOrder[(ctx.playOrderPos + 1) % ctx.playOrder.length];
+  const { players, influencesOnBoard } = G.exp.core;
+  if (!players[opponent].personal.influence.length) return [];
+  const targets = new Set(influencesOnBoard?.filter(marker => marker.owner === opponent).map(marker => marker.id));
+  // CORE-01-09-00 and CORE-01-04-11: the next player can win by placing a reserve marker.
+  if (targets.size !== influenceLimit(G) - 1) return [];
+  // CORE-01-04-24/-25: keep one legal payment per opposing marker for the tactical preview.
+  return options.filter(option => actionType(option) === 'recallInfluence'
+    && targets.delete((option.parameters[0] as { payload: { markerId: string } }).payload.markerId));
+}
+
+function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: string, budget: number, defendNextTurn = false) {
   const legal = engineMoveOptions(state.G, state.ctx, playerID);
   if (!legal.length) return [];
   const options = uniqueMarkerOptions(state.G, playerID, legal);
@@ -121,10 +137,11 @@ function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: s
   const preferred = options.length > budget && options[0].moveType !== 'placeTile'
     ? inspectExpansions(state.G)?.preferred(options, playerID, Math.ceil(budget / 4)) ?? []
     : [];
-  const candidates = new Set([...sampled, ...preferred]);
+  const defensive = new Set(defendNextTurn ? nextPlayerRecalls(state, options) : []);
+  const candidates = new Set([...sampled, ...preferred, ...defensive]);
   const ranked = Array.from(previewEngineOptions(game, state, candidates), ({ option, next }) => {
     const neighbors = option.moveType === 'placeTile' ? countNeighbors(option) : 0;
-    return { option, next, value: evaluate(next), neighbors };
+    return { option, next, value: evaluate(next), neighbors, defensive: defensive.has(option) };
   });
   return ranked.sort((a, b) => compare(b.value, a.value, playerID) || b.neighbors - a.neighbors);
 }
@@ -147,7 +164,7 @@ function distinctLines(ranked: Variation[], width: number, expanded: boolean): V
     const type = actionType(option);
     const political = [type, option.contextTile, action.payload?.sourceTileId, action.payload?.measureId];
     if (type === 'counterLobby') political.push(action.payload?.lobbyistTileId);
-    if (type === 'displaceInfluence') political.push(action.payload?.markerId);
+    if (type === 'displaceInfluence' || type === 'recallInfluence') political.push(action.payload?.markerId);
     const targets = expanded ? [action.payload?.targetPlayerID, action.payload?.targetResort, action.payload?.output,
       action.regulation ?? action.payload?.regulation, action.payload?.targetRegulationId] : [];
     const key = JSON.stringify(option.moveType === 'placeTile' ? option.parameters[0] : [...political, ...targets]);
@@ -187,8 +204,10 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision }: 
     return best ?? value;
   }
 
-  const ranked = rankedOptions(game, state, playerID, rootSamples);
+  const ranked = rankedOptions(game, state, playerID, rootSamples, true);
   const lines = distinctLines(ranked, rootWidth, expanded);
+  const defense = ranked.find(line => line.defensive);
+  if (defense && !lines.includes(defense)) lines.push(defense);
   if (lines.length === 1 || lines[0]?.value.winners?.length === 1 && lines[0].value.winners[0] === playerID) {
     return lines[0].option;
   }

@@ -1,9 +1,11 @@
 import { Client } from 'boardgame.io/client';
+import { CreateGameReducer, InitializeGame } from '#boardgame-internal';
 import { expect, it } from 'vitest';
 import { chooseComputerMove } from './computer-player.js';
 import { createComputerPosition } from './computer-position.js';
 import { createBCGame } from './factory.js';
-import { engineMoveOptions, hashEngineState } from './legal-options.js';
+import { engineMoveOptions, hashEngineState, previewEngineOptions } from './legal-options.js';
+import hotseatReplay from './fixtures/hotseat-c2082d6d.json';
 
 it('ties the game by blocking the opponent’s last-turn Hotspot payout', () => {
   const game = createBCGame({ matchSeed: 'hotspot-trap' });
@@ -55,6 +57,37 @@ it('ties the game by blocking the opponent’s last-turn Hotspot payout', () => 
   expect(play(false)).toEqual({ winners: ['1'] });
   expect(play(true)).toEqual({ winners: ['0', '1'] });
 });
+
+it('recalls a marker from the next player in the recorded Hotseat turn 63', () => {
+  const { numPlayers, ...setupData } = hotseatReplay.setup.game;
+  const game = { ...createBCGame(setupData, 'recorded'), seed: hotseatReplay.setup.engineSeed };
+  const reduce = CreateGameReducer({ game });
+  const initial = InitializeGame({ game, numPlayers, setupData });
+  const play = (state: typeof initial, { move, playerID, args }: typeof hotseatReplay.actions[number]) =>
+    reduce(state, { type: 'MAKE_MOVE', payload: { type: move, playerID, args } });
+
+  const state = hotseatReplay.actions.slice(0, 125).reduce(play, initial);
+  expect(state.ctx).toMatchObject({ turn: 63, currentPlayer: '2' });
+  const positionHash = 'fbc608530b8ea807d9c5f929828810a727cc9f45cd3832a5e35db196448a30ca';
+  expect(hashEngineState(state)).toBe(positionHash);
+
+  const original = hotseatReplay.actions.slice(125).reduce(play, structuredClone(state));
+  expect(original.ctx).toMatchObject({ turn: 64, gameover: { winners: ['0'] } });
+  expect(hashEngineState(original)).toBe('2ac5982599ba56c440f763a9e93ebe00dba36e4f929176ffb142e2e4fa2b21a3');
+
+  const position = createComputerPosition(state);
+  const workerGame = createBCGame({ ...position.G.cfg, matchSeed: position.G.matchSeed });
+  const choice = chooseComputerMove(workerGame, position, '2')!;
+  expect(choice).toMatchObject({ moveType: 'doPoliticalAction', parameters: [{ type: 'recallInfluence' }] });
+  expect(hashEngineState(state)).toBe(positionHash);
+
+  const afterRecall = Array.from(previewEngineOptions(game, state, [choice]))[0].next;
+  expect(afterRecall.ctx).toMatchObject({ turn: 64, currentPlayer: '0' });
+  expect(afterRecall.G.exp.core.influencesOnBoard?.filter(marker => marker.owner === '0')).toHaveLength(5);
+  const continued = hotseatReplay.actions.slice(126).reduce(play, afterRecall);
+  expect(continued.ctx).toMatchObject({ turn: 65, currentPlayer: '1' });
+  expect(continued.ctx.gameover).toBeUndefined();
+}, 20_000);
 
 it('builds the same worker position and chooses the same action when the hidden order changes', () => {
   const game = createBCGame({ matchSeed: 'private-order', expansions: { exp01: true, exp02: true, exp03: true } });

@@ -619,3 +619,7 @@
 - Das Spielfeld nutzt die Fensterhöhe. Aktionen und Vorräte sind auf großen Bildschirmen gleichzeitig sichtbar. Measures und Regulations lassen sich daneben öffnen, und die Legende lässt sich ausklappen.
 - Die Vorräte bleiben unter den Aktionen an derselben Position. Jede Spielerzeile zeigt die Kennung im Farbquadrat und nur die Gesamtzahlen für Einfluss auf dem Brett und im Vorrat. Die Spaltensymbole werden beim Darüberfahren erklärt. Im Brettsymbol steht das Siegziel. Die aktive Zeile bleibt hervorgehoben.
 - „Formalize influence“ markiert beim Inspizieren eines Komitees die Spieler, die noch Startmarker zum ersten Mal setzen müssen.
+
+## 2026-11-10 – Rückrufe gegen unmittelbare Siegdrohungen
+
+- Steht der nächste Spieler mit einem Marker im Vorrat kurz vor dem Einflusslimit, simuliert die lokale Such-KI zusätzlich ihren bestbewerteten legalen Rückruf gegen ihn. Bei simulierten Niederlagen bevorzugt sie die Fortsetzung, die länger offenbleibt.
