@@ -651,4 +651,5 @@
 - Hotseat und Netzwerk-Lobby zeigen einen aufklappbaren Kapitelbaum neben der gewählten HTML-Seite. Auf schmalen Bildschirmen steht der Baum über der Seite.
 - Jedes Paket liefert seine eigenen Seiten in `assets/guide/en/`. Der Baum übernimmt den Paketnamen aus dem `<title>` der `index.html` und die Kapitelnamen aus den `<h1>`-Überschriften. Die Übersicht steht zuerst, danach folgen die Kapitel nach Dateinamen mit zweistelligem Nummernpräfix. Gleich benannte Dateien können später in weiteren Sprachordnern liegen.
 - Die englische CORE-Anleitung erklärt den Aufbau, den Zugablauf mit allen politischen Aktionen, Kontrolle, Produktion und beide Wege zum Sieg anhand von Beispielen aus CORE-01.
+- Die englischen Kapitel zu Economy &amp; Labor, Security &amp; Order und Climate &amp; Future erklären die neuen Ressourcen, Plättchen, Aktionen und Measures mit Beispielen für Produktion, Regulierung und Kosten.
 - Auf breiten Bildschirmen nutzen Hotseat-Setup, Netzwerk-Lobby und Spielanleitung die volle Fensterhöhe unter der Kopfzeile. Längere Inhalte lassen sich im jeweiligen Bereich scrollen.
