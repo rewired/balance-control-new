@@ -82,8 +82,8 @@ it('builds the same worker position and chooses the same action when the hidden 
   expect(chooseComputerMove(game, other, '0')).toEqual(choice);
 });
 
-it('takes a Security Measure, trades for the missing SEC and blocks rival production', () => {
-  const game = createBCGame({ matchSeed: 'security-planning', expansions: { exp02: true } });
+it('takes a Security Measure, trades for SEC and blocks rival production under the recorded pre-cap rules', () => {
+  const game = createBCGame({ matchSeed: 'security-planning', expansions: { exp02: true } }, 'recorded');
   const setup = game.setup!;
   game.setup = (context, data) => {
     const G = setup(context, data);

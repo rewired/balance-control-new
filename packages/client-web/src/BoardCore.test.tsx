@@ -88,7 +88,7 @@ describe('CORE hotseat', () => {
       submit(action!);
     }
     expect(state().ctx.gameover).toEqual({ winners: ['0', '1'] });
-    expect(state().G.lastTurnHash).toBe('06033bb8ff0535ed345c7adb61bbfd1b4f62458376d42dfc43914a1c76442ad5');
+    expect(state().G.lastTurnHash).toBe('7ff38ea01ed32fa19a067c32a6754245614c6a71d14d64f01ad2b052a5f9a5cc');
     const end = render();
     expect(end).toContain('Shared win · Player 1 and Player 2');
     expect(end).toContain('On board');

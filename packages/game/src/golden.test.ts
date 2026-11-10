@@ -16,7 +16,7 @@ describe('Golden replay — 0006', () => {
     const { G, ctx } = client.getState()!;
     expect(ctx.turn).toBe(11);
     expect(G.exp.core.influencesOnBoard).toHaveLength(8);
-    expect(G.exp.core.resources.noise).toEqual({ DOM: 0, FOR: 0, INF: 0 }); // CORE-01-06-13
-    expect(G.lastTurnHash).toBe('d3fe65eeb2ed6af432c1b0080d49566acf051e28f67cd69b4d64ebd51f1886be');
+    expect(G.exp.core.resources.noise).toEqual({ DOM: 4, FOR: 0, INF: 0 }); // CORE-01-07-04A
+    expect(G.lastTurnHash).toBe('58c3cf0fc6b589cc9fb18a7c201935acf5444fa7ce2f70ecccd6a78e4381b479');
   });
 });

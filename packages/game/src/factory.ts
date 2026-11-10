@@ -8,9 +8,13 @@ import { exp03Climate } from '@bc/exp-03-climate';
 
 for (const module of [createCoreExpansion(), exp01Economy(), exp02Security(), exp03Climate()]) registerExpansion(module);
 
-export function setupCoreMatch(numPlayers: number, setupData: unknown = {}): CoreState {
+type SetupRules = 'current' | 'recorded';
+
+export function setupCoreMatch(numPlayers: number, setupData: unknown = {}, rules: SetupRules = 'current'): CoreState {
   // CORE-01-03-01..08: build match state before the engine begins the first turn.
   const { matchSeed, ...cfg } = MatchSetupDataSchema.parse(setupData);
+  // CORE-01-07-04A: record the cap on new matches. Replays use the rule recorded at setup.
+  if (rules === 'current') cfg.variants.resourceCap = true;
   const G = buildInitialCoreState(numPlayers, matchSeed, cfg);
   const modules = createExpansionRegistry(cfg.expansions);
   const resolve = createResolver(modules);
@@ -25,7 +29,7 @@ export function setupCoreMatch(numPlayers: number, setupData: unknown = {}): Cor
   return G;
 }
 
-export function createBCGame(defaultConfig?: unknown): Game<CoreState, Record<string, unknown>, unknown> {
+export function createBCGame(defaultConfig?: unknown, rules: SetupRules = 'current'): Game<CoreState, Record<string, unknown>, unknown> {
   const defaults = MatchSetupDataSchema.parse(defaultConfig ?? {});
   return {
     name: 'core',
@@ -36,7 +40,7 @@ export function createBCGame(defaultConfig?: unknown): Game<CoreState, Record<st
       const result = MatchSetupDataSchema.safeParse(setupData === undefined ? defaults : setupData);
       return result.success ? validateMatchPlayerCount(numPlayers, result.data.addOn56) : result.error.message;
     },
-    setup: ({ ctx }, setupData) => setupCoreMatch(ctx.numPlayers, setupData === undefined ? defaults : setupData),
+    setup: ({ ctx }, setupData) => setupCoreMatch(ctx.numPlayers, setupData === undefined ? defaults : setupData, rules),
     turn: { ...CoreTurn },
     events: {
       endGame: false,

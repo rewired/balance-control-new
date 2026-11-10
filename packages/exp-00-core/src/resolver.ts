@@ -30,7 +30,7 @@ function isStartCommitteeContext(G: CoreState, coord?: AxialCoord): boolean {
 }
 
 type BankTransfer = { resource: ResourceId; amount: number } & (
-  | { from: 'PersonalSupply'; to: 'Bank'; playerID: string }
+  | { from: 'PersonalSupply'; to: 'Bank' | 'Noise'; playerID: string }
   | { from: 'Bank'; to: 'PersonalSupply'; playerID: string }
   | { from: 'Bank'; to: 'Noise' }
 );
@@ -55,7 +55,7 @@ function createBankTransaction(G: CoreState, registry: ResourceRegistry) {
     if (!isResourceCount(amount)) return { ok: false, reason: 'invalid-resource-amount' };
 
     let account = noise;
-    if (route.to !== 'Noise') {
+    if ('playerID' in route) {
       const { playerID } = route;
       if (!Object.hasOwn(G.exp.core.players, playerID)) return { ok: false, reason: 'no-player' };
       account = supplies.get(playerID) ?? copyBalances(G.exp.core.players[playerID].personal.resources);
@@ -63,7 +63,8 @@ function createBankTransaction(G: CoreState, registry: ResourceRegistry) {
     }
     if (amount === 0) return { ok: true };
 
-    const available = bank[resource] ?? 0;
+    const counterparty = route.from === 'PersonalSupply' && route.to === 'Noise' ? noise : bank;
+    const available = counterparty[resource] ?? 0;
     const balance = account[resource] ?? 0;
     if (!isResourceCount(available) || !isResourceCount(balance)) {
       return { ok: false, reason: 'invalid-resource-balance' };
@@ -73,12 +74,12 @@ function createBankTransaction(G: CoreState, registry: ResourceRegistry) {
     }
 
     // CORE-01-00-04B: missing bank stock is created and immediately transferred.
-    const bankAfter = route.from === 'Bank' ? Math.max(0, available - amount) : available + amount;
+    const counterpartyAfter = route.from === 'Bank' ? Math.max(0, available - amount) : available + amount;
     const accountAfter = route.from === 'Bank' ? balance + amount : balance - amount;
-    if (!isResourceCount(bankAfter) || !isResourceCount(accountAfter)) {
+    if (!isResourceCount(counterpartyAfter) || !isResourceCount(accountAfter)) {
       return { ok: false, reason: 'invalid-resource-balance' };
     }
-    bank[resource] = bankAfter;
+    counterparty[resource] = counterpartyAfter;
     account[resource] = accountAfter;
     changed = true;
     return { ok: true };
@@ -810,6 +811,25 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
         continueRegisteredDecisions(G);
         if (G.exp.core.pendingRegulationChoices) break;
       }
+      return { ok: true };
+    }
+
+    if (effect.kind === 'applyResourceCap') {
+      // CORE-01-07-04A: stage all excess transfers before committing any.
+      if (!G.cfg.variants.resourceCap) return { ok: false, reason: 'resource-cap-inactive' };
+      const registry = createMatchResourceRegistry(active);
+      const transaction = createBankTransaction(G, registry);
+      for (const player of Object.values(G.exp.core.players)) {
+        for (const resource of registry.list()) {
+          const excess = (player.personal.resources[resource] ?? 0) - 12;
+          if (excess <= 0) continue;
+          const moved = transaction.transfer({
+            from: 'PersonalSupply', to: 'Noise', playerID: player.id, resource, amount: excess,
+          });
+          if (!moved.ok) return moved;
+        }
+      }
+      transaction.commit();
       return { ok: true };
     }
 

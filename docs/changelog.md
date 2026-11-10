@@ -594,3 +594,8 @@
 ## 2026-11-09 – Kompakte Spielprotokolle in JSONL
 
 - Hotseat, Netzwerk, Bot-Läufe und Exporte speichern Match-Logs als `.match-log.jsonl` mit einer Zeile pro bestätigter Aktion. Replay-Daten und Checkpoints bleiben vollständig erhalten. `match:log verify` liest auch das bisherige JSON-Format.
+
+## 2026-11-10 – Vorratsdeckel je Ressort
+
+- Neue Partien begrenzen nach jeder regulären oder abschließenden Rundenabrechnung den Vorrat jedes Spielers auf 12 Einheiten je aktivem Ressort. Überschuss fließt direkt in Noise.
+- ERRATA-0034 setzt die Freigabe aus DD-0038 um. Ältere Partien und Replays verwenden ihre gespeicherten Regeln.

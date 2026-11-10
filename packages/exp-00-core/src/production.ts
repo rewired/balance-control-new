@@ -20,6 +20,11 @@ export function resolveRoundSettlement(state: CoreState, modules?: readonly Rule
   for (const placement of resorts) {
     resolve(state, { kind: 'applyProductionAt', coord: placement.coord });
   }
+  // CORE-01-07-04A: discard excess after all production and receipt limits.
+  if (state.cfg.variants.resourceCap) {
+    const capped = resolve(state, { kind: 'applyResourceCap' });
+    if (!capped.ok) throw new Error(`Cannot apply the resource cap: ${capped.reason}`);
+  }
   // CORE-01-07-17: expiring effects remain active through all production in this Settlement.
   resolve(state, { kind: 'expireMeasureEffects', boundary: 'settlementEnd' });
   return true;

@@ -105,9 +105,10 @@ function replayFullCoreMatch() {
       const delta = Object.values(next.G.exp.core.players).map(({ id, personal }) => Object.fromEntries(
         Object.entries(personal.resources).map(([resort, count]) => [resort, count - placed.G.exp.core.players[id].personal.resources[resort]]),
       ));
-      expect(delta).toEqual([{ DOM: 3, FOR: 5, INF: 1 }, { DOM: 2, FOR: 2, INF: 1 }]);
-      // CORE-01-06-15: the tie on INF-W3-2 sends one resource to Noise.
-      expect(next.G.exp.core.resources.noise).toEqual({ ...placed.G.exp.core.resources.noise, INF: placed.G.exp.core.resources.noise.INF + 1 });
+      expect(delta).toEqual([{ DOM: 0, FOR: 0, INF: 0 }, { DOM: 0, FOR: 0, INF: 0 }]);
+      // CORE-01-06-15 and CORE-01-07-04A: Noise receives the tie remainder and all final production above the cap.
+      const noise = placed.G.exp.core.resources.noise;
+      expect(next.G.exp.core.resources.noise).toEqual({ DOM: noise.DOM + 5, FOR: noise.FOR + 7, INF: noise.INF + 3 });
     }
   }
 
@@ -117,7 +118,7 @@ function replayFullCoreMatch() {
   expect(final.G.exp.core.tiles.board).toHaveLength(72);
   expect(markerCounts(final.G)).toEqual([4, 4]);
   expect(new Set(hashes).size).toBe(71);
-  expect(final.G.lastTurnHash).toBe('06033bb8ff0535ed345c7adb61bbfd1b4f62458376d42dfc43914a1c76442ad5');
+  expect(final.G.lastTurnHash).toBe('7ff38ea01ed32fa19a067c32a6754245614c6a71d14d64f01ad2b052a5f9a5cc');
   return { ...final, hashes };
 }
 
@@ -179,7 +180,7 @@ function replayLastPlacementWithMeasure() {
   expect(measures.hands['1']).toEqual([]);
   expect(measures.recycle).toContain(measureId);
   expect(final.G.exp.core.playedMeasureThisRound!['1']).toBe(true);
-  expect(final.G.lastTurnHash).toBe('83aa91da6a850af720209d3dd63cb0fd133c8193c4753ccb4d3d75b589915f4b');
+  expect(final.G.lastTurnHash).toBe('da5c272f67b4ff5b4d64ca816e1dd9239345e6a4d7145fd0b2d5cc091361492d');
   return final;
 }
 
@@ -206,7 +207,7 @@ function replayUnsuccessfulFinalDraw() {
   expect(final.G.exp.core.players['0'].personal.resources.DOM).toBe(2);
   expect(final.G.exp.core.players['1'].personal.resources.DOM).toBe(0);
   expect(markerCounts(final.G)).toEqual([2, 0]);
-  expect(final.G.lastTurnHash).toBe('95b49fd2b690f6f28ee6bfb8021da0429519cafeb60416c9d78b090d5d8cff26');
+  expect(final.G.lastTurnHash).toBe('61e28367357a0b5f400f5d0565ee379689bebd982ff8218e530b1ff7c7cec14c');
   return final;
 }
 

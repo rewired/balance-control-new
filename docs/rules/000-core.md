@@ -17,6 +17,7 @@ Applied errata: ERRATA-0014 (2026-11-07, effect costs and payers).
 Applied errata: ERRATA-0015 (2026-11-07, Round Settlement sequence).
 Applied errata: ERRATA-0031 (2026-11-09, hexagonal topology).
 Applied errata: ERRATA-0032 (2026-11-09, victory at the Influence limit).
+Applied errata: ERRATA-0034 (2026-11-10, resort supply cap).
 
 ---
 
@@ -322,6 +323,7 @@ CORE-01-07-04 Settlement Sequence
 (c) Resolve each ResortTile's production completely in ascending ordinal lexicographic order of its stable, unique Tile ID, using CORE-01-06-16 without reordering its steps. This includes Regulation output modifiers before the majority/distribution steps.
 (d) Complete any explicitly applicable subsequent Settlement effects. Only after these are complete has Round Settlement ended.
 (e) If another round begins, perform its beginning-of-round resets after Settlement has ended. After a final Settlement, score and end the game under CORE-01-09; do not start another round or perform its resets.
+CORE-01-07-04A At the end of each regular or final Round Settlement, after production and subsequent Settlement effects, cap each active Resource resort at 12 in each player's PersonalSupply. Transfer every excess directly from PersonalSupply to Noise in one resolution.
 CORE-01-07-05 Registration order is the order of game events that registered the effects, not system time. Resolving a registered Settlement effect grants no new permission to play a Measure from hand or perform an additional Political Action.
 CORE-01-07-06 Determine effect applicability using the shared game clock in CORE-01-07-07 through -18 and any explicit specific override. This round effects remain applicable throughout their current Round Settlement and expire afterward under CORE-01-07-10/-17.
 

@@ -51,6 +51,43 @@ function openLastTurnOfRound(client: CoreClient): void {
 describe('Canonical Resort Production through boardgame.io', () => {
   beforeEach(() => __resetRegisteredExpansionsForTest());
 
+  it.each([
+    { rules: 'current', final: false, capped: true },
+    { rules: 'current', final: true, capped: true },
+    { rules: 'recorded', final: false, capped: false },
+  ] as const)('applies the resort cap at Settlement under $rules rules (final=$final)', ({ rules, final, capped }) => {
+    registerExpansion({
+      id: 'exp02',
+      registerResources: registry => registry.register('SEC'),
+      setupExpansionState: G => { ensureExpansionSlice(G, 'exp02', {}); },
+    });
+    const game = createBCGame({ expansions: { exp02: true } }, rules);
+    const setup = game.setup!;
+    game.setup = (context, data) => {
+      const G = setup(context, data);
+      const { players, tiles, resources } = G.exp.core;
+      const draw = final ? ['Committee-1', 'Committee-2'] : ['Committee-1', 'Committee-2', 'Committee-3'];
+      tiles.board.push(resort);
+      tiles.discardFaceUp = tiles.drawPile.filter(id => id !== resort.tileId && !draw.includes(id));
+      tiles.drawPile = draw;
+      G.exp.core.influencesOnBoard = [{ ...players['0'].personal.influence.shift()!, tileId: resort.tileId }];
+      players['0'].personal.resources.DOM = 11;
+      players['1'].personal.resources.SEC = 15;
+      Object.assign(resources.bank, { DOM: 5, SEC: 7 });
+      return G;
+    };
+    const client = Client({ game, numPlayers: 2 });
+    openLastTurnOfRound(client);
+    expect(client.getState()!.G.exp.core.players['1'].personal.resources.SEC).toBe(15);
+    placeMarker(client, 'Committee-2');
+    const { G, ctx } = client.getState()!;
+    expect(Boolean(ctx.gameover)).toBe(final);
+    expect(G.exp.core.players['0'].personal.resources.DOM).toBe(capped ? 12 : 14);
+    expect(G.exp.core.players['1'].personal.resources.SEC).toBe(capped ? 12 : 15);
+    expect(G.exp.core.resources.bank).toMatchObject({ DOM: 2, SEC: 7 });
+    expect(G.exp.core.resources.noise).toMatchObject(capped ? { DOM: 2, SEC: 3 } : { DOM: 0, SEC: 0 });
+  });
+
   it('T07: pays the full automatic production without running player-paid cost hooks', () => {
     const costs = vi.fn(({ effect }: CostIncreasesArgs) => {
       if (effect.kind === 'applyProductionAt' || effect.kind === 'addResources'

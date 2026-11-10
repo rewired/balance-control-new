@@ -122,7 +122,7 @@ function replayAction(action: RecordedAction): ActionShape.MakeMove | ActionShap
 function replay(setup: ReplaySetup, source: MatchLogSource, actions: readonly RecordedAction[],
   check?: (position: ReturnType<typeof snapshot>) => void) {
   const { numPlayers, ...setupData } = setup.game;
-  const game = { ...createBCGame(setupData), seed: setup.engineSeed };
+  const game = { ...createBCGame(setupData, 'recorded'), seed: setup.engineSeed };
   const reduce = CreateGameReducer({ game });
   let state: State<CoreState> = InitializeGame({ game, numPlayers, setupData });
   const initial = snapshot(state);

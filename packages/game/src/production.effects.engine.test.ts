@@ -120,7 +120,8 @@ describe('Production effects through boardgame.io', () => {
 
     placeMarker(client, placeTile(client));
     placeMarker(client, placeTile(client));
-    expect(client.getState()!.G.exp.core.players['1'].personal.resources.DOM).toBe(14);
+    expect(client.getState()!.G.exp.core.players['1'].personal.resources.DOM).toBe(12);
+    expect(client.getState()!.G.exp.core.resources.noise.DOM).toBe(firstSettlement.G.exp.core.resources.noise.DOM + 2);
   });
 
   it('caps only final receipts per tile, preserving the original remainder and unissued bank stock', () => {

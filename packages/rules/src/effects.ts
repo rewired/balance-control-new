@@ -17,6 +17,7 @@ export type EffectKind =
   | 'expireMeasureEffects'
   | 'completeEmptyPoliticalSlot'
   | 'beforeSettlementProduction'
+  | 'applyResourceCap'
   | ResolveRegulationEffect['kind']
   | 'addNoise'
   | PoliticalActionEffect['kind']
@@ -163,6 +164,7 @@ export type EffectDescriptor =
   | ExpireMeasureEffects
   | CompleteEmptyPoliticalSlot
   | BeforeSettlementProductionEffect
+  | (BaseEffect & { kind: 'applyResourceCap' })
   | ResolveRegulationEffect
   | AddNoiseEffect
   | PoliticalActionEffect
