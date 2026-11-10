@@ -1,4 +1,4 @@
-import type { ExpansionId } from '@bc/rules';
+import { createExpansionRegistry, measureBaseCost, type CoreState, type ExpansionId } from '@bc/rules';
 import economyRules from '../../../docs/rules/001-expansion01.md?raw';
 import securityRules from '../../../docs/rules/002-expansion02.md?raw';
 import climateRules from '../../../docs/rules/003-expansion03.md?raw';
@@ -34,3 +34,12 @@ for (const { resource, rules } of expansions) {
 
 export const measureText = (id: string) => measures.get(id);
 export const measureName = (id: string) => measureText(id)?.title ?? id;
+
+export function measurePrice(G: CoreState, id: string): string {
+  const printed = measureText(id)?.cost ?? '—';
+  if (!G.cfg.variants.measureRegulationAccess) return printed;
+  const module = createExpansionRegistry(G.cfg.expansions).find(item => item.id !== 'core' && item.measureRules?.[id]);
+  if (!module || module.id === 'core') return printed;
+  return Object.entries(measureBaseCost(G, module, id))
+    .map(([resource, amount]) => `${amount} ${resource}`).join(' + ') || 'Free';
+}

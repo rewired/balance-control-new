@@ -248,6 +248,22 @@ it('takes a Security Measure, trades for SEC and blocks rival production under t
   expect(G.exp.exp02?.regulations?.attached).toEqual([{ id: 'reg-1', kind: 'Blockade', tileId: 'DOM-W5-1' }]);
 });
 
+it('takes a zero-cost Measure with an empty hand before spending its political action', () => {
+  const game = createBCGame({ matchSeed: 'measure-access-1', expansions: { exp02: true, exp03: true } });
+  const client = Client({ game, numPlayers: 2, playerID: '0' });
+  const draw = client.store.getState().G.exp.core.tiles.drawResolution!;
+  client.moves.placeTile(draw.legalCoords[0]);
+  const before = client.store.getState();
+  const choice = chooseComputerMove(game, createComputerPosition(before), '0')!;
+  expect(choice.moveType).toBe('doPoliticalAction');
+  expect((choice.parameters[0] as { type: string }).type).toMatch(/_takeMeasure$/);
+  expect(choice.costBreakdown).toEqual([]);
+  client.moves[choice.moveType](...choice.parameters);
+  const after = client.store.getState();
+  expect(after._stateID).toBe(before._stateID + 1);
+  expect(after.ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
+});
+
 it('plays a production Measure on the most productive friendly resort', () => {
   const game = createBCGame({ matchSeed: 'production-planning', expansions: { exp01: true } });
   const setup = game.setup!;

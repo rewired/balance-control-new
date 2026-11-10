@@ -1,0 +1,7 @@
+# DD-0040 — Zugang zu Measures und Regulations
+
+In 10 abgeschlossenen Hotseat-Partien mit Measure-Decks wurden 64 Karten genommen und 8 ausgespielt. In 28 Logs mit EXP-02 wurde insgesamt eine neue Regulation platziert. Der frühere Test mit kostenloser Aufnahme erhöhte die Ausspielungen von 5 auf 13. Der Test mit nur einem reduzierten Kartenpreis für Threat Situation ergab keine Ausspielung.
+
+ERRATA-0037 setzt an der Aufnahme, der Zahlung und dem Zugang zur Platzierung an. Wer bei leerer Hand eine Karte nimmt, darf sie sofort ausspielen und behält deren reguläre Zusatzaktion. Die Sperre für eine zweite Aufnahme im selben Zug begrenzt den Bonus auf eine Karte. Der Preisnachlass betrifft je Karte nur ihr eigenes Ressort. Der normale Tausch in SEC zahlt zwei Einheiten aus. Eine Platzierung kostet eine Einheit. Das kontrollierte Authority Apparatus kann die drei Regulationsarten platzieren, die Auswirkungen verändern, ohne sämtliche Effekte auf einem Tile zu verbieten. Blockade-Platzierung erfolgt weiter über einen Hotspot oder eine Measure.
+
+Der Marker `measureRegulationAccess` gehört zur Match-Konfiguration. Neue Partien mit mindestens einem Measure-Deck setzen ihn beim Start. Der Resolver liest den gespeicherten Marker für Aufnahme, Zahlung und Auszahlung. Dadurch lassen sich bestehende Replays mit ihren ursprünglichen Hashes prüfen. Die Sperre für eine zweite Aufnahme existiert nur zwischen der erfolgreichen Aufnahme und dem Zugende.

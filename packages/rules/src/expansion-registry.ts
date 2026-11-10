@@ -125,6 +125,7 @@ interface ModuleContributions {
   setupExpansionState?(G: CoreState, ctx: { numPlayers: number; seed: string }): void;
   tiles?: (config: MatchConfig) => readonly Tile[];
   conversionAlternatives?: (G: CoreState, playerID: string) => readonly ConversionAlternative[];
+  conversionBaseOutput?: (G: CoreState, resource: ResourceId) => number | undefined;
   extendMoves?: (builder: import('./moves.js').MoveExtensionBuilder) => void;
   hooks?: ExpansionHooks;
 }
@@ -149,11 +150,24 @@ export interface ExpansionModule extends ModuleContributions {
   measureDeck?: (config: MatchConfig) => readonly string[];
   measureRules?: Readonly<Record<string, MeasureRule | undefined>>;
   measurePrefix?: string;
+  measureDiscountResource?: ResourceId;
   canRegisterMeasure?: (G: CoreState, instance: RegisterMeasureEffect['instance']) => boolean;
   actions?: Partial<Record<ResolveRegulationEffect['kind'], ExtensionAction>>;
 }
 
 export type RulesModule = CoreModule | ExpansionModule;
+
+// EXP-01-06-05E: discount only the printed cost before combining any operation costs.
+export function measureBaseCost(G: CoreState, module: ExpansionModule | undefined, measureId: string): Partial<ResourceAmounts> {
+  const cost = { ...module?.measureRules?.[measureId]?.cost };
+  const resource = module?.measureDiscountResource;
+  if (G.cfg.variants.measureRegulationAccess && resource !== undefined) {
+    const amount = cost[resource] ?? 0;
+    if (amount > 1) cost[resource] = amount - 1;
+    else delete cost[resource];
+  }
+  return cost;
+}
 
 const registered: ExpansionModule[] = [];
 let core: CoreModule | undefined;

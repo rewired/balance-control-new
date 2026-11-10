@@ -182,6 +182,7 @@ export interface CoreExpansionState {
   pendingRegulationChoices?: PendingRegulationChoice[];
   decisionContinuation?: DecisionContinuation;
   playedMeasureThisRound?: Record<string, boolean>;
+  emptyHandPickupUsed?: true;
   recalledThisRound?: string[]; // CORE-01-04-23
   counterLobbies?: CounterLobby[]; // CORE-01-04-29/-30
   displacedThisRound?: string[]; // CORE-01-04-31

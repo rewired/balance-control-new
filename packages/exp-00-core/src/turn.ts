@@ -166,6 +166,7 @@ const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown)
 
   const payload = definition.payloadSchema.safeParse(input.data.payload === undefined ? {} : input.data.payload);
   if (!payload.success) return INVALID_MOVE;
+  const pickupUsed = G.exp.core.emptyHandPickupUsed;
   const result = definition.execute(G, ctx.currentPlayer, payload.data);
   if (!result.ok) {
     if (!result.attemptEffectsConsumed) return INVALID_MOVE;
@@ -174,6 +175,11 @@ const doPoliticalAction: Move<CoreState> = ({ G, ctx, events }, action: unknown)
   }
 
   if (endAtInfluenceLimit({ G, ctx, events })) return;
+  // EXP-01-06-04E: an empty-hand pickup leaves the regular window open.
+  if (!additional && !pickupUsed && G.exp.core.emptyHandPickupUsed) {
+    beginPoliticalSlot({ G, ctx, events }, false);
+    return;
+  }
   // CORE-01-04-32: the defender's choice happens within the acting player's political action.
   const displaced = G.exp.core.pendingDisplacement;
   if (displaced) {

@@ -12,6 +12,7 @@ Applied errata: ERRATA-0013 (2026-11-07, Authority Apparatus activation).
 Applied errata: ERRATA-0014 (2026-11-07, effect costs and payers).
 Applied errata: ERRATA-0015 (2026-11-07, Round Settlement sequence).
 Applied errata: ERRATA-0036 (2026-11-10, influence distance and disruption actions).
+Applied errata: ERRATA-0037 (2026-11-10, Measure and Regulation access).
 
 ---
 
@@ -52,6 +53,7 @@ EXP-02-01-03 SEC behaves identically to DOM, FOR, INF unless explicitly modified
 EXP-02-01-04 SEC counts as a distinct resort for all “different resorts” requirements.
 EXP-02-01-05 SEC may be used wherever “a Resource” is required.
 EXP-02-01-06 SEC exists only while EXP-02 is active.
+EXP-02-01-07 An ordinary Grassroots exchange under CORE-01-04-22A that selects SEC as its output yields a base 2 SEC instead of 1. Apply output modifiers to that amount. Alternative exchanges retain their specified output.
 
 ---
 
@@ -161,7 +163,7 @@ EXP-02-03-06 No modification to Round structure.
 
 ## EXP-02-04-A Placement
 
-EXP-02-04-A-01 Placing a Regulation normally costs exactly 2 SEC.
+EXP-02-04-A-01 Placing a Regulation normally costs exactly 1 SEC.
 EXP-02-04-A-02 Cost is paid from PersonalSupply to Bank.
 EXP-02-04-A-03 Cost must be paid in full simultaneously.
 EXP-02-04-A-04 If cost cannot be paid, placement fails.
@@ -205,9 +207,10 @@ EXP-02-05-02 ActivateAuthorityApparatus is a Political Action performed via the 
 (a) Move exactly one existing Regulation from a Board Tile to another legal Board Tile, or
 (b) Remove exactly one existing Regulation from a Board Tile to RegulationSupply.
 
-EXP-02-05-02A The Regulation may be on any Tile on Board; no additional adjacency requirement applies. Activation does not place a new Regulation from RegulationSupply.
-EXP-02-05-03 The activation has a base Resource cost of 0. Explicitly applicable cost modifiers still apply and must be paid by the active player from PersonalSupply to Bank before execution.
-EXP-02-05-04 ContextTile for an Authority Apparatus activation is that Authority Apparatus Tile, including any Regulation movement or removal embedded in the activation. Evaluate Tile-local prohibitions, cost modifiers, and output modifiers once at the Apparatus; do not apply another Tile's local effect modifiers a second time to the embedded operation.
+EXP-02-05-02A The Regulation may be on any eligible Tile on Board; no additional adjacency requirement applies.
+EXP-02-05-02B In place of moving or removing a Regulation, the active player may place one SecurityLevel, Control or Administration from RegulationSupply under EXP-02-04-A. Placement uses the same Authority Apparatus ContextTile and pays the normal placement price.
+EXP-02-05-03 Movement and removal have a base Resource cost of 0. Explicitly applicable cost modifiers still apply and must be paid by the active player from PersonalSupply to Bank before execution.
+EXP-02-05-04 ContextTile for an Authority Apparatus activation is that Authority Apparatus Tile, including any Regulation placement, movement or removal embedded in the activation. Evaluate Tile-local prohibitions, cost modifiers, and output modifiers once at the Apparatus; do not apply another Tile's local effect modifiers a second time to the embedded operation.
 EXP-02-05-05 Embedded movement or removal must still satisfy explicit restrictions on the Regulation, including Surveillance on its source Tile. A movement destination must be permitted for the Regulation type. These checks do not create another ContextTile.
 EXP-02-05-06 ActivateAuthorityApparatus may be the one additional otherwise legal non-PlayMeasure action granted by PlayMeasure. It does not itself grant any additional Political Action.
 
@@ -220,7 +223,8 @@ EXP-02-06-02 Regulation placement is not a standalone Political Action.
 EXP-02-06-03 Regulation placement occurs only via:
 
 (a) Hotspot resolution, or
-(b) Measure effects.
+(b) Measure effects, or
+(c) Authority Apparatus activation under EXP-02-05-02B.
 
 ---
 
@@ -365,7 +369,7 @@ EXP-02-08-M14-03 Effect: One Regulation on chosen Tile counts twice for stacking
 
 EXP-02-08-M15-01 Cost: SEC.
 EXP-02-08-M15-02 Duration: This round.
-EXP-02-08-M15-03 Effect: Reduce cost of next Regulation placement this round by 1 SEC (minimum 1).
+EXP-02-08-M15-03 Effect: Reduce cost of next Regulation placement this round by 1 SEC (minimum 0 before other cost modifiers).
 
 ---
 

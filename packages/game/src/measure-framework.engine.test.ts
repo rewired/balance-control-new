@@ -47,7 +47,11 @@ describe('Shared Measure lifecycle through boardgame.io', () => {
     expect(after.exp!.exp02!.measures!.open).toEqual([open[0], drawPile[0], open[2]]);
     expect(after.exp!.exp02!.measures!.hands['0']).toEqual([open[1]]);
     expect(after.exp!.exp03).toEqual(G.exp!.exp03);
-    expect(ctx.currentPlayer).toBe('1');
+    expect(ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
+    expect([...politicalMoveOptions(after, '0')].some(move => move.type.endsWith('_takeMeasure'))).toBe(false);
+    const revision = client.getState()!._stateID;
+    act(client, 'exp03', 'takeMeasure', after.exp.exp03!.measures!.open[0]!);
+    expect(client.getState()!._stateID).toBe(revision);
   });
 
   it('refills an exhausted market from the played card before opening the additional slot', () => {
@@ -84,8 +88,9 @@ describe('Shared Measure lifecycle through boardgame.io', () => {
     registerDeck('exp02', ['SEC-1']);
     registerDeck('exp03', ['CLM-1']);
     const client = Client({ game: createBCGame({ expansions: { exp01: true, exp02: true, exp03: true } }), numPlayers: 2 });
-    place(client);
+    const opening = place(client);
     act(client, 'exp01', 'takeMeasure', 'ECO-1');
+    mark(client, opening);
     mark(client, place(client));
     place(client);
     act(client, 'exp02', 'takeMeasure', 'SEC-1');

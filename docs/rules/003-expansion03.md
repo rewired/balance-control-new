@@ -7,6 +7,7 @@ Applied errata: ERRATA-0007 (2026-11-07, draw resolution and bounded recycling).
 Applied errata: ERRATA-0009 (2026-11-07, Measure acquisition and market refill).
 Applied errata: ERRATA-0010 (2026-11-07, shared Measure framework).
 Applied errata: ERRATA-0011 (2026-11-07, ECO-dependent Climate Measure eligibility).
+Applied errata: ERRATA-0037 (2026-11-10, Measure and Regulation access).
 
 ---
 

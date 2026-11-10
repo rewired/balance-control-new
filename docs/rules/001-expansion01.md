@@ -7,6 +7,7 @@ Applied errata: ERRATA-0009 (2026-11-07, Measure acquisition and market refill).
 Applied errata: ERRATA-0010 (2026-11-07, shared Measure framework).
 Applied errata: ERRATA-0012 (2026-11-07, future Measure triggers).
 Applied errata: ERRATA-0014 (2026-11-07, effect costs and payers).
+Applied errata: ERRATA-0037 (2026-11-10, Measure and Regulation access).
 
 ---
 
@@ -157,11 +158,13 @@ EXP-01-06-01A TakeMeasure and PlayMeasure select cards from one chosen active ex
 EXP-01-06-02 A player may perform at most one PlayMeasure per round in total across all active expansions. Choosing another expansion does not grant another use.
 EXP-01-06-02A Track one shared playedMeasureThisRound flag per player, initially false when the shared framework is set up. Set it when that player plays a Measure under EXP-01-07-01. Reset it only at the beginning of the next round, after Round Settlement has ended. It is independent of any per-Measure effect usage flags.
 EXP-01-06-03 A player may hold at most 2 Measures in total across all active expansions. Count the sum of that player's separate expansion-specific PlayerHand zones; the zones themselves remain separate.
-EXP-01-06-04 A successful TakeMeasure ends the turn immediately after its card transfer and mandatory market refill have completed.
+EXP-01-06-04 A successful TakeMeasure ends the turn immediately after its card transfer and mandatory market refill have completed, except under EXP-01-06-04E.
 EXP-01-06-04A TakeMeasure selects exactly one occupied OpenMeasures slot of the chosen active expansion and transfers that Measure into the active player's PlayerHand for the same expansion. The applicable hand limit must remain satisfied.
 EXP-01-06-04B TakeMeasure cannot be chosen when that market has no face-up Measure or when taking the card would exceed the applicable hand limit.
 EXP-01-06-04C TakeMeasure has a base Resource cost of 0. Any explicitly applicable prohibition or additional cost must be resolved before the card transfer; if it prevents the action, no card is taken and no refill is triggered by that failed action.
-EXP-01-06-04D After a successful transfer, immediately refill only that expansion's OpenMeasures under EXP-01-07-05 through -05D, then end the turn under EXP-01-06-04.
+EXP-01-06-04D After a successful transfer, immediately refill only that expansion's OpenMeasures under EXP-01-07-05 through -05D, then apply EXP-01-06-04/-04E.
+
+EXP-01-06-04E If TakeMeasure is chosen in the regular Political Action window and the player's combined Measure hand was empty, keep the regular Political Action window open after refill. The player may play the acquired card immediately if otherwise legal. After this acquisition no further TakeMeasure is legal in that turn, including in the additional action after PlayMeasure. Apply CORE-01-04-09A/-09B if the regular window has no legal action left. Taking in the additional action always ends the turn.
 
 EXP-01-06-05 When performing PlayMeasure:
 (a) Resolve the Measure completely.
@@ -172,6 +175,8 @@ EXP-01-06-05A The additional action may be any otherwise legal, enabled Politica
 EXP-01-06-05B PlayMeasure uses the cost-resolution boundaries in CORE-01-06-00-07 through -09: an immediate contained Regulation placement shares the card's cost basis, while an explicitly later operation and the granted additional Political Action each have their own resolution. Granting an additional action does not waive that action's costs.
 EXP-01-06-05C Apply CORE-01-04-09A through -09C to the additional non-PlayMeasure slot after the Measure's immediate resolution and mandatory market refill. If no legal option exists, completing that slot does not undo the successful Measure or its shared per-round PlayMeasure usage.
 EXP-01-06-05D For a Measure with a continuing or future effect, complete its immediate instructions and register its effect instance under EXP-01-07-08 through -13. This completes its immediate resolution; do not wait for the registered effect to expire or trigger before completing card lifecycle, market refill, and the additional action. An immediate-only effect does not require a pending effect instance.
+
+EXP-01-06-05E Before adding operation costs or other cost modifiers, deduct one unit of the Measure deck's Resource (ECO for EXP-01, SEC for EXP-02, CLM for EXP-03) from the printed card cost if present. The card's base cost may be zero. This deduction applies only to the printed card cost, not to any separate or embedded operation.
 
 ---
 

@@ -30,7 +30,7 @@ describe('Bot match through boardgame.io', () => {
       const slot = deck.open.indexOf(card);
       if (slot >= 0) deck.open[slot] = null;
       deck.hands['0'].push(card);
-      G.exp.core.players['0'].personal.resources.ECO = 2;
+      G.exp.core.players['0'].personal.resources.ECO = 1;
       return G;
     };
     const seen: (Omit<EngineMoveOption, 'playerID'> & { index: number })[][] = [];
@@ -52,7 +52,7 @@ describe('Bot match through boardgame.io', () => {
     expect(seen).toHaveLength(3);
     expect(seen[0][0]).toMatchObject({ moveType: 'placeTile', contextTile: 'Committee-1' });
     expect(seen[1]).toContainEqual(expect.objectContaining({
-      moveType: 'doPoliticalAction', contextTile: null, costBreakdown: [{ playerID: '0', resource: 'ECO', amount: 2 }],
+      moveType: 'doPoliticalAction', contextTile: null, costBreakdown: [{ playerID: '0', resource: 'ECO', amount: 1 }],
       parameters: [{ type: 'exp01_playMeasure', payload: { measureId: 'ECO_M03' } }],
     }));
     expect(seen[2].every(option => !JSON.stringify(option.parameters).includes('exp01_playMeasure'))).toBe(true);

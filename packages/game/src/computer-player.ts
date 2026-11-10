@@ -163,7 +163,12 @@ function compactness(G: CoreState) {
 
 export function sampleComputerOptions({ G, ctx }: ComputerPosition, playerID: string, budget: number): EngineMoveOption[] {
   const legal = engineMoveOptions(G, ctx, playerID);
-  return legal.length ? shortlist(uniqueMarkerOptions(G, playerID, legal), budget, compactness(G)) : [];
+  if (!legal.length) return [];
+  const options = uniqueMarkerOptions(G, playerID, legal);
+  const sampled = shortlist(options, budget, compactness(G));
+  if (!G.cfg.variants.measureRegulationAccess || options.length <= budget || options[0].moveType === 'placeTile') return sampled;
+  const preferred = inspectExpansions(G)?.preferred(options, playerID, Math.ceil(budget / 4)) ?? [];
+  return [...new Set([...sampled, ...preferred])];
 }
 
 function nextPlayerRecalls({ G, ctx }: EngineSnapshot, options: EngineMoveOption[]) {
@@ -198,6 +203,10 @@ function rankedOptions(game: Game<CoreState>, state: EngineSnapshot, playerID: s
 }
 
 type Variation = ReturnType<typeof rankedOptions>[number];
+
+function playsMeasure(line: Variation): boolean {
+  return actionType(line.option).endsWith('_playMeasure');
+}
 
 function distinctLines(ranked: Variation[], width: number, expanded: boolean): Variation[] {
   const seen = new Set<string>();
@@ -250,6 +259,17 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision, st
     const branch = canBranch && actor !== playerID;
     const replies = distinctLines(ranked, branch ? REPLY_WIDTH : 1, expanded);
     if (!replies.length) return { preferred: value };
+    // After an empty-hand pickup, compare playing the new card and its additional action with the regular action.
+    if (G.cfg.variants.measureRegulationAccess && actor === playerID && next.ctx.turn === state.ctx.turn
+        && next.G.exp.core.emptyHandPickupUsed && next.ctx.activePlayers?.[actor] === CoreStages.ExactlyOnePoliticalAction) {
+      const play = ranked.find(playsMeasure);
+      const regular = ranked.find(reply => !playsMeasure(reply));
+      if (play && regular) {
+        const played = follow(play, remaining - 1, canBranch);
+        const ordinary = follow(regular, remaining - 1, canBranch);
+        return compare(played.preferred, ordinary.preferred, actor, actorStyle) > 0 ? played : ordinary;
+      }
+    }
     if (replies.length === 1) return follow(replies[0], remaining - 1, canBranch);
 
     const [first, second] = replies.map(reply => follow(reply, remaining - 1, false).preferred);
@@ -260,11 +280,20 @@ export function chooseComputerMove(game: Game<CoreState>, { G, ctx, revision, st
 
   const ranked = rankedOptions(game, state, playerID, style, rootSamples, true);
   const lines = distinctLines(ranked, rootWidth, expanded);
+  if (lines[0]?.value.winners?.length === 1 && lines[0].value.winners[0] === playerID) return lines[0].option;
   const defense = ranked.find(line => line.defensive);
   if (defense && !lines.includes(defense)) lines.push(defense);
-  if (lines.length === 1 || lines[0]?.value.winners?.length === 1 && lines[0].value.winners[0] === playerID) {
-    return lines[0].option;
+  if (G.cfg.variants.measureRegulationAccess) {
+    const play = ranked.find(playsMeasure);
+    const pickup = !G.exp.core.emptyHandPickupUsed && ranked.find(line => line.next.G.exp.core.emptyHandPickupUsed);
+    // EXP-01-06-04E: a zero-cost empty-hand pickup preserves the regular action.
+    if (!defense && pickup && !pickup.option.costBreakdown.length) return pickup.option;
+    const regulation = ranked.find(line => actionType(line.option) === 'activateAuthorityApparatus');
+    for (const line of [play, pickup, regulation]) {
+      if (line && !lines.includes(line)) lines.push(line);
+    }
   }
+  if (lines.length === 1) return lines[0].option;
   let best: { option: EngineMoveOption; rating: ReturnType<typeof rateContinuation> } | undefined;
   for (const line of lines) {
     const later = follow(line, ACTION_HORIZON - 1, true);

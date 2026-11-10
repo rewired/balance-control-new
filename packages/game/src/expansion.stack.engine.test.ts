@@ -23,9 +23,12 @@ const costed = { tileId: 'INF-W1-1', coord: { q: 0, r: 1 } };
 const empty = { tileId: 'INF-W2-1', coord: { q: 0, r: -1 } };
 type Instance = Extract<EffectDescriptor, { kind: 'registerMeasureEffect' }>['instance'];
 
-function replay(expansions: (typeof configurations)[number]) {
+function replay(expansions: (typeof configurations)[number], rules: 'recorded' | 'current') {
   const { exp01, exp02, exp03 } = expansions;
-  const game = createBCGame({ matchSeed: '0030-expansion-stack', expansions });
+  const game = createBCGame({
+    matchSeed: '0030-expansion-stack', expansions,
+    variants: { resourceCap: true, influenceRecall: true, influenceDistance: true, disruption: true },
+  }, rules);
   const setup = game.setup!;
   game.setup = (context, data) => {
     const G = setup(context, data);
@@ -120,8 +123,10 @@ function replay(expansions: (typeof configurations)[number]) {
 }
 
 describe('Cross-expansion cost and Settlement matrix through boardgame.io', () => {
-  it.each(configurations)('resolves CORE with exp01=$exp01 exp02=$exp02 exp03=$exp03', expansions => {
-    const { G, ctx } = replay(expansions);
+  const cases = (['recorded', 'current'] as const).flatMap(rules =>
+    configurations.map(expansions => ({ ...expansions, rules })));
+  it.each(cases)('resolves $rules CORE with exp01=$exp01 exp02=$exp02 exp03=$exp03', ({ rules, ...expansions }) => {
+    const { G, ctx } = replay(expansions, rules);
     const { exp01, exp02, exp03 } = expansions;
     expect(ctx.gameover).toBeDefined();
     // CORE-01-06-16/-16A: apply doubling and reductions before tied shares and the receipt cap.
@@ -139,8 +144,10 @@ describe('Cross-expansion cost and Settlement matrix through boardgame.io', () =
     expect(G.exp?.exp02?.regulations !== undefined).toBe(exp02);
     expect(G.exp.core.activeMeasureEffects?.every(instance => instance.sourceCardId.startsWith('CLM_')) ?? true).toBe(true);
     expect(JSON.stringify(G)).not.toMatch(/countdown/i);
-    const expected = endHashes[configurations.indexOf(expansions)];
-    expect(G.lastTurnHash).toBe(expected);
-    expect(replay(expansions).G.lastTurnHash).toBe(expected);
+    expect(G.cfg.variants.measureRegulationAccess).toBe(rules === 'current' && activeIds.length > 0 ? true : undefined);
+    if (rules === 'recorded') {
+      expect(G.lastTurnHash).toBe(endHashes[Number(exp01) + 2 * Number(exp02) + 4 * Number(exp03)]);
+    }
+    expect(replay(expansions, rules).G.lastTurnHash).toBe(G.lastTurnHash);
   });
 });

@@ -3,7 +3,7 @@ import {
   type AxialCoord, type BoardRegulation, type CoreState, type EffectDescriptor, type ExpansionModule, type Surcharge,
 } from '@bc/rules';
 import {
-  attachedRegulationTarget, initializeRegulations, innerOrderDecision, operationTarget, regulationActions, regulationFollowUp, regulationOperations,
+  attachedRegulationTarget, authorityOperations, initializeRegulations, innerOrderDecision, operationTarget, regulationActions, regulationFollowUp,
 } from './regulations.js';
 
 export { regulationPlacementPrice } from './regulations.js';
@@ -32,6 +32,9 @@ export function exp02Security(): ExpansionModule {
   return {
     id: 'exp02',
     measurePrefix: 'SEC_',
+    measureDiscountResource: 'SEC', // EXP-01-06-05E
+    // EXP-02-01-07: this is the base payout, before output modifiers.
+    conversionBaseOutput: (G, resource) => G.cfg.variants.measureRegulationAccess && resource === 'SEC' ? 2 : undefined,
     actions: regulationActions,
     // EXP-02-01-01 and EXP-02-03-01..04.
     registerResources: registry => registry.register('SEC'),
@@ -132,9 +135,13 @@ export function exp02Security(): ExpansionModule {
         type: 'activateAuthorityApparatus',
         payloadSchema: AuthorityPayload,
         execute: (G, playerID, payload) => resolve(G, { kind: 'activateAuthorityApparatus', playerID, ...payload }),
-        quotes: (G, playerID) => [...regulationOperations(G, 'move'), ...regulationOperations(G, 'remove')]
-          .flatMap(regulation => resolve.actionQuotes(G, { kind: 'activateAuthorityApparatus', playerID, regulation })
-            .map(({ payment, ...quote }) => ({ ...quote, payload: { regulation, ...(payment ? { payment } : {}) } }))),
+        *quotes(G, playerID) {
+          for (const regulation of authorityOperations(G, playerID)) {
+            for (const { payment, ...quote } of resolve.actionQuotes(G, { kind: 'activateAuthorityApparatus', playerID, regulation })) {
+              yield { ...quote, payload: { regulation, ...(payment ? { payment } : {}) } };
+            }
+          }
+        },
       });
     },
   };

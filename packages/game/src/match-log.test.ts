@@ -4,6 +4,37 @@ import { createBCGame } from './factory.js';
 import { engineMoveOptions, hashEngineState } from './legal-options.js';
 import { createMatchLog, createMatchLogRecorder, verifyMatchLog } from './match-log.js';
 
+it('replays an empty-hand pickup, a zero-cost Security Measure and its additional action in one turn', () => {
+  const game = createBCGame({ matchSeed: 'measure-access-1', expansions: { exp02: true, exp03: true } });
+  const client = Client({ game, numPlayers: 2 });
+  const initial = structuredClone(client.getInitialState());
+  const offer = initial.G.exp.core.tiles.drawResolution!;
+  client.moves.placeTile(offer.legalCoords[0]);
+  client.moves.doPoliticalAction({ type: 'exp02_takeMeasure', payload: { measureId: 'SEC_M15' } });
+  const afterTake = client.store.getState();
+  expect(afterTake.ctx.activePlayers).toEqual({ '0': 'ExactlyOnePoliticalAction' });
+  expect(afterTake.G.exp.exp02!.measures!.hands['0']).toEqual(['SEC_M15']);
+  expect(afterTake.G.exp.exp01).toBeUndefined();
+  const options = engineMoveOptions(afterTake.G, afterTake.ctx, '0');
+  expect(options.some(option => (option.parameters[0] as { type?: string }).type?.endsWith('_takeMeasure'))).toBe(false);
+  const play = options.find(option => (option.parameters[0] as { type?: string }).type === 'exp02_playMeasure')!;
+  expect(play.costBreakdown).toEqual([]);
+  client.moves[play.moveType](...play.parameters);
+  const additional = client.store.getState();
+  expect(additional.ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
+  expect(engineMoveOptions(additional.G, additional.ctx, '0').some(option =>
+    (option.parameters[0] as { type?: string }).type?.endsWith('_takeMeasure'))).toBe(false);
+  client.moves.doPoliticalAction({
+    type: 'placeOrMoveInfluence', payload: { markerId: 'INF-0-1', targetTileId: offer.tileId },
+  });
+  const final = client.store.getState();
+  expect(final.ctx.turn).toBe(2);
+  expect(final.G.exp.core).not.toHaveProperty('emptyHandPickupUsed');
+  expect(final.G.lastTurnHash).toBe('c347ce143dd37aed8cf696d314da769038cc2792255e1f4d051c2083ec41b7bd');
+  const log = createMatchLog(initial, final, client.log!, { mode: 'hotseat' });
+  expect(verifyMatchLog(JSON.parse(JSON.stringify(log)))).toEqual(log);
+});
+
 it('exports a complete seeded game with only accepted actions, including undo and redo', () => {
   const client = Client({ game: createBCGame({ matchSeed: 'playtest-log', expansions: { exp01: true } }), numPlayers: 2, playerID: '0' });
   const initial = structuredClone(client.getInitialState());

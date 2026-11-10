@@ -4,7 +4,7 @@ import { exp01Economy } from '@bc/exp-01-economy';
 import { exp03Climate } from '@bc/exp-03-climate';
 import {
   __resetRegisteredExpansionsForTest, createResolver, ensureExpansionSlice, registerExpansion,
-  type BoardPlacement, type CoreState,
+  type BoardPlacement, type CoreState, type MatchConfigInput,
 } from '@bc/rules';
 import { stableHash } from '@bc/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -22,13 +22,16 @@ function markerCounts(G: CoreState): number[] {
 }
 
 function fixtureClient(
-  config: unknown,
+  config: MatchConfigInput & { matchSeed: string },
   board: BoardPlacement[],
   draw: string[],
   markers: { owner: string; tileId: string }[],
   { numPlayers = 2, prepare }: { numPlayers?: number; prepare?: (G: CoreState) => void } = {},
 ): CoreClient {
-  const game = createBCGame(config);
+  const game = createBCGame({
+    ...config,
+    variants: { resourceCap: true, influenceRecall: true, influenceDistance: true, disruption: true, ...config.variants },
+  }, 'recorded');
   const setup = game.setup!;
   game.setup = (context, data) => {
     const G = setup(context, data);

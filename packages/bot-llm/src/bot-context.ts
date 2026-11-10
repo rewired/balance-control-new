@@ -86,6 +86,12 @@ function describeBotPosition({ G, ctx }: ComputerPosition, playerID: string,
       'Disruption (CORE-01-04-27 through -34): CounterLobby costs two resources and suppresses one opposing Lobbyist bonus at a standard Committee within two steps of your marker until the Lobbyist controller ends their next turn. DisplaceInfluence costs two resources once per round and targets a rival marker within one step of your marker. Its owner selects a legal neighboring destination in a mandatory response. DamageResort costs three resources once per match and permanently reduces a rival-controlled resort within two steps of your marker by one production. Base costs can use repeated active resorts.',
     ] : []),
     ...(expansions.length ? ['Measures (EXP-01-06/07): TakeMeasure moves a face-up card into your hand. A paid PlayMeasure resolves its printed effect and grants one additional non-PlayMeasure Political Action. The hand limit is two total and the play limit is one per round across all decks.'] : []),
+    ...(G.cfg.variants.measureRegulationAccess ? [
+      'Measure access (EXP-01-06-04E/-05E): If your hand is empty, taking one card in the regular window keeps that window open. You can play that card this turn and cannot take a second card. The listed option prices already deduct one resource of the card’s own deck from the printed price.',
+      ...(G.cfg.expansions.exp02 ? [
+        'Security access (EXP-02-01-07/-04-A-01/-05-02B): A standard exchange into SEC yields two. Regulation placement costs one SEC before modifiers. The player controlling Authority Apparatus can also place a SecurityLevel, Control or Administration.',
+      ] : []),
+    ] : []),
     ...expansions.flatMap(({ label, file, prefix }) => [label, ...visibleCardRules(file, prefix, visible)]),
     'Board rows are [q,r,tile id,kind,printed resort and output,enclosure status if resolved]. Marker rows are [tile id,owner,marker id].',
     `Visible position: ${JSON.stringify(position)}`,

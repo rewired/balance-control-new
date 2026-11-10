@@ -16,7 +16,10 @@ function giveMeasure(G: CoreState, expansion: 'exp01' | 'exp03', measureId: stri
 }
 
 function setupCosts(draw: string[], prepare: (G: CoreState) => void): CoreClient {
-  const game = createBCGame({ expansions: { exp01: true, exp02: true, exp03: true }, variants: { tileRecycling: true } });
+  const game = createBCGame({
+    expansions: { exp01: true, exp02: true, exp03: true },
+    variants: { tileRecycling: true, resourceCap: true, influenceRecall: true, influenceDistance: true, disruption: true },
+  }, 'recorded');
   const setup = game.setup!;
   game.setup = (context, data) => {
     const G = setup(context, data);

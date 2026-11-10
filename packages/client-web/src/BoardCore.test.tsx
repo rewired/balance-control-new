@@ -209,11 +209,12 @@ it('takes a Security measure and offers a named, priced Regulation action for th
     const deck = G.exp.exp02!.measures!;
     const index = deck.drawPile.indexOf('SEC_M01');
     if (index !== -1) [deck.open[0], deck.drawPile[index]] = ['SEC_M01', deck.open[0]!];
-    Object.assign(G.exp.core.players['0'].personal.resources, { SEC: 3, INF: 1 });
+    Object.assign(G.exp.core.players['0'].personal.resources, { SEC: 1, INF: 1 });
     return G;
   };
   const { state, options, submit, render } = hotseat(game);
   submit(options()[0]);
+  expect(render()).toContain('Take a Measure and keep your action');
   const market = renderToStaticMarkup(<MeasurePanel G={state().G} options={options()} onSelect={() => undefined} />);
   expect(market).toContain('Security &amp; Order');
   expect(market).toContain('Threat Situation');
@@ -225,15 +226,12 @@ it('takes a Security measure and offers a named, priced Regulation action for th
   submit(take);
   expect(state().G.exp.exp02!.measures!.hands['0']).toEqual(['SEC_M01']);
 
-  submit(options()[0]);
-  submit(options().find(option => describeOption(state().G, option).startsWith('Place marker'))!);
-  submit(options()[0]);
   const hand = renderToStaticMarkup(<MeasurePanel G={state().G} options={options()} onSelect={() => undefined} />);
   expect(hand).toContain('Player 1 · 1 in hand');
   expect(hand).toContain('Play available');
   const play = options().find(option => describeOption(state().G, option)
     .startsWith('Play Threat Situation · Place Security Level on '))!;
-  expect(optionCost(play)).toBe('3 SEC + 1 INF');
+  expect(optionCost(play)).toBe('1 INF + 1 SEC');
   submit(play);
   expect(state().ctx.activePlayers).toEqual({ '0': CoreStages.AdditionalPoliticalAction });
   const attached = state().G.exp.exp02!.regulations!.attached;

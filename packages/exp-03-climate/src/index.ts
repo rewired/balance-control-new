@@ -10,6 +10,7 @@ export function exp03Climate(): ExpansionModule {
   return {
     id: 'exp03',
     measurePrefix: 'CLM_',
+    measureDiscountResource: 'CLM', // EXP-01-06-05E
     canRegisterMeasure: (G, instance) => instance.sourceCardId !== 'CLM_M11' || G.cfg.expansions.exp01, // EXP-03-03-02A
     registerResources: registry => registry.register('CLM'), // EXP-03-01-01
     // EXP-03-02-A-02A and EXP-03-03-04: the extra ResortTiles are already included in these totals.

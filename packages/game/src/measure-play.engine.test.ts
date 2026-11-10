@@ -75,14 +75,14 @@ describe('Paid Measures through boardgame.io', () => {
     expect(rejected.G).toEqual(before.G);
   });
 
-  it('T12: pays two ECO and refills the empty market before the additional action', () => {
-    const client = bargainingFixture(2);
+  it('T12: pays the discounted ECO price and refills the empty market before the additional action', () => {
+    const client = bargainingFixture(1);
     const tile = place(client);
     client.moves.doPoliticalAction({ type: 'exp01_playMeasure', payload: { measureId: 'ECO_M03' } });
     const { G, ctx } = client.getState()!;
     const deck = G.exp!.exp01!.measures!;
     expect(G.exp.core.players['0'].personal.resources.ECO).toBe(0);
-    expect(G.exp.core.resources.bank.ECO).toBe(2);
+    expect(G.exp.core.resources.bank.ECO).toBe(1);
     expect(deck.open).toEqual(['ECO_M03', null, null]);
     expect(deck.playCounts.ECO_M03).toBe(1);
     expect(deck.recycle).toEqual([]);
@@ -130,8 +130,8 @@ describe('Paid Measures through boardgame.io', () => {
 
     const { G, ctx } = client.getState()!;
     expect(ctx.gameover).toEqual({ winners: ['1'] });
-    expect(G.exp.core.resources.bank).toMatchObject({ ECO: 3, INF: 1, CLM: 1, DOM: 4 });
-    expect(G.exp.core.players['1'].personal.resources).toMatchObject({ DOM: 1, ECO: 0, CLM: 0 });
+    expect(G.exp.core.resources.bank).toMatchObject({ ECO: 2, INF: 1, CLM: 0, DOM: 4 });
+    expect(G.exp.core.players['1'].personal.resources).toMatchObject({ DOM: 1, ECO: 0, CLM: 1 });
     expect(G.exp.core.activeMeasureEffects?.map(effect => effect.id)).toEqual(['CLM_M11:1']);
   });
 

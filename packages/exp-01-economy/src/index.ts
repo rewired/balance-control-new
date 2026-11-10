@@ -8,6 +8,7 @@ export function exp01Economy(): ExpansionModule {
   return {
     id: 'exp01',
     measurePrefix: 'ECO_',
+    measureDiscountResource: 'ECO', // EXP-01-06-05E
     registerResources: registry => registry.register('ECO'), // EXP-01-01-01
     // EXP-01-03-07: one copy of each special Tile in every player count.
     tiles: ({ addOn56 }) => [

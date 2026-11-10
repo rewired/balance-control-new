@@ -20,7 +20,7 @@ export function tileLabel(tile: Tile): string {
   return tile.kind === 'ResortTile' ? `${tile.resort} · ${tile.w}` : words(tile.kind);
 }
 
-export function tileRuleSummary(tile: Tile): string {
+export function tileRuleSummary(tile: Tile, { expansions, variants }: CoreState['cfg']): string {
   switch (tile.kind) {
     case 'ResortTile':
       // CORE-01-06-09, CORE-01-06-16(a)–(c)
@@ -33,7 +33,8 @@ export function tileRuleSummary(tile: Tile): string {
       return 'If you control this tile, you can pay 2 resources from different resorts as a political action to add 1 influence marker to your supply. Everyone must first place all their starting markers.';
     case 'Grassroots':
       // CORE-01-04-21A, CORE-01-04-22A, CORE-01-04-22B, CORE-01-04-22D
-      return 'If you control this tile, you can trade 3 resources of one active resort for 1 of another active resort as a political action. Each action allows one exchange.';
+      return 'If you control this tile, you can trade 3 resources of one active resort for 1 of another active resort as a political action. Each action allows one exchange.'
+        + (expansions.exp02 && variants.measureRegulationAccess ? ' An ordinary exchange into SEC yields 2 SEC before modifiers.' : '');
     case 'Lobbyist':
       // CORE-01-05-04, CORE-01-05-05, CORE-01-05-06
       return 'The controller adds 1 virtual influence to each adjacent tile except other Lobbyists and the Start Committee. This bonus counts only toward majority.';
@@ -49,7 +50,8 @@ export function tileRuleSummary(tile: Tile): string {
       return 'If you control this tile and a Grassroots, you can use that Grassroots to trade 2 ECO for 1 resource of another active resort as your conversion action.';
     case 'AuthorityApparatus':
       // EXP-02-05-02, EXP-02-05-02A, EXP-02-05-03
-      return 'If you control this tile, you can move one regulation to another legal tile or remove it as a political action. The base cost is 0 resources.';
+      return 'If you control this tile, you can move one regulation to another legal tile or remove it as a political action. Moving and removing have no base resource cost.'
+        + (variants.measureRegulationAccess ? ' You can also place a Security Level, Control or Administration on an eligible tile for a base cost of 1 SEC.' : '');
   }
 }
 

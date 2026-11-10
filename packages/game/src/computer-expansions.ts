@@ -1,7 +1,7 @@
 import { isProhibited, planProductionForTile, productionReceipt } from '@bc/exp-00-core';
 import { regulationPlacementPrice } from '@bc/exp-02-security';
 import {
-  computeMajority, createExpansionRegistry, getTopology, type ActiveMeasureEffect, type BoardPlacement,
+  computeMajority, createExpansionRegistry, getTopology, measureBaseCost, type ActiveMeasureEffect, type BoardPlacement,
   type CoreState, type ExpansionModule, type RegulationKind, type RegulationOperation, type Tile,
 } from '@bc/rules';
 import type { EngineMoveOption } from './legal-options.js';
@@ -92,8 +92,9 @@ export function inspectExpansions(G: CoreState) {
     const rule = module.measureRules?.[id];
     if (!rule) return { value: 0, sec: 0 };
     const stock = players[playerID].personal.resources;
+    const cost = measureBaseCost(G, module, id);
     let upside = 4;
-    let sec = rule.cost.SEC ?? 0;
+    let sec = cost.SEC ?? 0;
     // These cards need a second budget for their immediate or registered placement.
     if (id === 'SEC_M01' || id === 'SEC_M02' || id === 'SEC_M12') {
       // EXP-02-08-M01-03, EXP-02-08-M02-03/-04 and EXP-02-08-M12-03/-04.
@@ -114,14 +115,17 @@ export function inspectExpansions(G: CoreState) {
         site.controller === playerID && site.tile.kind === 'ResortTile' ? PRODUCTION_VALUE * site.tile.w : 0));
     } else if (id === 'SEC_M11' || id === 'CLM_M04') {
       upside = Math.max(0, ...Object.keys(players).filter(id => id !== playerID).map(id => hand(id).length * 5));
+    } else if (id === 'ECO_M10' && G.cfg.variants.measureRegulationAccess) {
+      // EXP-01-08-M10-04: without a possible surcharge there is nothing to replace.
+      upside = activeMeasureEffects.length || attached.some(item => item.kind === 'Control' || item.kind === 'Administration') ? 4 : 0;
     } else if (rule.targetTile && !board.some(site => rule.targetTile?.(G, playerID, site.tile, site.coord))) {
       upside = 0;
     }
-    const otherMissing = Object.entries(rule.cost).reduce((sum, [resource, amount]) =>
+    const otherMissing = Object.entries(cost).reduce((sum, [resource, amount]) =>
       sum + (resource === 'SEC' ? 0 : Math.max(0, (amount ?? 0) - (stock[resource] ?? 0))), 0);
     return {
       value: Math.max(0, Math.min(id === 'ECO_M02' ? 1.5 : 5, upside / 3) - 1.5 * otherMissing),
-      sec: upside >= PRODUCTION_VALUE && otherMissing <= 1 ? sec : 0,
+      sec: upside >= (G.cfg.variants.measureRegulationAccess ? 4 : PRODUCTION_VALUE) && otherMissing <= 1 ? sec : 0,
     };
   }
 
@@ -139,17 +143,21 @@ export function inspectExpansions(G: CoreState) {
     const marketPlans = new Map(includeMarket ? market.map(card => [card.id, cardPlan(card, playerID, rivals)]) : []);
     const innerOrder = board.some(site => site.tile.kind === 'Hotspot' && site.tile.hotspotOutcome === 'regulation'
       && site.controller === playerID && site.enclosure >= 4);
+    const apparatus = G.cfg.variants.measureRegulationAccess
+      && board.some(site => site.tile.kind === 'AuthorityApparatus' && site.controller === playerID && !hasBlockade(site.tileId))
+      && rivals.some(site => disruption(site, 'SecurityLevel') >= PRODUCTION_VALUE);
     const pendingPlacement = activeMeasureEffects.some(effect => {
       if (effect.owner !== playerID || effect.used) return false;
       const operation = activeOperation(effect);
       return operation?.operation === 'place' && regulationValue(operation, playerID) > 0;
     });
     const secGoal = Math.max(0, ...cards.map(card => card.sec),
-      pendingPlacement || (innerOrder && rivals.some(site => disruption(site, 'Blockade') > 0)) ? placementPrice : 0);
+      pendingPlacement || apparatus || (innerOrder && rivals.some(site => disruption(site, 'Blockade') > 0)) ? placementPrice : 0);
     const marketGoal = Math.max(0, ...Array.from(marketPlans.values(), plan => plan.sec));
     const stock = players[playerID].personal.resources;
     const hasGrassroots = board.some(site => site.controller === playerID && site.tile.kind === 'Grassroots'
-      && !regulationsAt.get(site.tileId)?.some(regulation => regulation.kind === 'Blockade' || regulation.kind === 'SecurityLevel'));
+      && !hasBlockade(site.tileId) && (regulationsAt.get(site.tileId)?.filter(regulation => regulation.kind === 'SecurityLevel').length ?? 0)
+        < (G.cfg.variants.measureRegulationAccess ? 2 : 1));
     return { cards, marketPlans, secGoal, stock, hasGrassroots, grassNeeded: (stock.SEC ?? 0) < Math.max(secGoal, marketGoal) };
   }
 

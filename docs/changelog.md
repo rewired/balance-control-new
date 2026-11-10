@@ -653,3 +653,10 @@
 - Die englische CORE-Anleitung erklärt den Aufbau, den Zugablauf mit allen politischen Aktionen, Kontrolle, Produktion und beide Wege zum Sieg anhand von Beispielen aus CORE-01.
 - Die englischen Kapitel zu Economy &amp; Labor, Security &amp; Order und Climate &amp; Future erklären die neuen Ressourcen, Plättchen, Aktionen und Measures mit Beispielen für Produktion, Regulierung und Kosten.
 - Auf breiten Bildschirmen nutzen Hotseat-Setup, Netzwerk-Lobby und Spielanleitung die volle Fensterhöhe unter der Kopfzeile. Längere Inhalte lassen sich im jeweiligen Bereich scrollen.
+- Die Anleitung zeigt Ressorts mit den Farben und Symbolen vom Spielfeld. Kosten und Produktionswerte erhalten eigene Markierungen. Beim Darüberfahren oder per Tastaturfokus erscheint eine Erklärung.
+
+## 2026-11-10 – Leichterer Zugang zu Measures und Regulations
+
+- Eine Aufnahme aus dem Markt bei leerer Hand lässt die reguläre politische Aktion offen. Die neue Karte kann sofort ausgespielt werden. Nach der freien Aufnahme ist im selben Zug keine zweite Aufnahme möglich.
+- Measures kosten je eine Einheit ihres eigenen Ressorts weniger. Der gewöhnliche Grassroots-Tausch in SEC liefert zwei Einheiten. Die Regulationsplatzierung kostet ein SEC, mit Situation Assessment kann der Basispreis auf null fallen.
+- Das kontrollierte Authority Apparatus kann Security Level, Control und Administration platzieren. Neue Partien mit Measures speichern diese Regeln nach ERRATA-0037. Vorhandene Partien und Replays verwenden ihre gespeicherte Fassung.

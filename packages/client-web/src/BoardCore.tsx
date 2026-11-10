@@ -11,7 +11,7 @@ import { expansions, measureName } from './expansion-data.js';
 import { playerColor, resortVisuals } from './core-board-visuals.js';
 import { PlayerMarker, RegulationBadge, ResourceBadge } from './CoreSymbols.js';
 import {
-  coordLabel, describeOption, isFormalization, measureAction, movePreview, optionCost, playerLabel,
+  coordLabel, describeOption, isAuthorityAction, isFormalization, measureAction, movePreview, optionCost, playerLabel,
   regulationLabel, tileLabel, tileOccupation, tileRuleSummary, type MeasureSelection,
 } from './core-board-labels.js';
 
@@ -142,6 +142,12 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
     : selectedTile ? tileActions.get(selectedTile) ?? [] : otherActions;
   const actionIndex = current?.actionIndex ?? 0;
   const preview = movePreview(visibleActions[actionIndex]);
+  const legalMeasures = otherActions.flatMap(option => measureAction(option) ?? []);
+  const playableCards = new Set(legalMeasures.filter(card => card.action === 'play').map(card => card.id));
+  const canTakeMeasure = legalMeasures.some(card => card.action === 'take');
+  const keepsAction = G.cfg.variants.measureRegulationAccess && stage === CoreStages.ExactlyOnePoliticalAction
+    && enabledExpansions.every(({ id }) => !G.exp[id]?.measures?.hands[activePlayer]?.length);
+  const authorityTile = otherActions.find(isAuthorityAction)?.contextTile;
   const phase = drawn ? 'Place the drawn tile' : stage === CoreStages.AdditionalPoliticalAction ? 'Choose an additional political action'
     : stage === CoreStages.ExactlyOnePoliticalAction ? 'Choose a political action' : stage === CoreStages.ResolveHotspot ? 'Resolve a Hotspot'
     : stage === CoreStages.ResolveRegulationFollowUp ? 'Resolve a Regulation'
@@ -204,6 +210,20 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
         </div>
         <aside className="core-inspector core-panel" aria-label="Tile details and actions" ref={inspector} tabIndex={-1}
           hidden={sidebarView !== 'actions'}>
+          {!isComputerTurn && (canTakeMeasure || playableCards.size > 0 || authorityTile) &&
+            <div className="core-view-switch" role="group" aria-label="Available Measure and Regulation actions">
+              {canTakeMeasure && <button type="button" onClick={() => setSidebarView('measures')}>
+                {keepsAction ? 'Take a Measure and keep your action' : 'Take a Measure'}
+              </button>}
+              {Array.from(playableCards, id => <button type="button" key={id} onClick={() => {
+                setSelection({ revision, playerID, measure: { id, action: 'play' } });
+                focusInspector();
+              }}>Play {measureName(id)}</button>)}
+              {authorityTile && <button type="button" onClick={() => {
+                inspectTile(authorityTile);
+                focusInspector();
+              }}>Authority Apparatus actions</button>}
+            </div>}
           <header className="core-inspector-heading">
             <h3>{selectedMeasure ? 'Measure inspector' : 'Tile inspector'}</h3>
             {(selectedTile || selectedCoord || selectedMeasure) && <button type="button" onClick={() => setSelection(undefined)}>Clear</button>}
@@ -214,7 +234,7 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
               <TileSummary tile={inspectedTile} controller={occupation.controller} label={`Selected tile · ${coordLabel(inspected.coord)}`} />
               <section className="tile-rules">
                 <h4>Tile rules</h4>
-                <p>{tileRuleSummary(inspectedTile)}</p>
+                <p>{tileRuleSummary(inspectedTile, G.cfg)}</p>
               </section>
               {counterLobby && <p>Counter-lobby suspends the bonus from {counterLobby.lobbyistTileId} for {playerLabel(counterLobby.controller)}.</p>}
               {damaged && <p>Permanent damage · −1 production</p>}
@@ -245,7 +265,7 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
               )}
             </> : selectedMeasure ? <>
               <h4>{measureName(selectedMeasure.id)}</h4>
-              <MeasureDetails selection={selectedMeasure} available={!resolvingDecision && visibleActions.length > 0} />
+              <MeasureDetails G={G} selection={selectedMeasure} available={!resolvingDecision && visibleActions.length > 0} />
             </> : selectedCoord && <h4>Placement at {selectedCoord}</h4>}
             {result ? <p>Final score is the number of influence markers each player has on the board.</p> : (
               <>
@@ -253,7 +273,7 @@ export function CoreView({ G, ctx, revision, playerID, isActive = true, computer
                   <TileSummary tile={core.allTiles[drawn.tileId]} label="Drawn tile" />
                   <section className="tile-rules">
                     <h4>Drawn tile rules</h4>
-                    <p>{tileRuleSummary(core.allTiles[drawn.tileId])}</p>
+                    <p>{tileRuleSummary(core.allTiles[drawn.tileId], G.cfg)}</p>
                   </section>
                   <p>{core.tiles.discardFaceUp.length} discarded</p>
                 </div>}

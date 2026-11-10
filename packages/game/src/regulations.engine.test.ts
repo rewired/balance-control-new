@@ -7,8 +7,11 @@ import { engineMoveOptions } from './legal-options.js';
 const apparatus = { tileId: 'AuthorityApparatus', coord: { q: 1, r: 0 } };
 const grassroots = { tileId: 'Grassroots-1', coord: { q: 1, r: -1 } };
 
-function setupSecurity(board: BoardPlacement[], prepare: (G: CoreState) => void) {
-  const game = createBCGame({ expansions: { exp02: true } });
+function setupSecurity(board: BoardPlacement[], prepare: (G: CoreState) => void, rules: 'current' | 'recorded' = 'recorded') {
+  const game = createBCGame({
+    expansions: { exp02: true },
+    variants: { resourceCap: true, influenceRecall: true, influenceDistance: true, disruption: true },
+  }, rules);
   const setup = game.setup!;
   game.setup = (context, data) => {
     const G = setup(context, data);
@@ -39,8 +42,8 @@ describe('Regulation operations through boardgame.io', () => {
     const client = setupSecurity([apparatus, grassroots], G => {
       takeIntoFixtureHand(G, 'SEC_M01');
       mark(G, '0', grassroots.tileId);
-      Object.assign(G.exp.core.players['0'].personal.resources, { SEC: 3, INF: 1, DOM: 3 });
-    });
+      Object.assign(G.exp.core.players['0'].personal.resources, { SEC: 1, INF: 1, DOM: 3 });
+    }, 'current');
     client.moves.placeTile({ q: -1, r: 0 });
     const before = client.getState()!;
     const play = (regulationKind: string) => client.moves.doPoliticalAction({
@@ -53,7 +56,7 @@ describe('Regulation operations through boardgame.io', () => {
     const placed = client.getState()!;
     expect(placed.ctx.activePlayers).toEqual({ '0': 'AdditionalPoliticalAction' });
     expect(placed.G.exp!.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId }]);
-    expect(placed.G.exp.core.resources.bank).toMatchObject({ SEC: 3, INF: 1 });
+    expect(placed.G.exp.core.resources.bank).toMatchObject({ SEC: 1, INF: 1 });
     client.moves.doPoliticalAction({
       type: 'convertResources', payload: { tileId: grassroots.tileId, input: 'DOM', output: 'FOR' },
     });
@@ -61,6 +64,46 @@ describe('Regulation operations through boardgame.io', () => {
     expect(after.ctx.currentPlayer).toBe('1');
     expect(after.G.exp.core.resources.bank.DOM).toBe(3);
     expect(after.G.exp.core.players['0'].personal.resources).toMatchObject({ DOM: 0, FOR: 0, SEC: 0, INF: 0 });
+  });
+
+  it.each([0, 1])('converts into two SEC before applying %i Security Levels', levels => {
+    const client = setupSecurity([grassroots], G => {
+      mark(G, '0', grassroots.tileId);
+      G.exp.core.players['0'].personal.resources.DOM = 3;
+      if (levels) G.exp.exp02!.regulations!.attached.push({ id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId });
+    }, 'current');
+    client.moves.placeTile({ q: -1, r: 0 });
+    client.moves.doPoliticalAction({
+      type: 'convertResources', payload: { tileId: grassroots.tileId, input: 'DOM', output: 'SEC' },
+    });
+    expect(client.getState()!.G.exp.core.players['0'].personal.resources).toMatchObject({ DOM: 0, SEC: 2 - levels });
+  });
+
+  it.each([false, true])('quotes a new Apparatus placement with the recorded discount active: %s', discounted => {
+    const client = setupSecurity([apparatus, grassroots], G => {
+      mark(G, '0', apparatus.tileId);
+      G.exp.core.players['0'].personal.resources.SEC = discounted ? 0 : 1;
+      if (discounted) expect(createResolver()(G, { kind: 'registerMeasureEffect',
+        instance: { sourceCardId: 'SEC_M15', owner: '1', playNumber: 1, duration: 'thisRound' } }).ok).toBe(true);
+    }, 'current');
+    client.moves.placeTile({ q: -1, r: 0 });
+    const before = client.getState()!;
+    const action = (regulationKind: string) => ({
+      type: 'activateAuthorityApparatus',
+      payload: { regulation: { operation: 'place', regulationKind, tileId: grassroots.tileId } },
+    });
+    const options = engineMoveOptions(before.G, before.ctx, '0');
+    expect(options.find(option => JSON.stringify(option.parameters[0]) === JSON.stringify(action('SecurityLevel')))).toMatchObject({
+      contextTile: apparatus.tileId,
+      costBreakdown: discounted ? [] : [{ playerID: '0', resource: 'SEC', amount: 1 }],
+    });
+    client.moves.doPoliticalAction(action('Blockade'));
+    expect(client.getState()!._stateID).toBe(before._stateID);
+    client.moves.doPoliticalAction(action('SecurityLevel'));
+    const after = client.getState()!;
+    expect(after.G.exp.exp02!.regulations!.attached).toEqual([{ id: 'reg-1', kind: 'SecurityLevel', tileId: grassroots.tileId }]);
+    expect(after.G.exp.core.resources.bank.SEC).toBe(discounted ? 0 : 1);
+    if (discounted) expect(after.G.exp.core.activeMeasureEffects?.find(effect => effect.sourceCardId === 'SEC_M15')?.used).toBe(true);
   });
 
   it('uses Authority Apparatus as its only local context when moving an existing Regulation', () => {

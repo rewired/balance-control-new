@@ -1,7 +1,7 @@
 import { shuffleSeeded, stableHash } from '@bc/shared';
 import {
   awaitsFirstPlacement, createExpansionRegistry, createMatchResourceRegistry, ensureExpansionSlice,
-  getTopology, isRegisteredAction, MeasureExtensionTargetSchema, paymentPlans,
+  getTopology, isRegisteredAction, measureBaseCost, MeasureExtensionTargetSchema, paymentPlans,
   type ActiveMeasureEffect, type AxialCoord, type CoreState,
   type DecisionQuote, type DisruptionEffect, type DrawTileEffect, type EffectDecision, type EffectDescriptor, type EffectResolver,
   type ExpansionHooks, type ExpansionId, type ExpansionModule, type ExpireMeasureEffects, type Influence,
@@ -430,7 +430,12 @@ function planPoliticalAction(
   if (effect.alternative !== undefined && !alternative) return { ok: false, reason: 'conversion-alternative-unavailable' };
   const payment = planPayment(G, registry, effect, localHooks, { [effect.input]: alternative?.cost ?? 3 }, preview);
   if (!payment.ok) return payment;
-  const amount = modifyOutput(G, effect, localHooks, 1);
+  // EXP-02-01-07: registered base outputs apply only to ordinary exchanges.
+  let baseOutput = 1;
+  if (!alternative) {
+    for (const module of active) baseOutput = module.conversionBaseOutput?.(G, effect.output) ?? baseOutput;
+  }
+  const amount = modifyOutput(G, effect, localHooks, baseOutput);
   const payout = payment.transaction.transfer({
     from: 'Bank', to: 'PersonalSupply', playerID: player.id, resource: effect.output, amount,
   });
@@ -592,10 +597,12 @@ function planMeasureAction(
   const flags = G.exp.core.playedMeasureThisRound ?? legacyMeasureUsageDeck(G)?.usedThisRound;
   if (!take && flags?.[playerID]) return { ok: false, reason: 'limit-per-round' };
   const enabled = (Object.keys(G.cfg.expansions) as ExpansionId[]).filter(id => G.cfg.expansions[id]);
-  if (take && enabled.reduce((sum, id) => sum + (G.exp?.[id]?.measures?.hands[playerID]?.length ?? 0), 0) >= 2) {
-    return { ok: false, reason: 'hand-full' };
-  }
-  const rules = active.find((module): module is ExpansionModule => module.id === expansion)?.measureRules;
+  const handSize = take ? enabled.reduce((sum, id) => sum + (G.exp[id]?.measures?.hands[playerID]?.length ?? 0), 0) : hand.length;
+  if (take && handSize >= 2) return { ok: false, reason: 'hand-full' };
+  // EXP-01-06-04E: a pickup from an empty hand blocks another pickup in this turn.
+  if (take && G.exp.core.emptyHandPickupUsed) return { ok: false, reason: 'measure-already-taken' };
+  const module = active.find((candidate): candidate is ExpansionModule => candidate.id === expansion);
+  const rules = module?.measureRules;
   const rule = requested.kind === 'playMeasure' ? rules?.[measureId] : undefined;
   const playNumber = (deck.playCounts[measureId] ?? 0) + 1;
   if (!take && playNumber > 2) return { ok: false, reason: 'play-limit' };
@@ -637,7 +644,7 @@ function planMeasureAction(
   if (isProhibited(G, effect, hooks)) return { ok: false, reason: 'prohibited' };
   // CORE-01-06-00-08/-09: an embedded operation shares this card's single payment.
   const operation = extensionTarget?.operation;
-  const cost = { ...rule?.cost };
+  const cost: Partial<ResourceAmounts> = take ? {} : measureBaseCost(G, module, measureId);
   for (const [resource, amount] of Object.entries(operation?.cost ?? {})) {
     if (amount !== undefined) cost[resource] = (cost[resource] ?? 0) + amount;
   }
@@ -657,6 +664,8 @@ function planMeasureAction(
     if (take) {
       deck.open[index] = null;
       (deck.hands[playerID] ??= []).push(measureId);
+      // EXP-01-06-04E: consume the pickup only after a successful transfer.
+      if (G.cfg.variants.measureRegulationAccess && handSize === 0) G.exp.core.emptyHandPickupUsed = true;
     } else {
       // EXP-01-07-01..04: preserve counters through all zone transfers.
       hand.splice(index, 1);
@@ -843,6 +852,8 @@ export function createResolver(modules?: readonly RulesModule[]): EffectResolver
     }
 
     if (effect.kind === 'expireMeasureEffects') {
+      // EXP-01-06-04E: the empty-hand pickup restriction lasts only for this turn.
+      if (effect.boundary === 'turnEnd') delete G.exp.core.emptyHandPickupUsed;
       // CORE-01-04-23: the first turn of a new round reopens recall for all players.
       if (effect.boundary === 'turnStart' && effect.nextRound) {
         delete G.exp.core.recalledThisRound;

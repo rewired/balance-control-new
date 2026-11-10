@@ -19,6 +19,8 @@ export function setupCoreMatch(numPlayers: number, setupData: unknown = {}, rule
     cfg.variants.influenceRecall = true;
     cfg.variants.influenceDistance = true;
     cfg.variants.disruption = true;
+    // ERRATA-0037: only matches with a Measure deck use the new access rules.
+    if (Object.values(cfg.expansions).some(Boolean)) cfg.variants.measureRegulationAccess = true;
   }
   const G = buildInitialCoreState(numPlayers, matchSeed, cfg);
   const modules = createExpansionRegistry(cfg.expansions);

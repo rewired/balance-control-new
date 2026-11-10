@@ -99,7 +99,7 @@ describe('EXP-01 Measures - Task 0027', () => {
   });
 
   it('holds the same engine turn through a Measure and its additional action', () => {
-    const client = Client({ game: createBCGame({ matchSeed: 'measure-turn', expansions: { exp01: true } }), numPlayers: 2 });
+    const client = Client({ game: createBCGame({ matchSeed: 'measure-turn', expansions: { exp01: true } }, 'recorded'), numPlayers: 2 });
     const place = () => client.moves.placeTile(client.getState()!.G.exp.core.tiles.drawResolution!.legalCoords[0]);
     const measures = () => client.getState()!.G.exp!.exp01!.measures!;
     const take = () => client.moves.doPoliticalAction({ type: 'exp01_takeMeasure', payload: { measureId: measures().open[0] } });

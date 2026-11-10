@@ -1,15 +1,15 @@
 import type { CoreState, MeasureDeckState } from '@bc/rules';
 import type { EngineMoveOption } from '@bc/game';
 import { boardTileLabel, isAuthorityAction, measureAction, playerLabel, regulationLabel, words, type MeasureSelection } from './core-board-labels.js';
-import { expansions, measureName, measureText } from './expansion-data.js';
+import { expansions, measureName, measurePrice, measureText } from './expansion-data.js';
 import { RegulationBadge, ResourceBadge } from './CoreSymbols.js';
 
-export function MeasureDetails({ selection, available }: { selection: MeasureSelection; available: boolean }) {
+export function MeasureDetails({ G, selection, available }: { G: CoreState; selection: MeasureSelection; available: boolean }) {
   const card = measureText(selection.id);
   return (
     <section className="measure-details" aria-label="Measure details">
       <p>{selection.action === 'take' ? 'From the market' : 'From a player’s hand'}</p>
-      {card?.cost && <p><strong>Printed play cost</strong> · {card.cost}</p>}
+      {card?.cost && <p><strong>Base card cost</strong> · {measurePrice(G, selection.id)}</p>}
       {card && <details>
         <summary>Card rules</summary>
         {card.clauses.map((clause, index) => <p key={index}>{clause}</p>)}
@@ -41,7 +41,7 @@ export function MeasurePanel({ G, options, selected, onSelect }: MeasureProps) {
         aria-pressed={selected?.id === id && selected.action === action}
         onClick={() => onSelect({ id, action })}>
         <strong>{name}</strong>
-        <span>Play cost · {measureText(id)?.cost ?? '—'}</span>
+        <span>Base card cost · {measurePrice(G, id)}</span>
         <small>{deck.playCounts[id] ?? 0} played{legal && ` · ${action === 'take' ? 'Take available' : 'Play available'}`}</small>
       </button>
     );

@@ -94,10 +94,11 @@ function queueRegulationFollowUps(G: CoreState, playerID: string, placed?: Board
 }
 
 export function regulationPlacementPrice(G: CoreState): { amount: number; discounts: string[] } {
-  // EXP-02-04-A-01 and EXP-02-08-M15-03: discount the next placement this round with a floor of one SEC.
+  // EXP-02-04-A-01 and EXP-02-08-M15-03: use the recorded base price and floor.
   const discounts = G.exp.core.activeMeasureEffects?.filter(instance => instance.sourceCardId === 'SEC_M15' && !instance.used)
     .map(instance => instance.id) ?? [];
-  return { amount: Math.max(1, 2 - discounts.length), discounts };
+  const base = G.cfg.variants.measureRegulationAccess ? 1 : 2;
+  return { amount: Math.max(base - 1, base - discounts.length), discounts };
 }
 
 function commitRegulationDiscounts(G: CoreState, discounts: string[] = []): void {
@@ -144,13 +145,35 @@ const regulationAction: ExtensionAction = {
   plan: (G, effect) => planOperation(G, effect.regulation, effect.playerID),
 };
 
+// EXP-02-05-02: only the player controlling the Apparatus may activate it.
+function controlledApparatus(G: CoreState, playerID: string): BoardPlacement | undefined {
+  const placement = G.exp.core.tiles.board.find(tile => G.exp.core.allTiles[tile.tileId]?.kind === 'AuthorityApparatus');
+  return placement && getControl(G, placement.coord) === playerID ? placement : undefined;
+}
+
+// EXP-02-05-02B: the Apparatus may place any permitted Regulation except Blockade.
+function authorityPermits(G: CoreState, operation: RegulationOperation): boolean {
+  return operation.operation === 'move' || operation.operation === 'remove'
+    || (operation.operation === 'place' && G.cfg.variants.measureRegulationAccess === true && operation.regulationKind !== 'Blockade');
+}
+
+export function* authorityOperations(G: CoreState, playerID: string): Generator<RegulationOperation> {
+  if (!controlledApparatus(G, playerID)) return;
+  yield* regulationOperations(G, 'move');
+  yield* regulationOperations(G, 'remove');
+  if (G.cfg.variants.measureRegulationAccess) {
+    for (const operation of regulationOperations(G, 'place')) {
+      if (authorityPermits(G, operation)) yield operation;
+    }
+  }
+}
+
 const authorityAction: ExtensionAction = {
   political: true,
-  // EXP-02-05-02/-04: a controlled Apparatus is the sole context of its move or removal.
+  // EXP-02-05-02..04: a controlled Apparatus is the sole context of the activation.
   context(G, effect) {
-    const placement = G.exp.core.tiles.board.find(tile => G.exp.core.allTiles[tile.tileId]?.kind === 'AuthorityApparatus');
-    return (effect.regulation.operation === 'move' || effect.regulation.operation === 'remove') && placement
-      && getControl(G, placement.coord) === effect.playerID ? { placement } : { reason: 'apparatus-unavailable' };
+    const placement = authorityPermits(G, effect.regulation) && controlledApparatus(G, effect.playerID);
+    return placement ? { placement } : { reason: 'apparatus-unavailable' };
   },
   plan: (G, effect, placement) => planOperation(G, effect.regulation, effect.playerID, placement.tileId),
 };
